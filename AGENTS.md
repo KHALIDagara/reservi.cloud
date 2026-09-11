@@ -1,367 +1,422 @@
 # Reservi — Agent Operating Manual
 
-This file is the first instruction source for any AI agent or engineer working in this repository.
+This is the first instruction source for any AI agent or engineer working in this repository.
 
-Reservi is intentionally designed so that a capable coding agent can take a well-formed goal, inspect the system, plan a small coherent change, implement it, prove it, review it, and update durable context without requiring constant human micromanagement.
+Reservi is intentionally designed so a capable coding agent can take a goal, inspect the system, plan a small coherent change, implement it, prove it, review it, and update durable context without constant human micromanagement.
 
-The objective is not autonomous code generation. The objective is **autonomous, evidence-driven engineering inside a stable product and architectural model**.
+The objective is **autonomous, evidence-driven engineering inside a stable product model**.
 
 ---
 
-## 1. Read this before touching code
+## 1. Mandatory orientation
 
 For every non-trivial task:
 
-1. Read this file and any closer `AGENTS.md` in the directory you are modifying.
-2. Load the OpenCode skill `reservi-context`.
-3. Read the relevant durable docs under `docs/`.
-4. Inspect the actual repository and existing tests.
-5. Identify the product behavior and invariants affected.
-6. Plan the smallest coherent vertical change.
-7. Implement and verify it.
-8. Review the entire diff before claiming completion.
+1. Read this file and any closer `AGENTS.md`.
+2. Load `reservi-context`.
+3. For Flow/Stage/Field/Catalog/Item/Appointment/Rule work, load `flow-engine`.
+4. Read relevant durable docs under `docs/`.
+5. Inspect actual code/schema/tests before designing.
+6. Identify affected invariants.
+7. Plan the smallest coherent vertical change.
+8. Implement, verify, review the full diff.
 
-Never implement from a remembered conversation alone. Repository code and checked-in docs are the current source of truth.
+Never implement from remembered conversation alone. Checked-in code and docs are current truth.
 
-If code and docs disagree, do not silently choose one. Determine which is stale, preserve user-facing behavior/invariants, and update the stale source deliberately.
+If code and docs conflict, surface the conflict and resolve it deliberately.
 
 ---
 
 ## 2. Product north star
 
-Reservi is a **mobile-first, conversation-centric CRM and service operations system**.
+Reservi is a **mobile-first, conversation-centric CRM and operations system**.
 
-Its job is to turn an incoming customer conversation into correctly understood, correctly routed, scheduled, and completed service with as little friction and bookkeeping as possible.
+Its purpose is to help a customer request move from conversation to real-world outcome with minimal friction and bookkeeping.
 
-The canonical operational loop is:
+The CRM maintains itself as a side effect of useful work.
+
+The fundamental runtime model is:
 
 ```text
-incoming message
-    ↓
-conversation/customer context
-    ↓
-qualification / intent
-    ↓
-routing & ownership
-    ↓
-human + AI collaboration
-    ↓
-booking / commitment
-    ↓
-service execution
-    ↓
-completion / follow-up
+Conversation state
+      ↓
+Current Stage
+      ↓
+Humans + AI + Rules change state
+      ↓
+Completion predicate becomes true
+      ↓
+Next Stage
 ```
 
-The CRM should maintain itself as a side effect of real work.
-
-Operators should not have to update redundant CRM records merely to keep the system current.
+A lead is the Conversation. Do not recreate a traditional Lead / Opportunity / Deal tree.
 
 ---
 
-## 3. Core product truths
+## 3. Canonical ontology — do not drift from this casually
 
-These are design anchors, not optional implementation suggestions.
+### 3.1 Conversation
 
-### 3.1 A lead is the conversation
+The lead, customer request, and running process instance.
 
-Do not create `Lead`, `Opportunity`, `Deal`, generic `Activity`, or similar traditional CRM abstractions simply because Salesforce/HubSpot/etc. have them.
+Conversation is the operational root and exposes current Stage, Customer, owner/team, Fields, selected Items, Appointments, Messages/Notes, and history.
 
-The conversation itself carries the operational customer context: messages, current state, assignment, qualification, notes, booking context, history, and AI context.
+### 3.2 Flow / Stage
 
-A new concept must justify an independent lifecycle and durable truth.
+A Flow is an ordered set of configurable Stages.
 
-### 3.2 Conversation is the operational center
+A Stage is not a decorative CRM status.
 
-Most operator actions should be reachable from the conversation experience without navigating a maze of CRM modules.
+```text
+Stage = Blocks + Rules + Completion Predicate
+```
 
-The system should feel closer to a shared inbox + operational workspace than to enterprise CRM data-entry software.
+Think:
 
-### 3.3 Humans and AI share the Agent abstraction
+> Stage = Work + Gate
 
-A human operator and an AI operator participate in the same conceptual system.
+The Stage declares what can/should happen now and what must become true before progression.
 
-Both may, subject to permissions/capabilities:
+### 3.3 Field
 
-- receive assignments;
-- read conversation context;
-- reply;
-- add internal notes;
-- update qualification;
-- transition operational state;
-- create/manage bookings;
-- hand off work.
+A structured fact.
 
-AI-specific runtime configuration belongs behind capabilities/instructions/provider integration, not in a parallel CRM architecture.
+Use Customer-scoped Fields for durable profile facts and Conversation-scoped Fields for request-specific facts.
 
-### 3.4 One current owner, truthful history
+Examples: city, budget, surface, urgency, language.
 
-A conversation normally has one current owner at a time.
+### 3.4 Catalog / Item
 
-Reassignment must be clear and race-safe, and assignment history must remain truthful.
+A `Catalog` is a collection of reusable selectable business things.
 
-### 3.5 Teams are operational routing units
+An `Item` is the universal selectable entity inside it.
 
-Teams group agents and participate in routing, workload distribution, escalation, and access.
+Examples:
 
-Do not create a generalized workflow engine to represent simple routing rules prematurely.
+```text
+Catalog: Services    -> Item: Garden Maintenance
+Catalog: Cars        -> Item: Range Rover Evoque
+Catalog: Properties  -> Item: Villa Agdal
+Catalog: Rooms       -> Item: Treatment Room 2
+```
 
-### 3.6 Booking is part of the conversation flow
+All Items share the same fundamental shape:
 
-The calendar is not a detached product. Booking is the commitment produced by the conversation/qualification process.
+- title;
+- images;
+- description;
+- price;
+- typed additional attributes;
+- active/archive state.
 
-Operators should be able to move from conversation to available slot to confirmed booking quickly.
+**Do not create separate core Service, Car, Room, Property, Resource, ResourceType workflow abstractions when Catalog/Item is sufficient.**
 
-### 3.7 Mobile first
+### 3.5 ItemSelection
 
-Many service operators work from phones.
+A configured Catalog Selector places one or more Items into Conversation state under a stable selector key such as `vehicle`, `property`, or `requested_service`.
 
-Every important workflow must remain usable on a narrow viewport. Desktop enhancements must not become required for basic operation.
+Selection means selection only.
+
+It does **not** inherently mean reserved, scheduled, owned, exclusive, or booked.
+
+### 3.6 Appointment
+
+The canonical scheduling entity.
+
+Appointment is a time-bound commitment associated with a Conversation.
+
+It is independent from Item selection.
+
+Never assume:
+
+```text
+Appointment requires Service
+Appointment requires Item
+Item must be bookable
+Item selection must happen before Appointment
+```
+
+All of these must remain possible:
+
+```text
+Appointment without Item selection
+Item selection without Appointment
+Appointment before Item selection
+Item selection before Appointment
+multiple Items
+multiple Appointments
+no Catalog at all
+```
+
+An operator can understand that a Pickup Appointment concerns the selected Range Rover because both appear in the same Conversation context. Reservi does not need a `bookable` Item flag to infer this.
+
+If item-level reservation/capacity becomes a real requirement later, model it explicitly then. Do not smuggle it into Catalog Item semantics prematurely.
+
+### 3.7 Rule
+
+```text
+Rule = Predicate + Actions
+```
+
+Example:
+
+```text
+IF field("city") == "Marrakech"
+THEN assign Ahmed
+```
+
+The same predicate model should serve completion, routing/assignment, and other supported conditions.
+
+Rules call normal domain operations; they do not bypass invariants.
 
 ---
 
-## 4. Engineering north star
+## 4. The extension formula
+
+For a future first-class feature, ask whether it can expose:
+
+```text
+Feature = State + Controls + Predicates + Actions
+```
+
+Example Quote:
+
+```text
+State: quote.status, quote.total
+Control: Quote Builder
+Predicates: quote exists / accepted
+Actions: create_quote / send_quote
+```
+
+Then Stages can compose it without adding Quote-specific transition logic to the central Flow engine.
+
+Before creating a new domain model, ask:
+
+1. Is it merely a fact? -> Field.
+2. Is it a reusable selectable business thing? -> Catalog Item.
+3. Is it a time-bound commitment? -> Appointment.
+4. Otherwise, what independent lifecycle/invariant proves a new concept is needed?
+
+---
+
+## 5. Human and AI symmetry
+
+Humans and AI share the conceptual `Agent` abstraction.
+
+Both operate on the same Conversation truth and current Stage requirements, subject to capabilities/permissions.
+
+Do not encode the real business flow only inside an AI prompt.
+
+The durable Flow/Stage configuration is authoritative process intent. The AI prompt helps the model operate inside it.
+
+AI output is untrusted input and must pass normal server-side validation and authorization.
+
+---
+
+## 6. Engineering north star
 
 **ONE ENGINE, ONE GOAL.**
 
-Favor one coherent Rails application over frontend/backend fragmentation and distributed services.
-
-The default architecture is:
+Default architecture:
 
 - Ruby on Rails monolith;
-- PostgreSQL for durable truth;
+- PostgreSQL;
 - server-rendered HTML;
-- Turbo Drive / Turbo Frames / Turbo Streams;
+- Turbo Drive / Frames / Streams;
 - Stimulus for local browser behavior;
-- Active Job for asynchronous work;
-- explicit adapters for external providers;
+- Active Job;
+- Active Storage where appropriate;
+- explicit integration adapters;
 - database constraints for durable invariants;
 - system tests for critical workflows.
 
-The actual dependency versions in the repository are authoritative once bootstrapped.
-
----
-
-## 5. Simplicity rules
-
-Prefer the simplest design that preserves truth and enables likely near-term change.
-
-Default preference order:
-
-1. Existing concept.
-2. Attribute/association/scope.
-3. Clear model/domain method.
-4. Small plain Ruby object when behavior truly has no natural model owner.
-5. Dedicated operation/service only when orchestration is genuinely multi-entity and naming it improves clarity.
-6. New infrastructure only after a current requirement proves it necessary.
+Prefer Rails conventions and boring technology.
 
 Avoid by default:
 
 - microservices;
 - separate SPA;
-- GraphQL between our own UI and Rails;
-- CQRS;
-- event sourcing;
+- GraphQL between our own frontend/backend;
+- CQRS/event sourcing;
 - command buses;
-- repository layers;
-- DTO layers for internal calls;
+- repository/DTO layers;
 - service/interactor explosion;
-- callback-driven business workflows;
-- generic workflow engines;
-- speculative plugin frameworks;
-- duplicated state in JavaScript;
-- caches used as primary truth.
+- generic BPM/workflow engines;
+- arbitrary scripting in Rules;
+- universal Entity/Property/Relation schemas;
+- duplicated JavaScript truth;
+- caches as primary truth.
 
 Every abstraction must pay rent now.
 
 ---
 
-## 6. Planning protocol
+## 7. Flow-engine engineering rules
 
-Before implementation, reduce the task to observable behavior.
+When implementing Flow behavior:
 
-For each change identify:
+- use one normalized predicate model;
+- use stable IDs/keys, never mutable labels as logic identity;
+- keep Stage completion server-side;
+- make Stage advancement race-safe/idempotent;
+- make irreversible Rule Actions idempotent/protected;
+- prevent Rule/action loops explicitly;
+- make significant automation explainable;
+- avoid scattered Stage transitions hidden in callbacks;
+- define what active configuration edits do to in-flight Conversations;
+- reject cross-Account references in configuration;
+- never execute arbitrary user code.
+
+Prefer ordered Stages initially. Do not build arbitrary graph branches/loops/timers/parallel workflow infrastructure until a real requirement demands it.
+
+---
+
+## 8. Planning protocol
+
+Before implementation reduce the task to observable behavior.
+
+Identify:
 
 - actor;
 - trigger;
+- current Flow/Stage context;
 - preconditions;
 - expected visible result;
-- persisted changes;
-- side effects;
-- authorization requirements;
-- invariants at risk;
-- failure behavior;
-- acceptance criteria;
-- proof/tests.
+- persisted truth;
+- predicates;
+- Actions/side effects;
+- authorization;
+- invariants;
+- concurrency/retry risk;
+- configuration compatibility;
+- acceptance/proof.
 
-Then inspect the existing implementation path before designing anything new.
-
-Trace, as relevant:
+Trace existing code as relevant:
 
 ```text
 route
-→ controller/request boundary
-→ domain/model behavior
-→ database constraints
-→ job/integration boundary
-→ Turbo/view/Stimulus behavior
-→ tests
+-> controller/request boundary
+-> domain operation/model
+-> database constraints
+-> Flow evaluation
+-> jobs/integrations
+-> Turbo/view/Stimulus
+-> tests
 ```
 
-Do not write a plan that assumes files/classes that do not exist.
+Do not plan files/classes that do not exist without first proving they are needed.
 
 ---
 
-## 7. Implementation protocol
+## 9. Implementation protocol
 
 Keep changes vertical and bounded.
 
-A useful feature slice usually contains all required layers to make one behavior actually work, rather than adding large horizontal frameworks for future work.
-
 During implementation:
 
-- keep tenant/account scope explicit;
+- keep Account scope explicit;
 - use transactions/locking for race-sensitive state;
-- design jobs/webhooks for retries and duplicate delivery;
-- avoid long database transactions across network calls;
+- make jobs/webhooks retry-safe;
+- avoid network calls inside long DB transactions;
 - keep provider details at adapters;
-- validate AI-generated actions as untrusted input;
-- prefer server-rendered truth over client duplication;
-- add indexes/constraints that match the real access/invariant needs;
-- preserve historical truth rather than overwriting it destructively;
-- do not refactor unrelated code unless it blocks correctness.
+- validate AI Actions like any external input;
+- prefer server-rendered truth;
+- add indexes/constraints matching real access/invariants;
+- preserve historical truth;
+- avoid unrelated refactors.
+
+For configurable state, do not use unvalidated JSON merely for convenience. Structured JSON/AST is fine when the shape is genuinely dynamic and strongly validated behind a domain API.
 
 ---
 
-## 8. Testing and proof protocol
+## 10. Testing and proof
 
-A feature is not done because the code compiles or a unit test passes.
+A feature is not done because code compiles or a unit test passes.
 
-Use the lowest useful layer and add end-to-end proof where integration matters.
-
-Expected hierarchy:
+Expected proof hierarchy:
 
 ```text
-domain/model tests
+predicate/domain tests
     ↓
 request/integration tests
     ↓
 job/integration-boundary tests
     ↓
-system/browser tests for critical workflows
+system/browser tests
+    ↓
+targeted concurrency tests where truth can race
 ```
 
-Always consider tests for:
+Always consider:
 
 - tenant isolation;
-- authorization;
-- duplicate webhook delivery;
-- idempotent retries;
+- duplicate events/retries;
+- repeated Rule evaluation;
+- duplicate Rule Actions;
+- concurrent Stage advancement;
 - assignment races;
-- booking conflicts/races;
+- explicit Appointment conflict rules;
 - stale state;
-- provider failure;
-- human/AI capability restrictions.
+- active configuration changes;
+- AI capability restrictions.
 
-For a bug, reproduce first and add a regression test unless there is a strong reason not to.
+Architecture regression scenarios must include:
 
-For user-visible changes, exercise the real/system browser flow when feasible.
-
-Never say a test, command, browser flow, or review was performed unless it actually was.
+- Appointment with no Catalog/Item;
+- Item selection with no Appointment;
+- Appointment before Item selection;
+- Item selection before Appointment;
+- Services/Cars/Properties all represented as Catalog Items through the same path.
 
 See `docs/testing.md`.
 
 ---
 
-## 9. Debugging protocol
+## 11. Debugging protocol
 
 Do not thrash.
 
-Use:
-
 ```text
 REPRODUCE
-→ OBSERVE
-→ TRACE
-→ ISOLATE
-→ HYPOTHESIZE
-→ TEST HYPOTHESIS
-→ FIX ROOT CAUSE
-→ ADD REGRESSION TEST
-→ VERIFY
+-> OBSERVE
+-> TRACE
+-> ISOLATE
+-> HYPOTHESIZE
+-> TEST
+-> FIX ROOT CAUSE
+-> REGRESSION TEST
+-> VERIFY
 ```
 
-Forbidden shortcuts:
-
-- random edits;
-- broad rescues that swallow errors;
-- disabling constraints to make code pass;
-- arbitrary sleeps for race conditions;
-- deleting valid failing tests;
-- blaming providers/dependencies without evidence.
+Never hide a defect by swallowing errors, weakening valid tests, disabling constraints, or adding arbitrary sleeps.
 
 ---
 
-## 10. Data and multi-tenancy safety
+## 12. Data and integration safety
 
-Tenant isolation is a hard invariant.
+Tenant isolation is hard.
 
-Every account-owned read/write path must make it impossible for one account to access another account's data through guessed IDs, nested routes, jobs, websocket/Turbo broadcasts, search, exports, or provider callbacks.
+Provider events are assumed duplicated, delayed, reordered, and fallible.
 
-Do not depend on UI hiding for authorization.
+Incoming integrations:
 
-Prefer scoping from the current account/root aggregate rather than globally finding a record and checking ownership later.
-
-Use database foreign keys and appropriate uniqueness scopes.
-
----
-
-## 11. External integrations
-
-Assume providers are slow, duplicated, delayed, out of order, and occasionally wrong.
-
-For incoming webhooks:
-
-- authenticate/signature-check when supported;
-- resolve account/channel through configured integration identity;
-- persist/derive a stable external event ID;
-- process idempotently;
+- verify/authenticate where supported;
+- resolve Account through trusted integration configuration;
+- deduplicate stable provider identity;
+- normalize before domain entry;
 - acknowledge quickly;
-- move slow work to jobs;
-- retain debuggable correlation data.
+- enqueue slow work.
 
-For outgoing requests:
+Outgoing work:
 
-- use provider idempotency keys when available;
-- make retry behavior explicit;
-- avoid duplicate customer-visible messages;
-- persist remote IDs needed for reconciliation;
-- never hold a DB transaction open while waiting on a remote provider unless there is an exceptional documented reason.
+- use stable operation identity;
+- define retries;
+- prevent duplicate customer-visible Messages;
+- persist remote IDs for reconciliation where useful.
 
 ---
 
-## 12. AI behavior inside Reservi
-
-LLM output is untrusted input.
-
-An AI agent may propose or execute only actions allowed by server-side capabilities and domain rules.
-
-Prompts do not grant permissions.
-
-Always validate:
-
-- account scope;
-- actor capability;
-- target conversation/booking state;
-- structured action fields;
-- domain invariants;
-- approval requirements for sensitive actions.
-
-The important operational action should be auditable enough to answer: who/what acted, on which conversation, using what capability, and what changed.
-
----
-
-## 13. Git discipline
+## 13. Git and review discipline
 
 Before editing:
 
@@ -375,72 +430,70 @@ After editing:
 git diff
 ```
 
-Before declaring completion, review the entire diff as if it came from another engineer.
+Before completion:
 
-Keep commits focused and reversible.
+- run focused/relevant tests;
+- exercise user-visible behavior when applicable;
+- inspect the complete diff as another engineer would;
+- ask `reviewer` to inspect meaningful changes independently;
+- update durable docs when durable truth changed.
 
-Do not overwrite unrelated local changes.
-
-Do not rewrite history unless explicitly requested.
+Never claim a test/browser flow/review ran unless it actually did.
 
 ---
 
 ## 14. Documentation discipline
 
-Durable docs describe durable truth, not every implementation detail.
+Durable docs:
 
-Update:
+- `docs/product-requirements.md` — what Reservi should do;
+- `docs/architecture.md` — system boundaries/shape;
+- `docs/domain-model.md` — canonical concepts;
+- `docs/flow-engine.md` — Stage/Rule/Catalog/Appointment composition model;
+- `docs/invariants.md` — truths that may not be broken;
+- `docs/testing.md` — proof strategy.
 
-- `docs/product-requirements.md` when product behavior/scope changes;
-- `docs/architecture.md` when architectural decisions/boundaries change;
-- `docs/domain-model.md` when domain concepts/relationships change;
-- `docs/invariants.md` when a hard truth is added/changed;
-- `docs/testing.md` when verification doctrine changes.
-
-Do not turn these files into chronological logs.
-
-If a decision deserves its own rationale/history, add an ADR under `docs/decisions/`.
+These are not changelogs.
 
 ---
 
 ## 15. Definition of done
 
-A task is complete only when all applicable statements are true:
+A task is complete only when applicable statements are true:
 
-- the requested behavior exists;
-- the design fits the Reservi mental model;
-- relevant invariants are preserved;
-- account isolation and authorization are correct;
-- race/retry/idempotency risks were considered;
-- appropriate tests were added/updated;
-- relevant tests pass;
-- user-visible behavior was exercised when appropriate;
-- the final diff was reviewed;
-- durable docs match durable reality;
-- unverified assumptions are disclosed.
+- requested behavior exists;
+- it fits the canonical Reservi ontology;
+- no unnecessary vertical-specific abstraction was added;
+- relevant invariants remain true;
+- tenant/authorization rules hold;
+- retries/concurrency were considered;
+- tests prove meaningful behavior;
+- UI flow was exercised where applicable;
+- diff was reviewed;
+- durable docs match reality;
+- remaining assumptions/risks are disclosed.
 
 Prefer a smaller fully proven change over a larger half-proven one.
 
 ---
 
-## 16. OpenCode agent usage
-
-The project defines:
+## 16. OpenCode agents
 
 - `reservi` — primary orchestrator/engineer;
-- `architect` — read-only architecture/domain critic;
+- `architect` — architecture/domain critic;
 - `implementer` — bounded implementation specialist;
 - `verifier` — proof/testing specialist;
-- `reviewer` — independent read-only final reviewer.
+- `reviewer` — independent read-only review.
 
-Useful skills include:
+Useful skills:
 
 - `reservi-context`;
+- `flow-engine`;
 - `feature-execution`;
+- `repository-navigation`;
 - `rails-engineering`;
 - `database-integrity`;
 - `integration-safety`;
 - `testing`;
-- `debugging`.
-
-The primary agent may delegate, but delegation never replaces responsibility for the final integrated result.
+- `debugging`;
+- `security`.
