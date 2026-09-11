@@ -1,91 +1,129 @@
 ---
 name: security
-description: Apply Reservi security rules for multi-tenancy, authorization, webhook authenticity, secrets, attachments, AI tool actions, and common Rails web risks.
+description: Apply Reservi security rules for multi-tenancy, executable Flow configuration, authorization, webhooks, secrets, attachments, AI Actions, and common Rails risks.
 ---
 
 # Security for Reservi
 
-Security is part of domain correctness, especially because Reservi is multi-tenant and may let AI agents execute actions.
+Security is domain correctness, especially because Reservi is multi-tenant, has executable business configuration, and may let AI Agents execute Actions.
 
 ## Tenant isolation
 
-For every account-owned query or mutation, ask whether a guessed ID from another account can succeed.
+For every Account-owned query, mutation, or configured reference, ask whether an ID from another Account can succeed.
 
-Prefer:
+Prefer scoping from current Account rather than global lookup + later ownership check.
 
-```ruby
-current_account.conversations.find(params[:id])
-```
+Apply this to:
 
-over globally finding the record and checking ownership later.
+- Conversations / Customers;
+- Agents / Teams;
+- Flows / Stages / Rules / Blocks;
+- Fields;
+- Catalogs / Items / ItemSelections;
+- Appointments;
+- jobs/search/exports/attachments;
+- Turbo/realtime;
+- provider callbacks.
 
-Apply the same thinking to jobs, search, exports, attachments, Turbo streams, and provider callbacks.
+A Rule in Account A must never reference an Item, Agent, Team, Field, or other object from Account B.
 
 ## Authorization
 
 Authorize server-side. UI hiding is not authorization.
 
-Check both:
-- account scope;
-- actor capability/role for the requested action.
+Check:
 
-AI and human agents must go through the same authoritative checks where appropriate.
+- Account scope;
+- actor capability/role;
+- current domain/Stage state when relevant.
+
+Human, AI, and Rule-driven operations must pass the same authoritative domain checks where appropriate.
+
+## Flow configuration is executable configuration
+
+Treat user-configured predicates/actions as code-like input even though arbitrary code is forbidden.
+
+Validate:
+
+- allowed predicate operators;
+- allowed reference types;
+- reference Account ownership;
+- value types;
+- allowed Actions;
+- Action parameters;
+- stable key uniqueness;
+- configuration size/depth limits where needed;
+- loop/cascade protections at runtime.
+
+Never evaluate user-supplied Ruby, JavaScript, SQL, shell, ERB, or arbitrary expressions.
+
+Do not interpolate configuration into SQL or method names dynamically without strict whitelisting.
 
 ## AI tools/actions
 
 Treat model output as untrusted input.
 
 Validate:
-- target IDs belong to the current account;
-- action is in the Agent's capability set;
-- structured arguments conform to schema/domain validation;
-- current record state permits the action;
-- sensitive action approval requirements.
 
-Never let system/user prompt text grant permissions.
+- target IDs belong to current Account;
+- Action is in Agent capability set;
+- structured arguments conform to schema/domain rules;
+- current state permits Action;
+- approval requirements.
+
+Never let prompt text grant permission or rewrite Flow truth.
+
+## Catalog / Item security
+
+Catalog Item selection must verify:
+
+- Catalog/Item belongs to current Account;
+- Item is valid for configured selector/Catalog;
+- archived/inactive policy;
+- Item attribute input follows configured typed definitions.
+
+Do not let rich descriptions/attributes become unsafe HTML or code execution paths.
 
 ## Webhooks
 
 When supported:
-- verify signature/authenticity before processing;
-- resolve tenant from trusted integration/channel configuration;
-- protect against replay/duplicate delivery with event IDs/idempotency;
-- rate-limit or otherwise protect exposed endpoints appropriately.
+
+- verify signature/authenticity;
+- resolve Account from trusted integration identity;
+- protect against replay/duplicate delivery;
+- rate-limit/guard exposed endpoints appropriately.
 
 ## Secrets
 
-Never commit:
-- API keys;
-- provider tokens;
-- private signing secrets;
-- production credentials;
-- copied `.env` files.
+Never commit or log API keys, provider tokens, signing secrets, production credentials, or copied `.env` files.
 
-Never place secrets in normal logs or exception messages.
-
-## Attachments
+## Attachments and Item images
 
 Validate:
-- authorization to access;
-- content type/size constraints appropriate to use;
-- filenames are presentation only, not trusted paths;
-- externally fetched media cannot become an unrestricted SSRF primitive.
+
+- access authorization;
+- content type/size;
+- filenames as presentation only;
+- externally fetched media against SSRF;
+- tenant visibility of uploaded media.
 
 ## Rails/web checklist
 
 Consider:
-- mass-assignment/strong parameter boundaries;
+
+- strong parameters/mass assignment;
 - CSRF/session safety;
-- XSS from customer/provider content;
-- SQL injection through handcrafted queries;
+- XSS from customer/provider/Item content;
+- SQL injection;
 - open redirects;
-- unsafe URL fetching/SSRF;
-- insecure direct object references;
-- credential leakage in URLs/logs;
-- overly broad CORS/API permissions if APIs are introduced.
+- SSRF;
+- IDOR;
+- credential leakage;
+- overly broad CORS/API scopes;
+- unsafe deserialization of Flow configuration.
 
-Prefer framework-safe helpers and parameterized queries over manual string construction.
+Prefer framework-safe helpers, parameterized queries, and explicit whitelists.
 
-## Review high-risk changes
+## High-risk review
 
-Any change affecting authentication, authorization, tenant scoping, AI tools, integrations, file access, or secrets should receive explicit negative-path tests and independent review.
+Changes affecting authentication, authorization, Account scoping, Flow configuration/evaluation, AI tools, integrations, file access, or secrets require negative-path tests and independent review.
