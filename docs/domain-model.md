@@ -2,7 +2,7 @@
 
 ## 1. Modeling philosophy
 
-Reservi uses a small set of durable concepts that represent real operational work while allowing each account to configure how a customer request progresses.
+Reservi uses a small set of durable concepts that represent real operational work while allowing each Account to configure how a customer request progresses.
 
 Two rules dominate the model:
 
@@ -10,11 +10,9 @@ Two rules dominate the model:
 
 > A Conversation progresses because its current Stage declares what state must become true next.
 
-Do not create parallel Lead / Opportunity / Deal records for the same customer request. Do not hard-code an industry-specific sequence such as qualification -> service -> appointment.
+Do not hard-code vertical-specific concepts such as `Service`, `Car`, `Room`, or `Property` as different workflow primitives. Reusable selectable business objects are modeled uniformly as `Catalog` + `Item`.
 
-Flexibility comes from composing truthful primitives, not from turning every object into generic metadata.
-
-Read `docs/flow-engine.md` before changing Flow, Stage, Field, Rule, Appointment, Resource, assignment, or related concepts.
+Read `docs/flow-engine.md` before changing Flow, Stage, Field, Rule, Catalog, Item, Appointment, or assignment concepts.
 
 ---
 
@@ -30,8 +28,8 @@ Account
 ├── Channels / Integrations
 ├── Customers
 ├── Field Definitions
-├── Resource Types
-│   └── Resources
+├── Catalogs
+│   └── Items
 ├── Flows
 │   └── Stages
 │       ├── Blocks
@@ -42,32 +40,32 @@ Account
     ├── current Stage
     ├── current Team / Agent
     ├── Field Values
+    ├── Item Selections
     ├── Messages / Notes
     ├── Appointments
-    ├── Resource selections
     └── Assignment / state history
 ```
 
-This is conceptual. The final database schema may use support/join records where correctness requires them.
+This is conceptual. The final schema may introduce support/join records where correctness requires them.
 
 ---
 
 ## 3. Account
 
-The tenant/organization whose data and configuration are isolated from all others.
+The tenant/organization whose data and configuration are isolated from every other tenant.
 
-Account-scoped configuration includes, as applicable:
+Account owns/scopes its operational configuration and records, including:
 
-- Agents and Teams;
+- Agents / Teams;
 - Channels / Integrations;
-- Customers;
-- Flows and Stages;
+- Customers / Conversations;
+- Flows / Stages / Rules;
 - Field Definitions;
-- Resource Types / Resources;
+- Catalogs / Items;
 - Appointments;
-- account settings and permissions.
+- account settings.
 
-Tenant isolation is a hard invariant.
+Cross-account references are invalid even inside configuration.
 
 ---
 
@@ -75,9 +73,9 @@ Tenant isolation is a hard invariant.
 
 An authenticated human identity.
 
-A User is not automatically an Agent in every Account. Account membership and operational Agent identity should remain explicit enough to support multi-account use safely.
+A User is not automatically an operational Agent in every Account. Human authentication/membership and operational Agent identity remain distinct enough to support multi-account use safely.
 
-Do not model AI agents as Users merely to reuse authentication fields.
+AI Agents must not be modeled as Users merely to reuse authentication fields.
 
 ---
 
@@ -85,37 +83,29 @@ Do not model AI agents as Users merely to reuse authentication fields.
 
 An operational actor capable of performing work.
 
-Human and AI actors share the same conceptual `Agent` abstraction.
+Human and AI actors share one conceptual `Agent` abstraction.
 
 Capabilities may include:
 
 - receive assignment;
 - read Conversation context;
-- reply to the customer;
-- add Note;
+- reply to Customer;
+- add Notes;
 - update allowed Fields;
-- create/change Appointment;
-- select/release Resource where permitted;
-- execute allowed actions;
+- select allowed Catalog Items;
+- create/change Appointments;
+- execute allowed Actions;
 - hand off/reassign.
 
-AI-specific runtime/model/instructions/tools belong to configuration/capabilities, not to parallel operational models.
+AI-specific runtime/model/instructions/tools belong in configuration/capabilities, not in parallel operational models.
 
 ---
 
 ## 6. Team
 
-A group of Agents used for routing, eligibility, queueing, permissions, or organizational grouping.
+A group of Agents used for routing, ownership eligibility, queueing, permissions, or organization.
 
 A Team may be selected by a Rule action. Team is not a workflow node.
-
-Examples:
-
-- Sales;
-- Marrakech;
-- Plumbers;
-- After-hours;
-- Agency Client A operators.
 
 ---
 
@@ -123,7 +113,7 @@ Examples:
 
 The account-scoped person or organization interacting with the business.
 
-Customer owns durable profile facts that are meaningful across Conversations, such as:
+Customer owns durable profile facts meaningful across Conversations, such as:
 
 - name;
 - phone;
@@ -132,9 +122,7 @@ Customer owns durable profile facts that are meaningful across Conversations, su
 - stable profile information;
 - normalized channel identities.
 
-Request-specific facts should usually live on the Conversation instead of polluting Customer state.
-
-Example: a landscaping surface value for one request is normally a Conversation field, not `Customer.surface`.
+Request-specific facts normally belong to Conversation-scoped Fields instead of Customer.
 
 ---
 
@@ -142,9 +130,7 @@ Example: a landscaping surface value for one request is normally a Conversation 
 
 A configured external communication or service integration belonging to an Account.
 
-Examples: WhatsApp, email, SMS, calendar provider, future messaging channels.
-
-Provider-specific payload/transport behavior remains at the integration boundary. Domain models should use normalized concepts.
+Provider-specific transport/payload/status behavior remains at the integration boundary. Core domain code uses normalized concepts.
 
 ---
 
@@ -154,47 +140,39 @@ The central operational record and process instance for a customer request.
 
 A Conversation is the lead.
 
-Conceptually it exposes authoritative state such as:
+Conceptually it exposes authoritative state including:
 
 - Account;
 - Customer;
 - channel/context;
 - current Flow / Stage;
-- current Team;
-- current Agent owner;
-- customer/conversation field values;
-- Messages;
-- Notes;
+- current Team / Agent owner;
+- Customer/Conversation Field Values;
+- Catalog Item Selections;
+- Messages / Notes;
 - Appointments;
-- Resource selections;
 - Assignment history;
-- relevant state/audit history.
+- useful state/audit history.
 
-The Conversation is the process root. Supporting entities such as Appointment and Resource own their own local state and invariants while contributing to Conversation-level progression.
+The Conversation is the process root. Supporting entities own their local truth while contributing state to progression.
 
-Do not duplicate current stage, owner, appointment state, or other canonical facts in a second Lead/Deal structure.
+Do not duplicate current Stage, owner, Appointment state, Item selection, or other canonical facts in a separate Lead/Deal tree.
 
 ---
 
 ## 10. Flow
 
-An account-configured ordered customer/operational progression.
+An Account-configured ordered operational progression.
 
-The initial product should model Flow as an ordered set of Stages, not an arbitrary graph language.
+The initial product models Flow as an ordered set of Stages, not an arbitrary graph language.
 
 A Conversation follows a Flow and has one authoritative current Stage.
-
-Flow exists because users need to configure operational progression. It must remain simpler than a generic BPM/workflow product.
-
-Possible future branching is not a reason to introduce a graph engine now.
 
 ---
 
 ## 11. Stage
 
-A Stage is an executable desired-state contract, not merely a status label.
-
-Formula:
+A Stage is an executable desired-state contract, not merely a CRM status label.
 
 ```text
 Stage = Blocks + Rules + Completion Predicate
@@ -202,75 +180,48 @@ Stage = Blocks + Rules + Completion Predicate
 
 A Stage answers:
 
-1. What work/capabilities should be exposed now?
-2. What deterministic reactions should happen when relevant state changes?
+1. What controls/capabilities should be exposed now?
+2. What deterministic reactions should happen as state changes?
 3. What must be true before the Conversation can proceed?
 
-Example:
+No specific Stage sequence is mandatory.
 
-```text
-Stage: Qualification
-
-Blocks:
-  Name
-  Phone
-  City
-
-Rule:
-  IF City = Marrakech
-  THEN assign Ahmed
-
-Complete when:
-  Name exists
-  AND Phone exists
-  AND City exists
-  AND Owner exists
-```
-
-Another account may have Stage 1 containing only an Appointment. There is no mandatory ordering of qualification, service, resource selection, or appointment.
-
-A Stage should preserve a stable identity even if its display name changes.
+An Appointment may be required in Stage 1. A Catalog selection may happen later. Some Flows may never use either.
 
 ---
 
 ## 12. Stage Block
 
-A Block is a configurable product-facing capability/control exposed inside a Stage.
+A configurable product-facing control/capability exposed inside a Stage.
 
-Blocks may include:
+Examples:
 
 - Field input;
+- Catalog Item selector;
 - Appointment selector/editor;
-- Resource selector;
 - controlled Agent/Team selection;
-- file/document input where introduced;
-- other future feature controls.
+- future Quote/Payment/Document controls.
 
-A Block is not automatically its own database model. It is configuration describing how a feature capability appears/behaves in the Stage.
+A Block is configuration, not automatically a database model.
 
-Stateful blocks need a stable logical key/role when multiple instances of the same feature can exist.
+Stateful Blocks need stable logical keys when several instances of the same capability may exist.
 
-Example:
-
-```text
-Appointment block
-label: Site visit
-key: site_visit
-```
-
-and later:
+Examples:
 
 ```text
-appointment("site_visit").status == completed
+vehicle
+requested_service
+site_visit
+installation
 ```
 
-Keys should survive label changes.
+Display labels may change; stable keys must not silently change meaning.
 
 ---
 
 ## 13. Predicate / Expression
 
-A Predicate asks a deterministic question about authoritative state.
+A deterministic question over normalized authoritative state.
 
 Examples:
 
@@ -278,22 +229,20 @@ Examples:
 field("city") == "Marrakech"
 field("budget") > 5000
 owner.exists
-owner == Ahmed
+item_selection("vehicle").exists
+item_selection("vehicle").attribute("category") == "SUV"
 appointment("site_visit").status == confirmed
-resource("vehicle").exists
 ```
 
-Reservi should have one shared predicate/evaluation model rather than separate condition languages for assignment, completion, routing, and messaging.
+Reservi should use one shared predicate model for Stage completion, assignment/routing Rules, messaging Rules, and other supported conditions.
 
-Predicates never bypass authorization or invent state; they read normalized server-side state.
+Predicates cannot execute arbitrary Ruby/JavaScript/SQL.
 
 ---
 
 ## 14. Rule
 
-A persisted configurable reaction within the Flow/Stage system.
-
-Formula:
+A persisted configurable reaction within a Stage/Flow.
 
 ```text
 Rule = Predicate + Actions
@@ -304,261 +253,319 @@ Example:
 ```text
 IF field("city") == "Marrakech"
 THEN assign_agent(Ahmed)
-     send_message(template: "ahmed_intro")
+     send_message("Ahmed will handle your request.")
 ```
 
-Rules require explicit priority/order semantics and idempotency semantics.
+Rules need explicit priority/order and idempotency semantics.
 
-A rule whose predicate remains true must not repeatedly execute an irreversible action on every evaluation.
-
-Rule execution should be explainable in history/logging.
+A predicate remaining true must not repeatedly trigger the same irreversible logical action.
 
 ---
 
 ## 15. Action
 
-An authorized operation invoked by a Rule, human, or AI.
+An authorized domain operation invoked by a Rule, human, AI, or API.
 
 Examples:
 
 - assign Agent;
 - assign Team;
 - send Message;
-- set/update Field;
+- update Field;
+- select/clear Catalog Item;
 - create/update/cancel Appointment;
-- select/release Resource;
 - add Note.
 
-Rules call the same domain operations used elsewhere. A Rule is not a privileged back door around invariants.
-
-Every Action must respect:
-
-- Account scope;
-- actor/capability rules;
-- validations;
-- transaction/concurrency requirements;
-- idempotency/retry requirements.
+A Rule never receives privileged mutation access. It invokes the same protected operation other actors use.
 
 ---
 
 ## 16. Field Definition and Field Value
 
-Account-configurable structured state.
+Configurable structured facts.
 
-Field Definition may contain:
+A Field Definition may contain:
 
 - stable key;
 - label;
-- type;
+- data type;
 - allowed options;
 - validation constraints;
 - target scope (`customer` or `conversation`);
 - display/order metadata;
-- AI editability/capability configuration where useful.
+- AI editability/capability settings where useful.
 
-Useful initial field types:
+Typical types:
 
-- short/long text;
+- text;
 - number;
 - boolean;
-- single choice;
-- multi choice;
-- date/time where appropriate;
-- location/address;
-- reference to a supported catalog/entity where justified.
+- single/multi choice;
+- date/time;
+- location/address.
 
-Field Values validate against definitions before becoming authoritative.
-
-Do not dynamically add database columns for account-defined fields. Do not hide all known durable truth in one unvalidated JSON blob either.
-
-### Service as field/reference state
-
-Service selection is not privileged by the Flow engine.
-
-An account may expose a Service catalog and a Field may reference an item from it. The selected Service is state that Rules and Predicates may inspect.
-
-There is no invariant that every Conversation has a Service or that Appointment requires one.
-
----
-
-## 17. Appointment
-
-`Appointment` is the canonical durable scheduling entity.
-
-The word `booking` may describe the action/UI of reserving time, but Appointment is the domain entity.
-
-Definition:
-
-> A time-bound commitment associated with a Conversation, optionally involving Agents, Resources, locations, or other context.
-
-Expected state may include:
-
-- Account;
-- Conversation;
-- Customer by relation/derivation where useful;
-- logical role/key when created for a configured Stage block;
-- starts_at;
-- ends_at/duration;
-- status;
-- participants/Agents where relevant;
-- Resources where relevant;
-- notes/context;
-- creator/actor attribution.
-
-Candidate statuses may include `tentative`, `confirmed`, `completed`, `cancelled`, `no_show` as product use proves necessary.
-
-### Critical rule
-
-Appointment is **not service-bound by default**.
-
-These must all remain valid configurations:
-
-- Appointment without Service;
-- Service without Appointment;
-- Appointment before Service selection;
-- Service selection before Appointment;
-- multiple Appointments in one Conversation;
-- no Service concept at all.
-
-Do not introduce mandatory `service_id` coupling because it happens to fit salons or service businesses.
-
-### Multiple appointments
-
-A Conversation may contain distinct Appointments such as:
-
-- site visit;
-- installation;
-- pickup;
-- delivery;
-- follow-up.
-
-Flow predicates must identify the intended Appointment by stable role/key or explicit reference.
-
-### Conflict rule
-
-When an Agent/Resource cannot participate in overlapping confirmed Appointments, concurrency-safe database/domain rules must protect the constraint.
-
----
-
-## 18. ResourceType and Resource
-
-A generic account-owned concept for assets/entities that can be selected, assigned, scheduled, reserved, or referenced.
-
-Examples of Resource Types:
-
-- Car;
-- Property;
-- Room;
-- Equipment;
-- Chair;
-- Machine;
-- Boat;
-- Rental unit.
-
-A Resource may have:
-
-- Account;
-- ResourceType;
-- name/label;
-- active/archive state;
-- type-specific validated attributes;
-- availability/scheduling configuration where required.
-
-Resources are independent from Appointments:
-
-- a Resource can be selected in a Stage without scheduling it;
-- an Appointment may involve zero, one, or multiple Resources.
-
-Do not turn every domain object into Resource. Customer, Agent, Conversation, Appointment, Message, etc. remain explicit concepts because they own different invariants.
-
----
-
-## 19. Resource Selection / Relation
-
-A Conversation/Stage may need Resources in named roles.
+Use Fields for facts about a Customer/request.
 
 Examples:
 
 ```text
-resource("vehicle") = Range Rover Evoque
-resource("property") = Villa Agdal
+name
+phone
+city
+budget
+surface
+urgency
+problem_description
 ```
 
-The exact schema may use a join record linking Conversation/Appointment/Resource with a role key.
-
-Role identity must be stable enough for predicates and history.
-
-If an Appointment reserves a Resource, the relation must participate in availability/conflict rules where the account has declared the Resource exclusive.
+Do not dynamically create schema columns per customer-defined Field. Do not place all durable truth in unvalidated JSON either.
 
 ---
 
-## 20. Assignment
+## 17. Catalog
 
-Assignment provides current ownership plus truthful history.
+An Account-owned collection of reusable selectable Items.
 
-Conversation has one authoritative current Agent owner under normal operation. Team may represent current queue/responsibility scope.
+Catalog is intentionally generic across business verticals.
 
-Historical Assignment records preserve:
+Examples:
 
-- assigned Agent/Team;
-- start/end/superseded times;
-- actor/system source;
-- reason/rule where useful.
+- Services;
+- Cars;
+- Rooms;
+- Properties;
+- Treatments;
+- Packages;
+- Products;
+- Add-ons.
 
-Assignment is invoked through an Action just like manual assignment.
+Catalog itself primarily provides identity, presentation/configuration, ordering, and Item grouping.
 
-Example Stage Rule:
+Do not create separate core domain models solely because one Catalog is called `Services` and another is called `Cars`.
+
+---
+
+## 18. Item
+
+A reusable selectable entity inside a Catalog.
+
+All Items share a common base concept:
+
+```text
+Item
+├── Catalog
+├── title
+├── images
+├── description
+├── price
+├── additional typed attributes
+└── active/archive state
+```
+
+Examples:
+
+```text
+Catalog: Services
+Item: Garden Maintenance
+```
+
+```text
+Catalog: Cars
+Item: Range Rover Evoque
+```
+
+```text
+Catalog: Properties
+Item: Villa Agdal
+```
+
+From the Flow engine's perspective these are all Items.
+
+### Additional attributes
+
+Different Catalogs may define additional typed attributes for their Items.
+
+Examples:
+
+```text
+Cars:
+  transmission
+  seats
+  fuel_type
+
+Properties:
+  bedrooms
+  area
+  property_type
+
+Services:
+  category
+  estimated_duration
+```
+
+Attributes are data, not subtype behavior.
+
+### No global bookable flag
+
+Core Item semantics must not assume an Item is bookable/schedulable.
+
+Do not require:
+
+```text
+item.bookable
+```
+
+or type-specific inheritance such as:
+
+```text
+ServiceItem
+CarItem
+RoomItem
+```
+
+solely to drive Appointment behavior.
+
+---
+
+## 19. ItemSelection
+
+Represents one or more Catalog Items selected into Conversation state through a configured Catalog Selector Block.
+
+Conceptually:
+
+```text
+ItemSelection
+├── Conversation
+├── selector/block key
+├── Catalog
+└── selected Item(s)
+```
+
+Examples:
+
+```text
+item_selection("requested_service") = Garden Maintenance
+item_selection("vehicle") = Range Rover Evoque
+item_selection("property") = Villa Agdal
+```
+
+A selector may allow single or multiple selection.
+
+The stable selector key gives Rules and completion predicates an unambiguous reference.
+
+Selection does not inherently mean reservation, scheduling, ownership, or booking. It means the Item is part of Conversation state in that configured role.
+
+---
+
+## 20. Appointment
+
+`Appointment` is the canonical durable scheduling entity.
+
+The word `booking` may describe the user action of reserving time, but the domain entity is Appointment.
+
+Definition:
+
+> A time-bound commitment associated with a Conversation.
+
+Appointment may include:
+
+- Account;
+- Conversation;
+- stable logical role/key when created through a Stage Block;
+- starts_at;
+- ends_at/duration;
+- status;
+- participating Agent(s) where needed;
+- location/context as needed;
+- creator/actor attribution.
+
+### Appointment is independent from Item
+
+Appointment does not require a selected Item.
+
+Item selection does not require an Appointment.
+
+These must remain valid:
+
+```text
+Appointment without Item selection      YES
+Item selection without Appointment      YES
+Appointment before Item selection       YES
+Item selection before Appointment       YES
+multiple Item selections                YES
+multiple Appointments                    YES
+no Catalog at all                        YES
+```
+
+### No hidden bookability inference
+
+If a Conversation selects `Range Rover Evoque` from the Cars Catalog and later creates a Pickup Appointment, the operator sees both through Conversation context and understands their business relationship.
+
+The core app does not need to label the Item `bookable` or force an Appointment -> Item relationship to make that Flow valid.
+
+If explicit item-level inventory reservation becomes a real future requirement, model that requirement deliberately rather than retroactively treating all Items as scheduling resources.
+
+### Multiple Appointments
+
+One Conversation may contain `site_visit`, `installation`, `pickup`, `follow_up`, etc. Predicates identify the intended Appointment through stable role/key/reference.
+
+---
+
+## 21. Assignment
+
+Conversation has one authoritative current Agent owner under normal operation, plus truthful history.
+
+Assignment may originate manually, from AI, or from a Rule Action. All origins pass the same eligibility/account/authorization/concurrency boundary.
+
+Example:
 
 ```text
 IF city == Marrakech
 THEN assign Ahmed
 ```
 
-The Rule engine does not own assignment truth; the assignment domain operation does.
+The Rule engine does not own assignment truth; the assignment operation does.
 
 ---
 
-## 21. Message
+## 22. Message
 
-A customer-visible inbound or outbound communication belonging to a Conversation.
+A customer-visible inbound/outbound communication belonging to a Conversation.
 
-Properties include normalized direction/content/attachments/provider identity/delivery state and sender attribution.
+Message handles normalized content/direction/provider identity/delivery state/sender attribution.
 
-Inbound duplicate provider delivery must be idempotent. Outbound retries must not casually double-send.
-
-An AI-generated/sent Message should still be attributable to the acting Agent/capability.
+Inbound duplicate provider delivery must be safe. Outbound retries must not casually double-send.
 
 ---
 
-## 22. Internal Note
+## 23. Internal Note
 
-Internal collaboration content that must never be delivered through a customer-facing channel.
-
-It may appear in a unified Conversation timeline but retains a distinct visibility invariant.
+Internal collaboration content that must never be accidentally delivered through a customer-facing channel.
 
 ---
 
-## 23. Service Catalog (optional feature)
+## 24. Appointment/calendar UI relationship to Catalog Items
 
-An account may maintain a Service catalog when useful for product behavior such as:
+Calendar and Appointment surfaces should display useful Conversation context, including selected Items, when relevant.
 
-- display name/description;
-- default price/duration;
-- service-specific metadata;
-- reporting/filtering;
-- availability defaults.
+Example Appointment card/detail:
 
-The presence of this catalog does not make Service mandatory in Flow or Appointment.
+```text
+Pickup — 14:00
+Customer: Khalid
+Owner: Ahmed
+Selected vehicle: Range Rover Evoque
+```
 
-From the Flow engine's perspective a selected service is reference/value state exposed through a Field/Block.
+The UI obtains `Selected vehicle` from Conversation ItemSelection state. This does not imply the Appointment model owns or understands vehicle semantics.
 
-Do not build core scheduling around the assumption that every Appointment books a Service.
+This separation is intentional.
 
 ---
 
-## 24. Future feature integration contract
+## 25. Future feature integration contract
 
-A future first-class feature should integrate into Flow by exposing some subset of:
+A future first-class feature should integrate into Flow through:
 
 ```text
 Feature = State + Controls + Predicates + Actions
@@ -573,59 +580,57 @@ Predicates: quote.exists, quote.status == accepted
 Actions: create_quote, send_quote
 ```
 
-Then Stage configuration can use the feature without adding quote-specific transition logic to the central Flow engine.
-
-This is the preferred extension mechanism.
+The central Flow engine should not gain feature-specific transition logic.
 
 ---
 
-## 25. History and audit
+## 26. History and audit
 
-Do not create a universal event-sourced `Activity` truth system by default.
-
-Preserve domain-specific history where it matters:
+Prefer domain-specific truthful history:
 
 - Messages;
 - Notes;
 - Assignments;
 - Appointment changes;
 - Stage transitions;
-- Rule/action execution records where needed for idempotency/explainability;
-- meaningful field changes where auditability requires it.
+- Rule/Action executions where needed;
+- significant Field/ItemSelection changes where operationally useful.
 
-A unified timeline can project these records.
+A unified timeline can project these records without becoming a second source of truth.
 
 ---
 
-## 26. Concepts explicitly rejected as defaults
+## 27. Concepts explicitly rejected as defaults
 
 Do not introduce these merely for flexibility:
 
 - Lead / Opportunity / Deal parallel to Conversation;
-- mandatory Service on Appointment;
-- Booking as a separate second scheduling truth;
-- a separate routing condition language;
-- a separate assignment condition language;
+- Service as a privileged Flow primitive;
+- Resource / ResourceType when Catalog / Item already expresses the selectable object;
+- mandatory Item/Service on Appointment;
+- `bookable` flag as a prerequisite for Appointment use;
+- separate `Booking` and `Appointment` truths;
+- separate routing/assignment/completion condition engines;
 - separate AI workflow engine;
-- arbitrary code/script expressions in user rules;
-- generic workflow graph nodes/edges before real branching requirements;
+- arbitrary code/script expressions in Rules;
+- generic graph Nodes/Edges before real branching requirements;
 - universal Entity/Property/Relation meta-schema.
 
 ---
 
-## 27. Concept admission test
+## 28. Concept admission test
 
 Before adding a model/table, answer:
 
 1. What real-world concept does it represent?
 2. Who owns it?
-3. What is its lifecycle?
-4. What durable truth does it own?
-5. What invariant does it protect?
-6. Can existing State/Field/Resource/Appointment/Action concepts express it cleanly?
-7. Does it duplicate existing truth?
-8. How is it authorized and tenant-scoped?
-9. What happens when archived/deleted?
-10. Can it integrate with Flow through State + Controls + Predicates + Actions rather than changing the core engine?
+3. What independent lifecycle/invariant does it own?
+4. Can a Field express it if it is just a fact?
+5. Can Catalog/Item express it if it is a reusable selectable thing?
+6. Can Appointment express it if it is a time-bound commitment?
+7. Can existing State + Controls + Predicates + Actions integrate it cleanly?
+8. Does it duplicate existing truth?
+9. How is it tenant-scoped and authorized?
+10. Would adding it make the common mental model simpler or harder?
 
-If these answers are weak, do not add the concept yet.
+If these answers are weak, do not add the concept.
