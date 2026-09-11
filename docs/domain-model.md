@@ -634,3 +634,99 @@ Before adding a model/table, answer:
 10. Would adding it make the common mental model simpler or harder?
 
 If these answers are weak, do not add the concept.
+
+## 29. Build contract: persistence and ownership
+
+The preceding sections define concepts. This section fixes the initial implementation choices; these are specified, not implemented. Read [architecture.md](architecture.md) for authorization and transaction boundaries.
+
+Every account-owned table carries `account_id`; relational tenant boundaries use composite foreign keys. IDs below are references, not permission grants. All timestamps are UTC instants unless explicitly defined as local calendar data.
+
+| Record | Initial durable shape / constraints |
+|---|---|
+| Account | Name, locale, IANA timezone, settings, active state |
+| User / Membership | Authentication identity; unique `(account_id, user_id)`, role and active state |
+| Agent | Account, kind human/ai, membership reference for human only, capabilities, active state; unique human Agent per membership |
+| Team / TeamMembership | Account-scoped name; unique `(team_id, agent_id)`, active eligibility |
+| Customer | Profile columns for name/phone/email/locale; validated `custom_values` JSONB; `profile_revision`; durable reevaluation marker/cursor |
+| Channel | Account, provider, trusted external account identity, encrypted credential reference, intake Flow, active state |
+| ChannelIdentity | Channel, provider contact identity, Customer; unique `(channel_id, external_contact_id)` |
+| ChannelThread | Channel, external thread identity, ChannelIdentity, intake Conversation pointer; unique `(channel_id, external_thread_id)` |
+| Conversation | Customer, ChannelThread when external, optional predecessor Conversation, pinned FlowVersion, current Stage, stage-entry identity, process status, owner/team, validated custom values, state/evaluated revisions, evaluated Customer revision, attention timestamps |
+| ConversationRead | Conversation and Agent, last read Message cursor; unique `(conversation_id, agent_id)` |
+| Flow | Account, name, current published version reference |
+| FlowVersion | Flow, version number, draft/published state, publication time; unique `(flow_id, version_number)` |
+| Stage | FlowVersion, immutable stable key, label, position, blocks/rules/completion JSONB; unique version/key and version/position |
+| FieldDefinition | Account, scope, stable key, type, constraints, optional built-in binding, archive state; unique `(account_id, scope, key)` |
+| Catalog | Account, title, typed attribute definitions, archive state |
+| Item | Catalog, title, description, nullable decimal price, currency, unit label, typed attributes JSONB, archive state; Active Storage images |
+| ItemSelection | Conversation, role key, Catalog, selected Item ID, ordinal, snapshot JSONB; unique `(conversation_id, role_key, item_id)` |
+| Appointment | Conversation, role key, optional scheduled Agent, start/end, timezone, buffer snapshots, status, superseded_at, creator, revision |
+| AgentAvailability | Scheduled Agent, IANA zone, weekly intervals and dated exceptions in validated configuration; one calendar per Agent |
+| Message | Conversation, Channel, direction, actor, content, external message ID, operation key, delivery state, lease/attempt metadata |
+| Note | Conversation, author, internal body; no transport fields or outbound job |
+| WebhookReceipt | Channel, provider event key, normalized processing state, bounded retained payload, retry/lease metadata; unique Channel/event key |
+| RuleExecution | Conversation, version, stage-entry identity, rule key, state, error, actor policy reference; unique Conversation/entry/rule key |
+| StageTransition | Conversation, from/to Stage, entry identity, input revisions, reason, time; unique Conversation/from-entry |
+| AssignmentChange / StateChange | Conversation, origin/actor, old/new permitted values or references, operation ID, time; append-only audit |
+| AiRun | Conversation, AI Agent, trigger identity, input revisions/owner, state, usage, lease and error; partial unique active run per Conversation |
+
+Supporting tables are admitted for a specific integrity or recovery need, not because every Block needs a table. Custom field values are stored in validated per-owner JSONB maps, not a universal entity-value schema. Blocks and Rules are bounded validated Stage configuration initially; they do not need separate CRUD tables. History stores necessary domain changes, not every read or a complete event-sourced world.
+
+### Database enforcement
+
+- Add `UNIQUE(account_id, id)` on tenant parent records used by composite references. A Conversation's `(account_id, flow_version_id, current_stage_id)` must reference a Stage in that version; Stage has the corresponding unique composite key. The published pointer on Flow must reference its own version, not another Flow's.
+- `NOT NULL`, enum/status checks, positive interval checks, foreign keys, and uniqueness belong in migrations, not only Rails validation.
+- Schema cannot enforce arbitrary JSON references. Publish/execute validation is mandatory, and published definitions/used field types cannot be destructively edited through application operations.
+- Every selection mutation locks Conversation, validates the complete replacement set against the version's selector cardinality, then replaces it atomically. Database membership uniqueness prevents duplicates; single-versus-multiple cardinality is a transaction-protected configuration invariant.
+- One current Appointment per `(conversation_id, role_key)` uses a partial unique index where `superseded_at IS NULL`. Superseded records remain in history.
+- For Agent-bound confirmed Appointments, use `btree_gist` and a GiST exclusion constraint on Account equality, scheduled Agent equality, and overlap of a persisted blocked `tstzrange`. The blocked range includes the stored buffers, uses `[start, end)`, and is checked against start/end/buffer columns. Exclude rows without scheduled Agent and non-confirmed statuses. Keep this in SQL schema format if required for faithful dump/restore.
+- Unique outbound Message operation keys and provider IDs are scoped by Channel and direction as appropriate. A provider's event ID, message ID and thread ID are separate identities; never substitute one for another without adapter evidence.
+- Audit/selection snapshots/used definitions use restricted deletion. Account destruction is a separately designed administrative purge, not default association cascade behavior.
+
+## 30. Conversation lifecycle and intake
+
+`process_status` is `active`, `completed`, or `cancelled`. Active Conversations have a pinned published FlowVersion and one current Stage. Completing the terminal gate sets completed, retains the terminal Stage for context, records the transition/outcome, and stops progression. Cancellation is explicit, authorized, and records a reason. It does not cancel Appointments or send customer messages implicitly.
+
+No automatic backward transitions, skip, reopen, or live-version migration in the pilot. A correction may make a previous gate false; history remains true about what was accepted then. Only the current active gate is reevaluated. New work after completion/cancellation starts an explicit new Conversation with a new published version; it can link to the prior request for context without duplicating its writable state.
+
+“Needs attention” is shared inbox state derived from incoming/customer activity and explicit operator attention actions. Unread is a per-Agent read cursor. Neither changes the process status. Do not equate Flow completed with service delivered; an account may deliberately finish on qualification alone.
+
+For provider intake, ChannelThread serializes concurrent first-message processing and has one intake Conversation pointer. Initial contact creates the Customer identity, thread, and Conversation under uniqueness/transaction protection. Subsequent messages append to that intake Conversation even when its process completed; they raise attention and do not rerun completed Rules. Starting a new request locks the thread, requires the old intake process to be completed/cancelled, creates the new Conversation, and switches the pointer atomically. Pending provider replies attach to their already identified Conversation when the adapter supplies reliable reply linkage; otherwise use the intake pointer and show provenance.
+
+No concurrent independent intake requests on the same thread in v1. No automatic cross-channel customer merging; matching display phone/name alone is insufficient evidence. Profile phone changes do not retarget transport: ChannelIdentity remains the verified delivery identity. Channel disconnection stops new external sends and exposes queued work without deleting history.
+
+## 31. Field and selection semantics
+
+Built-in fields such as Customer name/phone/email/locale bind to their canonical columns. The builder may present them as Fields, but custom JSON cannot shadow these reserved keys. Date/time values are ISO-typed values; decimal numbers are exact decimal strings at external JSON boundaries, normalized server-side; choices use stable option keys.
+
+A type/scope/key or choice meaning becomes immutable once referenced by a published Flow or stored values. Add a new definition/key and migrate deliberately if semantics change. Labels may evolve only where they do not rewrite a published definition; archive hides a field from new configuration while existing definitions/values remain interpretable. Unrecognized keys, invalid options and cross-account definitions are rejected, not silently dropped.
+
+Editing shared Customer facts needs `edit_customer_profile`, separate from editing a request. An operator may see permitted Customer context through a visible Conversation, but cannot thereby list all that Customer's other Conversations. Customer changes are audited and trigger the durable fan-out contract in architecture §7. State readers record the profile revision they observed.
+
+Selection snapshot includes the chosen Item ID, title, price/currency/unit and typed attributes consumed by predicates. Null price means unspecified, not free; zero means free. Decimal amount must be nonnegative when supplied, with a currency and unit label. Price comparison requires matching currency and unit; no implicit currency conversion or day/night/service-unit arithmetic.
+
+Item listing changes do not mutate prior selection snapshots. Reselecting/refreshing a role is an explicit audited mutation under current revision and authorization. Existing archived selections remain readable and can satisfy `exists`; they cannot be newly added/refreshed from an archived listing. Catalog archive stops new selections but does not erase previous choices. Appointment views label displayed selections as current Conversation context; they do not claim to be a historical record of what was selected when the appointment was made. Consult selection history for that question.
+
+## 32. Appointment lifecycle and calendar policy
+
+| Operation | Preconditions | Result |
+|---|---|---|
+| Create proposal | Configured or ad hoc role and positive start/end interval; tenant/permission checks | Current `proposed`; no capacity hold |
+| Confirm | Proposed, future start, valid calendar hours/exceptions if Agent-bound | `confirmed`; atomic exclusive blocked interval when Agent-bound |
+| Reschedule | Proposed or confirmed; expected revision | Replace interval atomically, revalidate calendar and conflict; retain original on failure |
+| Cancel | Proposed or confirmed | `cancelled`, reason recorded; capacity released |
+| Complete | Confirmed and end time reached | `completed`; historical record retained |
+| Mark no-show | Confirmed and start time reached | `no_show`; audit and capacity release |
+| Replace role | Current record cancelled/completed/no_show | Supersede previous record and create new proposed record atomically |
+
+Workspace scheduling does not require an Appointment Block: an authorized operator can create an ad hoc role using an immutable generated key such as `adhoc_<uuid>` plus a human-readable purpose and explicit duration. That namespace cannot collide with configured role keys. Ad hoc appointments are visible in Conversation/calendar and follow identical validation/conflict rules, but configured predicates address only roles declared in the pinned version. No Catalog is required.
+
+Terminal appointment statuses cannot be quietly edited back to confirmed. Multiple roles remain possible. A role can be exposed in several Stages only with consistent semantics in the pinned version. `appointment(role)` reads the single non-superseded record, including cancelled or completed status; it never chooses the latest row arbitrarily.
+
+Scheduled Agent is optional and separate from current Conversation owner. In the pilot, only active human Agents with calendar capability may be scheduled. Confirmation involving a scheduled Agent validates its Account, actor scope, availability configuration and exclusive interval. No calendar configured means no eligible Agent-bound slot, not unlimited availability; Agent-free commitments remain allowed. Appointment blocks define/default duration explicitly; no hidden lookup of a selected Item's duration is required.
+
+Availability uses local weekly hours, dated closures/openings and IANA timezone. Store actual Appointment times as UTC plus chosen timezone. Reject nonexistent DST local times; require explicit offset choice for ambiguous repeated times. Show the scheduling timezone and user timezone when different. All-day appointments, recurrences, multiple participants, travel capacity, item inventory and cross-account resource guarantees are deferred.
+
+Confirmation and availability edits lock the scheduled Agent before reading/writing its calendar configuration. Full order is Customer -> Conversation -> all affected scheduled Agent IDs in sorted order -> all affected Item IDs in sorted order. Compute a conservative complete lock set before the first action: include manual mutation targets, old/new appointment Agents, existing selected Items, and every scheduling/selection target referenced by Rules in the pinned version that evaluation may reach. V1 rule Agent/Item targets are literal validated IDs, not dynamic lookup expressions, so this set is knowable. Bound it to 100 distinct extra target rows per transaction and reject a configuration/mutation exceeding that bound before writes. Acquire the full set once; never lazily lock another lower-order target after an action. This prevents rules that schedule Agent B then A, or select an Item before scheduling, from reversing lock order across conversations. If later dynamic targets are introduced, they require a revised locking design rather than an exception. Standalone catalog/calendar writers lock their own record only and never acquire a Customer/Conversation lock afterwards. Exclusion constraints remain the final overlap guard. Avoid network I/O under any lock.
+
+Availability edits affect future slot suggestions; they do not invalidate an already confirmed appointment. Surface affected commitments for manual resolution. Cancelling/rescheduling/completing does trigger current-stage reevaluation, but cannot rewind a completed Flow. Customer attention and operational follow-up remain visible separately.

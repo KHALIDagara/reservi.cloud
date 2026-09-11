@@ -660,7 +660,7 @@ High-risk cases include:
 
 Durable invariants require database/transaction protection where appropriate.
 
-Selected historical Item context may need snapshot/display semantics if mutable Item data later affects operational truth; decide deliberately when that requirement appears rather than copying everything prematurely.
+Selected Item title, price/currency/unit and predicate-relevant attributes are snapshotted at selection. Predicates read that selected context; explicit refresh/reselection is required to adopt listing changes. See `domain-model.md` §31.
 
 ---
 
@@ -679,7 +679,7 @@ Examples requiring deliberate behavior:
 - Item attributes changed while selected;
 - Agent removed.
 
-Versioned configuration, constrained edits, or explicit migration of in-flight Conversations are preferable to silent reinterpretation.
+Published FlowVersions are immutable and Conversations remain pinned to them. Structural edits produce a new draft/version; automatic migration of active Conversations is deferred. Referenced field types remain stable, Catalog selections retain snapshots, and deactivated targets produce visible remediation.
 
 ---
 
@@ -749,3 +749,20 @@ What Actions can manipulate it?
 Can existing Field or Catalog/Item express the need already?
 Can it integrate without changing the core Stage engine?
 ```
+
+## 20. Initial product behavior decisions
+
+The following decisions make the above requirements concrete. They are implementation targets, not already shipped features. See [gap-audit.md](gap-audit.md) for the gaps they resolve and [implementation-plan.md](implementation-plan.md) for delivery order.
+
+- **Process versus inbox:** a request is active, completed or cancelled; unread/needs-attention is separate. An account may complete a one-stage request with fields alone or an explicit immediate-completion gate. Completion does not universally mean service delivery.
+- **Publication:** administrators edit drafts and publish immutable versions. Existing requests retain their version. Initial release has no automatic migration, backwards progression, skip or reopen; follow-up work can start a new request explicitly.
+- **Corrections:** authorized operators may correct previous-stage facts. Only the current active gate is reevaluated; past completion remains historical. Shared Customer facts require separate edit permission and update all active requests' evaluated context.
+- **Predictable rules:** rules run once per stage entry in visible priority order. An already executed assignment rule does not undo a later human handoff. Failed local rule actions block automation with a reason and retry control.
+- **Catalog context:** chosen title/price/attributes are retained at selection time. Listing updates do not silently change the request; refreshing a selection is explicit. Archived selections remain readable. Selection never reserves inventory.
+- **Appointments:** initial scheduling supports one optional scheduled human Agent, with working hours/exceptions and confirmed-slot conflict protection inside the Account. Multiple appointment roles per request are supported; item availability, recurring/group calendars and cross-account conflicts are excluded.
+- **Messaging:** start with one provider. Completed requests receiving a message need attention but do not rerun their flow. Starting a new request on the same channel thread is explicit. Unknown delivery is visible and not blindly resent.
+- **Access:** Account membership does not imply access to every team's work. Administrator, team manager, operator, AI and automated rules have distinct scopes/capabilities.
+- **AI:** humans and AI use the same state and operations; AI has bounded usage, checked tool authority and explicit handoff. Human takeover invalidates stale AI actions and unclaimed queued AI replies.
+- **Configuration UX:** preview explains outcomes without causing side effects; unsupported/invalid references fail publication with actionable errors. A logical explanation is shown for complex completion rules instead of a misleading percentage.
+
+Support for other channels, provider-specific capabilities and production data retention is decided and verified before the corresponding release; it is not inferred from generic architecture language.

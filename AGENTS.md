@@ -15,7 +15,7 @@ For every non-trivial task:
 1. Read this file and any closer `AGENTS.md`.
 2. Load `reservi-context`.
 3. For Flow/Stage/Field/Catalog/Item/Appointment/Rule work, load `flow-engine`.
-4. Read relevant durable docs under `docs/`.
+4. Read relevant durable docs under `docs/`, including `gap-audit.md` and `implementation-plan.md` when planning or choosing implementation work.
 5. Inspect actual code/schema/tests before designing.
 6. Identify affected invariants.
 7. Plan the smallest coherent vertical change.
@@ -451,7 +451,11 @@ Durable docs:
 - `docs/domain-model.md` — canonical concepts;
 - `docs/flow-engine.md` — Stage/Rule/Catalog/Appointment composition model;
 - `docs/invariants.md` — truths that may not be broken;
-- `docs/testing.md` — proof strategy.
+- `docs/testing.md` — proof strategy;
+- `docs/gap-audit.md` — audited gaps, concrete decisions and deferred boundaries;
+- `docs/implementation-plan.md` — dependency tasks, acceptance gates and evidence ledger.
+
+Documentation decisions are not implemented features. Check the actual repository before choosing a task; mark a task VERIFIED only with a commit and real proof. The initial baseline contains specifications only.
 
 These are not changelogs.
 

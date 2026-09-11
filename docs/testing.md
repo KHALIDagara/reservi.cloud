@@ -342,7 +342,7 @@ Model-quality evaluations may later cover intent/extraction/tone, but exact LLM 
 
 ## 13. Configuration evolution tests
 
-Because configuration affects in-flight Conversations, test whichever strategy the implementation chooses.
+Because configuration affects in-flight Conversations, test immutable published FlowVersions, pinned Conversations, stable referenced field types, and explicit selection snapshots as defined in the architecture.
 
 Cases include:
 
@@ -421,3 +421,54 @@ A change is verified only when applicable proof exists for:
 - critical UI path;
 - regression around defects;
 - architectural independence where relevant (especially Appointment vs Item selection).
+
+## 18. Required failure and race acceptance matrix
+
+These are implementation acceptance cases, not tests that already exist. Run against PostgreSQL for locking/exclusion behavior. Concurrency tests use independent database connections and barriers, not transactional fixtures that conceal commits or arbitrary sleeps. Inject crashes at the indicated boundary and assert durable outcomes after recovery.
+
+| ID | Scenario / injected failure | Required evidence | Task |
+|---|---|---|---|
+| AC01 | Direct cross-account nested association | Database rejects relational mismatch; JSON config rejected at publication/execution | T01, T04 |
+| AC02 | Same-account operator requests another team's thread, attachment or stream | Denied despite valid Account membership | T02 |
+| AC03 | Two simultaneous claims / stale edits | One claim wins; stale write cannot overwrite newer state | T02, T06 |
+| AC04 | Built-in name versus custom name; false/zero/null | Single writable source; correct type/presence semantics | T03 |
+| AC05 | Customer change commits, fan-out worker crashes mid-batch | All active related requests eventually observe latest revision once resumed; completed state unchanged | T03, T04 |
+| AC06 | Publish v2 while v1 has active conversations | v1 instance remains on v1; newly created instance uses v2 | T04 |
+| AC07 | Two evaluators see true gate | One unique stage transition and coherent current pointer/history | T04 |
+| AC08 | Commit state then crash before job enqueue | Sweeper detects and completes pending evaluation | T04 |
+| AC09 | Missing comparison under not; empty any/all/selection | Unknown cannot pass by negation; invalid AST rejected; collection semantics explicit | T04 |
+| AC10 | More than ten immediately ready stages | Bounded continuation completes without losing work or marking false failure | T04 |
+| AC11 | Catalog edit/archive after selection | Selected snapshot/predicates stable; new selection forbidden if archived | T05 |
+| AC12 | Concurrent single/multi selector replacements | Legal cardinality and set membership; stale operation rejected | T05 |
+| AC13 | Rule predicate true→false→true; duplicate jobs | Successful logical rule and Message intent occur once | T06, T08 |
+| AC14 | Action 1 assigns, Action 2 fails validation | Entire local rule bundle rolled back; blocked reason visible, prior user edit retained | T06 |
+| AC15 | Failed rule then predicate becomes false | Error no longer blocks; no invented success/action record | T06 |
+| AC16 | Later rule enables earlier unfired rule; two assignments compete | Deterministic ordered passes and explainable final owner | T06 |
+| AC17 | Human handoff after routing rule succeeded | Fired rule does not reassign again | T06 |
+| AC18 | Account/AI/rule capability revoked after work queued | New operation/send claim denied or cancelled as specified; historical attribution preserved | T06, T08, T10 |
+| AC19 | Two confirmed appointments overlap same Agent | Database rejects one; adjacency allowed; no Item scheduling involved | T07 |
+| AC20 | Reschedule conflicts; role replaced after cancellation | Old valid interval retained on failure; one current role, old history preserved | T07 |
+| AC21 | DST gap/fold and viewer timezone change | Invalid local time rejected, ambiguous offset chosen, same UTC instants displayed | T07 |
+| AC22 | Appointment cancelled after terminal Flow completion | Appointment updates and attention show truth; past Flow does not rewind | T07 |
+| AC23 | Duplicate first inbound / crash after receipt acknowledgement | One identity/thread/message; durable receipt reprocessed safely | T08 |
+| AC24 | Provider accepts send, client times out | Unknown outcome; no blind resend without deduplication/reconciliation contract | T08 |
+| AC25 | Worker dies after claiming/before recording provider result | Expired in-flight attempt is reconciled/unknown, not automatically assumed unsent | T08 |
+| AC26 | Delivered callback then delayed sent callback | No delivery-state regression; duplicate callback harmless | T08 |
+| AC27 | Inbound after completed process | Attention raised, completed rules not rerun; new request requires explicit thread switch | T08 |
+| AC28 | Draft preview of assignment/send/appointment rules | No mutation, external call or queued side effect | T09 |
+| AC29 | Unsupported/deep AST, foreign target, conflicting role | Publication error identifies location and reason | T09 |
+| AC30 | Human takes over while AI is inferring / reply pending | Stale action rejected; pending unclaimed AI send cancelled; in-flight send reconciled honestly | T10 |
+| AC31 | Duplicate AI trigger and repeated tool action ID | One active run; idempotent operation, bounded tool budget | T10 |
+| AC32 | Provider/model failure or budget exhaustion | Human queue receives actionable context; no silent ownership loss | T10 |
+| AC33 | Database/media restore | Clean instance renders known thread, attachment, selection and Appointment | T11 |
+| AC34 | All composition fixtures at phone size | Field-only, literal single-stage, catalog-only, appointment-only and both orderings work | T04–T11 |
+| AC35 | Cross-customer rules target Agents A/B in reversed order, interleaving Item actions | Complete pre-acquired lock sets prevent inversion; concurrent results remain valid | T09, after T05–T07 |
+| AC36 | Create workspace appointment in field-only Flow | Ad hoc role works without Block/Item; configured predicates cannot collide with ad hoc namespace | T07 |
+| AC37 | Pinned Rule target permanently deactivated | Explicit cancellation and linked new request on corrected version recover without silently replaying old effects | T09 |
+| AC38 | Template requests a private/unknown field or embeds hostile text | Publication/runtime validation denies invalid access, HTML stays escaped, retry body unchanged | T08, T09 |
+
+## 19. Documentation validation versus runtime proof
+
+For changes confined to planning documents, check the complete diff, local relative links, task references, invariant identifiers, status claims and contradictions. Obtain independent review as AGENTS.md requires. Do not bootstrap an application just to pretend documentation has runtime tests.
+
+When code exists, each task in [implementation-plan.md](implementation-plan.md) records its actual command/results and evidence. Existing generic guidance above does not require repeating the full suite for every small edit: broaden testing only for a named residual risk or CI gate. Provider contract and model-quality checks supplement deterministic product tests; they cannot replace them.

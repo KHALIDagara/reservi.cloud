@@ -1,644 +1,166 @@
 # Reservi Architecture
 
-## 1. Architectural objective
+## 1. Status and objective
 
-Reservi should remain a compact, legible Rails monolith whose flexibility comes from a small set of composable domain primitives rather than from a generic workflow framework or vertical-specific model tree.
+Target architecture, specified 2026-09-11; application code does not yet exist at baseline `153315d`. See [gap-audit.md](gap-audit.md) and [implementation-plan.md](implementation-plan.md) for missing implementation and proof.
 
-The architectural target is:
+Build a compact Rails monolith which turns Conversations into configured outcomes. Preserve ADR-001: Conversation is the process instance; Stage is work plus a gate; Catalog/Item is universal selection; Appointment is independent scheduling state. A one-stage Flow may finish without either a Catalog or an Appointment.
 
-- Conversation as process root;
-- account-configured ordered Stages;
-- one shared predicate/evaluation model;
-- Actions invoking normal domain operations;
-- Fields for arbitrary facts;
-- Catalog + Item for reusable selectable business objects;
-- Appointment as independent scheduling state;
-- humans and AI operating against the same authoritative state;
-- PostgreSQL as durable truth;
-- Hotwire/server-rendered UI;
-- explicit integration boundaries;
-- safe concurrency/retries.
+The product exposes one shared workspace to human and AI Agents. PostgreSQL owns durable state. Rails owns validation, authorization, predicates, and rendering. No separate SPA, microservices, event sourcing, generic command bus, or arbitrary workflow scripting.
 
-Read `docs/flow-engine.md` before changing workflow/state architecture.
+## 2. System boundaries
 
----
-
-## 2. System shape
-
-```text
-┌─────────────────────────────────────────────────────────┐
-│                    Rails Monolith                       │
-│                                                         │
-│ HTTP / Turbo / Webhooks                                 │
-│          │                                              │
-│          ▼                                              │
-│ Request boundaries / authorization                      │
-│          │                                              │
-│          ▼                                              │
-│ Domain operations + models                              │
-│          │                                              │
-│          ├─────────────┐                                │
-│          ▼             ▼                                │
-│      PostgreSQL      Active Job                         │
-│          │             │                                │
-│          │             ▼                                │
-│          │       Integration adapters                   │
-│          │                                              │
-│          ▼                                              │
-│ Flow Runtime                                            │
-│ Conversation -> Stage -> Rules -> Actions -> Completion │
-│          │                                              │
-│          ▼                                              │
-│ Views + Turbo + Stimulus                                │
-└─────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    UI["Browser / Turbo"] --> Boundary["Rails request boundary"]
+    Provider["Channel provider"] --> Boundary
+    Boundary --> Domain["Authorized domain operations"]
+    Domain --> DB[("PostgreSQL")]
+    Domain --> Runtime["Flow evaluator"]
+    Runtime --> Domain
+    DB --> Jobs["Recoverable background jobs"]
+    Jobs --> Adapters["Channel and AI adapters"]
+    Adapters --> Provider
 ```
 
-The Flow Runtime is domain logic inside the monolith, not a separate service.
+The evaluator/domain cycle is bounded local orchestration, never recursive callbacks. Workers run the same release as web processes. Adapters make network calls outside database transactions.
 
----
+| Boundary | Owns | Must not own |
+|---|---|---|
+| Controllers | Authentication, Account resolution, input parsing, policy checks, response | Hidden transitions or provider protocol logic |
+| Models / focused operations | Invariants, transactions, local mutation, history | Slow network requests |
+| Flow evaluator | Read typed state, evaluate rules/gates, record progression | Feature-specific service/car/property branches |
+| Policies | Account membership, team visibility, actor capabilities | Trust in submitted tenant/actor IDs |
+| Jobs / adapters | Durable delivery, retries, reconciliation, AI inference | A parallel business state machine |
+| Views / Turbo | Render permitted state and evaluator explanations | Independent completion or authorization logic |
+| Stimulus | Selection widgets, local interaction and focus | Authoritative state or optimistic irreversible success |
 
-## 3. Core formulas
+## 3. Technology and organization
 
-```text
-Conversation = Authoritative State + Current Stage
-Stage = Blocks + Rules + Completion Predicate
-Rule = Predicate + Actions
-Feature integration = State + Controls + Predicates + Actions
-```
+Use Rails, PostgreSQL, Turbo, Stimulus, Active Job, Active Storage, and Rails' default testing conventions. Select supported versions during T01 and pin them in runtime/lock files; this document does not pretend a Gemfile exists. Prefer a database-backed Active Job adapter; the durable recovery mechanisms below must work even if the queue uses a separate database.
 
-The central engine must not contain vertical branches such as:
+Create only folders with real code. Use normal Rails controllers/models/views/jobs and model namespaces such as `Conversations::Assign` or `Flows::Evaluate` for substantial multi-record operations. Keep pure typed expression/state-reader objects under a small `Flows` namespace. Provider clients belong under `integrations`. Policies belong under `policies`. Do not build a repository, DTO, event bus, or universal action framework around Active Record.
 
-```text
-if service_business ...
-if car_rental ...
-if property_business ...
-```
+## 4. Authoritative state
 
-Different industries should mostly differ through Catalogs, Items, Fields, Stages, and Rules.
+| Fact | Writable source |
+|---|---|
+| Request lifecycle, current stage and owner/team | Conversation |
+| Published process definition | Immutable FlowVersion and its Stages |
+| Customer identity/profile | Customer and ChannelIdentity |
+| Request custom answers | Conversation validated custom values |
+| Reusable listing | Catalog / Item |
+| Chosen listing context | ItemSelection and selection snapshots |
+| Scheduled commitment | Appointment |
+| Customer-visible delivery | Message |
+| Internal collaboration | Note |
+| Past transition / assignment / action | Append-only domain history / RuleExecution |
 
----
+Inbox status is not a second sales pipeline. Process status, per-agent read position, attention, and Appointment status have distinct meanings. Detailed lifecycles and relational constraints are in [domain-model.md](domain-model.md).
 
-## 4. Preferred technology posture
+## 5. Tenant and actor boundary
 
-Default stack:
+A User may have several Account memberships. Each human Agent belongs to one Account and references that membership; an AI Agent has no fabricated User. Teams and their memberships stay inside an Account. Agencies access client Accounts through explicit memberships and switch Account context. Teams may represent locations, but do not create cross-tenant visibility. No cross-account calendar conflict guarantee in the pilot.
 
-- Ruby on Rails;
-- PostgreSQL;
-- Hotwire (Turbo + Stimulus);
-- Active Job;
-- Active Storage where appropriate;
-- Rails-native/server-rendered authentication and authorization patterns;
-- explicit provider adapters.
+Every account-owned relational record has `account_id`. Use composite foreign keys `(account_id, parent_id)` against unique `(account_id, id)` targets for tenant-sensitive associations. Application scoping alone is insufficient. JSON references cannot have ordinary foreign keys: validate their types, Account ownership, and existence at publication and again at execution; retain referenced published configuration.
 
-Add Redis, dedicated search, extra realtime infrastructure, or analytics systems only when a measured need exists.
+Every operation accepts a server-created actor context: Account, human/AI/system origin, applicable Agent, capability set, correlation/operation ID. A system rule runs under an explicit Account automation capability policy, with RuleExecution attribution; it is not a superuser or a fake human. Never use the rule author's old session as its authority.
 
-The repository/Gemfile becomes authoritative once bootstrapped.
+| Role | Default scope and capability |
+|---|---|
+| Account administrator | Account configuration, memberships, all operational records |
+| Team manager | Operational records and assignment in managed teams; no global configuration editing |
+| Operator | Own conversations and authorized team queues; claim/reply/edit/schedule within granted capabilities |
+| AI Agent | Assigned conversations only; explicit allowed tools and fields; no membership/configuration editing |
+| Rule execution | Current conversation, allowlisted actions under Account automation policy |
 
----
+Team visibility does not grant all mutations. Reads, assignment, messages, custom fields, selectors, appointments, and configuration are independently authorized. Blocks guide work; they are not an authorization mechanism. Past-stage data remains correctable through authorized detail controls. Current-stage required work does not forbid independent appointment creation elsewhere in the workspace.
 
-## 5. Boundary model
+Recheck membership/capabilities in jobs and immediately before applying AI output. Revocation disables access, invalidates realtime subscriptions, stops future AI actions and requeues owned work visibly. Preserve historical actor references by deactivation rather than destructive deletion. Realtime rendering must use the permitted projection for each audience; do not broadcast admin-only content to every team member.
 
-### HTTP boundary
+## 6. Configuration lifecycle
 
-Controllers establish authentication/account context, authorize, parse input, invoke domain behavior, and render HTML/Turbo/JSON.
+Flow is stable identity; FlowVersion is a draft or immutable published definition. Stages belong to a version. A Conversation pins a published version at creation. Publication validates the entire definition atomically, then switches the Flow's current published pointer. Existing Conversations never move implicitly.
 
-### Domain boundary
+Stage blocks/rules/completion use validated JSON with stable keys, not arbitrary code. Published definitions and referenced field types cannot be destructively changed. Labels in a published version remain historical; changes appear in a new version. Catalog listings remain live, but selected context uses snapshots. Removing an Agent or archiving a Catalog can make an action unavailable; surface a blocked reason, never silently skip it. Restore the target only if operationally appropriate. If it must remain unavailable, an administrator can cancel the blocked request and start a linked request on a corrected published version, reviewing the prospective actions and explicitly carrying any still-valid request facts/selections. Old messages, actions and appointments stay on the original request; no automatic copy/replay or hidden migration. The UI must explain this escape path.
 
-Active Record models and focused operations own business truth.
+Do not build automatic migration, graph branching, or reverse progression in the pilot. Full execution contracts are in [flow-engine.md](flow-engine.md).
 
-Likely meaningful operations include:
+## 7. Mutation and evaluation transaction
 
-- assign Conversation;
-- apply Field value;
-- select/clear Catalog Item;
-- create/reschedule/cancel Appointment;
-- evaluate current Stage;
-- advance Stage;
-- execute Rule Action once.
+A request follows this path:
 
-Avoid one service object per controller action.
+1. Resolve Account and actor; scope record; validate expected revision and inputs.
+2. In a short transaction lock Customer first, then Conversation. This makes customer facts and request state a coherent evaluator snapshot. Before mutation, acquire the complete additional target lock set described in domain-model §32; sorting separately inside each action is insufficient because outer transactions retain earlier locks. No callback may acquire them backwards.
+3. Recheck authority and relevant constraints under the lock. Apply local mutation and domain history. Increase Conversation state revision only for meaningful changes and leave evaluation pending.
+4. Run the bounded evaluator synchronously for small local work or let a worker evaluate the latest revision. Both use the same entry point. Never evaluate against pre-mutation caches.
+5. Commit local state, rule execution guards, history, and external delivery intents together. Render committed state, including pending/blocked automation where relevant.
+6. Wake workers after commit. Recovery sweeps find persisted pending work if enqueue was lost.
 
-### Persistence boundary
+Customer updates lock Customer and change its profile revision plus a durable fan-out-needed marker. A fan-out job marks active conversations pending in bounded batches, records its progress, and can be retried. Evaluators lock Customer then Conversation and record which profile revision was read. Thus a field shared by several requests is not silently stale. Completed/cancelled flows are never re-advanced by fan-out.
 
-PostgreSQL protects durable truth and race-sensitive invariants.
+Use optimistic expected revisions to reject stale browser or AI writes. An evaluator coalesces requests and evaluates latest state; it does not replay a stale snapshot. User data updates can commit while automation is blocked; show the error and retain pending work for explicit retry after repair. Do not roll back a valid user correction solely because a rule target was deactivated.
 
-### Integration boundary
+## 8. Rules and external delivery
 
-Provider-specific transport/payload/status behavior remains in adapters/jobs.
+Rules run once per current stage entry in stable priority/key order. Local actions in one rule form an atomic bundle. The execution guard and actions commit together; failure rolls back that bundle and records an actionable automation error separately. Previously committed rules are not undone. A later retry skips successful executions and retries the failed bundle against current state and permissions.
 
-### UI boundary
+Sending a message means creating a durable local Message intent, not performing a network call during evaluation. “Accepted locally”, “sent”, “delivered”, and “unknown” are different states. Flow completion may proceed after local intent creation; the initial predicate vocabulary does not pretend remote success is atomic with stage advancement.
 
-Rails renders authoritative state. Turbo updates fragments. Stimulus owns browser-local behavior only.
+Persist action identity derived from Conversation, pinned version, stage entry, rule key, and action index. Repeated evaluation cannot produce a new Message for that identity. No generic outbox table is needed merely for Messages: pending Message rows are already durable outbound work. Webhook receipts and AI runs similarly have explicit lifecycles.
 
----
+The queue gives wakeups, not truth. Periodic bounded recovery sweeps repair lost enqueue and expired worker leases. Retry with bounded exponential backoff and jitter; distinguish permanent, retryable, rate-limited, and unknown-result failures. Expose exhausted work to administrators; do not discard it.
 
-## 6. Multi-tenancy
+## 9. Messaging and conversation resolution
 
-Account is the primary tenant boundary.
+Webhook processing: verify provider signature using trusted Channel configuration, enforce body limits, persist a uniquely identified receipt, then acknowledge. A worker normalizes the payload, resolves account-scoped ChannelIdentity/Customer/thread, inserts one inbound Message, and updates attention. Receipt completion and domain writes commit together. Deduplication IDs are scoped to Channel/provider, not globally guessed.
 
-Every owned/configured record must have an unambiguous Account path, including:
+Maintain one intake Conversation per Channel/provider thread according to the resolution contract in the domain model. A completed process receiving a new message becomes visible for attention; it does not rerun completed Rules. Starting a new request is an explicit operation. Cross-channel or simultaneous same-thread request disambiguation is not inferred by AI in the pilot.
 
-- Flow / Stage / Rule / Block;
-- Field Definitions / Values;
-- Catalogs / Items / ItemSelections;
-- Appointments;
-- Agents / Teams;
-- Conversations / Customers;
-- integrations.
+Outbound workers claim pending Messages with a lease/attempt token, call the provider outside locks, then reconcile using that attempt. A timeout after the provider may have accepted the message produces `unknown`; reconcile by remote ID/idempotency key if supported. Without provider support, require an operator decision before resend. Exactly-once delivery across a remote boundary is not promised.
 
-Configuration must reject cross-account references.
+Application message templates are plain text with allowlisted `{{customer.name}}` or `{{field.conversation.city}}`-style substitutions resolved through the same typed, permitted state reader. No expressions, loops, includes, raw HTML or executable helpers. Publication validates variables and size; execution rejects missing required or unauthorized values, stores the fully rendered body in the Message intent, and retries never render a new body. Escape content when rendered in HTML; customer input remains data. Provider-approved template identifiers and parameters use adapter validation separately.
 
-Jobs re-scope server-side. Webhooks derive Account from trusted integration identity. Realtime/search/export paths remain tenant-scoped.
+Adapters own channel send eligibility, template/window requirements, rate limits, media behavior, signature verification, and status ordering. Check the selected provider's current official contract when implementing it. Status callbacks must not regress a delivered/read Message to sent. Retain operational failure metadata without logging credentials or full unnecessary customer content.
 
----
+Notes are separate from Messages and have no outbound transport. Attachments require size/type checks, account authorization on access, and safe rendering. Credentials stay encrypted in runtime storage; never in Flow JSON, prompts, fixtures, or logs.
 
-## 7. Conversation as process root
+## 10. Catalog selection
 
-Conversation coordinates current process state while supporting records own local invariants.
+Catalogs define typed additional attributes. Items have title, description, images, nullable decimal price, currency and price-unit label, attributes, and archive state. Names such as Cars/Services are data only.
 
-Conceptually:
+Selector updates replace the selected set atomically under Conversation lock, validate cardinality and Catalog/Account membership, and preserve selection-change history. Snapshot the selected title, price/currency/unit, and predicate-relevant typed attributes. Predicates read these selection snapshots so a listing edit cannot reroute an old request. Current listing details can be shown separately. Explicit reselection/refresh validates and records the change.
 
-```text
-Conversation
-├── current Flow / Stage
-├── Customer
-├── Fields
-├── Catalog Item Selections
-├── owner / Team
-├── Messages / Notes
-├── Appointments
-└── history
-```
+Archive prevents new selections while retaining existing selected context. Published field/attribute types referenced in snapshots cannot be silently reinterpreted. No Item inventory, capacity, holds, reservation engine, or bookable flag is implemented.
 
-The Flow engine reads this normalized state graph.
+## 11. Appointments
 
-Do not duplicate it into Lead/Deal/Opportunity records.
+An Appointment belongs to Conversation and a stable role. It needs no Item. Pilot supports one optional scheduled Agent plus Customer context. Conversation owner and scheduled Agent are different facts; reassignment does not silently reschedule.
 
----
+Store UTC instants, IANA scheduling timezone, positive interval, status, and optional buffer snapshots. Confirmed appointments with a scheduled Agent block that Agent's interval within the Account. Use a PostgreSQL exclusion constraint for overlapping half-open blocked ranges, scoped by Account and Agent and confirmed status. Agent-free appointments do not claim exclusive capacity. See the domain model for lifecycle and constraint details.
 
-## 8. Flow / Stage architecture
+Working hours and dated exceptions belong to the scheduled Agent's Account calendar; slot suggestions use those rules but never reserve time. Confirmation revalidates hours/exceptions and atomically checks conflicts. Changes to availability do not cancel existing commitments; highlight affected appointments. Reschedule preserves the old booking if the new interval conflicts.
 
-Start with ordered Stages, not an arbitrary graph.
+Calendar reads Appointment truth and selected context from Conversation. Cancelling an appointment after a Flow completed does not erase the historical completion. The operator sees the cancellation and can start follow-up work explicitly.
 
-A Stage contains:
+## 12. AI execution
 
-- identity/name/position;
-- Blocks;
-- Rules;
-- completion expression;
-- lifecycle/version metadata as needed.
+AI reads a bounded, permitted snapshot: stage/version, relevant message window, structured facts, missing-requirement explanation, selected context, ownership, state/profile revisions, and allowed actions. The model returns typed proposals; it never writes records directly.
 
-Completion evaluates server-side against authoritative state.
+AiRun records triggering message/revision, owner, status, model usage, timeout and retry metadata. Only one active run per Conversation. New human ownership or changed input makes old output stale. Handoff atomically invalidates the active run and cancels its pending unclaimed Message intents; sending workers recheck the AI run/ownership token at claim. A provider call already in flight may still complete and must be reconciled visibly. Before each tool mutation, recheck actor, current owner, capability, expected revisions, and action idempotency. After mutation, refresh context before the next action. Do not keep locks during inference.
 
-Stage advancement must be race-safe and idempotent.
+Bound turns, tokens/cost, wall time, and tool calls. A failed or exhausted run hands off visibly to a human queue. Model instructions and incoming content cannot enable tools, change Account, or bypass validation. Deterministic product tests use a fake adapter; model-quality evaluations are a separate concern.
 
-### Configuration mutability
+## 13. UI, performance and operations
 
-Active Flow edits can affect in-flight Conversations. Before implementing the builder, choose explicit semantics such as:
+Server-rendered inbox and Conversation workspace show current stage, owner, messages/notes, stage controls, missing requirements, appointments, selected items, pending work and errors. Show a logical explanation tree for any/not conditions; do not invent a misleading percentage. Turbo is best-effort freshness: refresh must restore correctness, and stale responses cannot overwrite newer revisions.
 
-1. versioned definitions once activated;
-2. constrained destructive edits while referenced;
-3. explicit migration of in-flight Conversations.
+Paginate messages/items/inbox with stable cursors; preload bounded stage state; index Account/team/owner/activity, current stage, role keys, provider IDs and pending work. Use database search first. Never load every message/item into an AI prompt or browser.
 
-Do not silently reinterpret active Conversations.
+Deploy one Rails codebase as web and worker processes plus PostgreSQL and object storage. Separate interactive messaging/evaluation queues from slow AI work with worker concurrency limits. Monitor pending age, failures, provider unknown results, AI usage, evaluation latency, database contention and authorization failures. Correlate Account/Conversation/job/operation IDs; redact secrets and unnecessary personal content.
 
----
+Back up database and media; perform an actual restore before pilot. Use additive migrations and rolling-compatible changes; take backups before destructive migrations. Document rollback of code separately from data repair. Release gates and provisional performance targets are in the implementation plan. Provider selection, hosting size and retention policy must be recorded before production; they are not silently assumed.
 
-## 9. Predicate/expression architecture
+## 14. Architectural checks
 
-Use one structured, type-aware expression model for configurable conditions.
-
-Examples:
-
-```text
-field("city") == "Marrakech"
-owner.exists
-item_selection("vehicle").exists
-item_selection("vehicle").attribute("transmission") == "automatic"
-appointment("pickup").status == confirmed
-```
-
-Requirements:
-
-- deterministic;
-- safe;
-- tenant-scoped;
-- stable references/keys;
-- explicit operator whitelist;
-- explainable results;
-- no arbitrary Ruby/JavaScript/SQL.
-
-A compact validated AST/JSON representation is acceptable as persistence shape, but domain/value objects should hide it from ordinary application code.
-
----
-
-## 10. Rule/action architecture
-
-Rules are:
-
-```text
-Predicate true
-    ↓
-Authorized Action(s)
-```
-
-Actions call the same domain operations used by humans/AI/API.
-
-Irreversible Actions need stable logical execution identity so repeated Stage evaluation cannot resend the same Message, recreate the same Appointment, or repeat an equivalent side effect.
-
-The runtime should be able to explain which Stage/Rule/condition/action caused an automated change.
-
-### Loop protection
-
-Actions may change state and trigger more Rules. The engine needs:
-
-- bounded evaluation cycles;
-- no-op/repeat detection;
-- Action idempotency;
-- explicit Stage advancement locking/transaction semantics.
-
-Avoid hidden callback chains.
-
----
-
-## 11. Flow evaluation trigger
-
-Relevant durable state mutation should invoke/enqueue one explicit Flow evaluation entry point.
-
-Sources include:
-
-- Field changes;
-- Catalog Item selection/clearing;
-- Appointment changes;
-- owner/team changes;
-- Message state when predicates depend on it;
-- future feature state.
-
-Avoid scattered direct `advance_stage!` calls.
-
-Prefer explicit domain orchestration over broad Active Record callback webs.
-
----
-
-## 12. Field architecture
-
-Fields represent facts.
-
-Definition distinguishes at least Customer vs Conversation/request scope.
-
-Do not create dynamic DB columns per account-defined Field.
-
-Do not hide all known truth in arbitrary JSON either.
-
-The implementation may use typed value records or carefully validated JSONB depending on query/index ergonomics, while preserving:
-
-- type validation;
-- stable keys;
-- Account scope;
-- efficient Flow evaluation;
-- controlled definition changes.
-
----
-
-## 13. Catalog / Item architecture
-
-### Catalog
-
-Account-owned collection of Items.
-
-Examples are only names/data:
-
-```text
-Services
-Cars
-Rooms
-Properties
-Treatments
-Products
-```
-
-Core architecture does not create separate model subclasses or scheduling rules based on these names.
-
-### Item
-
-Common shape:
-
-```text
-Item
-├── catalog_id
-├── title
-├── description
-├── price
-├── images
-├── typed additional attributes
-└── lifecycle state
-```
-
-Use Active Storage or equivalent for images when appropriate.
-
-Additional Catalog-specific attributes need a controlled definition/value strategy rather than arbitrary unvalidated blobs if they participate in Rules/search.
-
-### ItemSelection
-
-Conversation state linking a configured selector key to one or more Items.
-
-Conceptually:
-
-```text
-Conversation
-  item_selection("vehicle") -> Range Rover Evoque
-  item_selection("property") -> Villa Agdal
-```
-
-Selection does **not** imply reservation, scheduling, ownership, or bookability.
-
-### No vertical type hierarchy
-
-Avoid:
-
-```text
-Service < Item
-Car < Item
-Property < Item
-Room < Item
-```
-
-unless a future concept genuinely owns distinct invariants that cannot be expressed by Catalog/Item/attributes.
-
-Do not create those classes just to name business categories.
-
----
-
-## 14. Appointment architecture
-
-Appointment is the canonical scheduling entity and is independent from Catalog/Item semantics.
-
-Definition:
-
-> A time-bound commitment associated with a Conversation.
-
-It may contain:
-
-- Conversation;
-- logical role/key;
-- starts_at / ends_at;
-- status;
-- participating Agent(s) when useful;
-- location/context as needed;
-- attribution.
-
-### No Item requirement
-
-Do not require `item_id`, `service_id`, `resource_id`, or `bookable` Item semantics for Appointment existence.
-
-A selected Item is already visible through Conversation context.
-
-Example:
-
-```text
-Conversation:
-  vehicle = Range Rover Evoque
-  pickup Appointment = tomorrow 14:00
-```
-
-The Appointment UI can present the selected vehicle by reading Conversation state. It need not own the vehicle relationship to make the workflow understandable.
-
-### Scheduling conflicts
-
-Initially, protect conflicts for scheduling concepts the product actually defines, such as an Agent not being in two committed Appointments simultaneously if that rule is configured.
-
-Do **not** automatically treat every selected Item as an exclusive scheduling resource.
-
-If future inventory reservation/capacity becomes required, introduce an explicit scheduling/reservation concept then.
-
----
-
-## 15. Assignment/routing architecture
-
-Assignment is one domain operation with authoritative current owner + truthful history.
-
-Routing is a use of Rule + assignment/team Action, not a second engine.
-
-Examples:
-
-```text
-IF field.city == Marrakech
-THEN assign Ahmed
-```
-
-```text
-IF item_selection("requested_service").attribute("category") == "irrigation"
-THEN assign Irrigation Team
-```
-
-Manual, AI, and Rule-driven assignment share the same boundary.
-
----
-
-## 16. Human/AI architecture
-
-Human-backed and AI-backed Agents operate on the same Conversation state and Stage requirements.
-
-AI should read current Stage and missing requirements rather than depending only on prose prompts.
-
-All AI actions pass normal domain capability/authorization checks.
-
-Prompts do not define authoritative Flow state.
-
----
-
-## 17. Messaging architecture
-
-Inbound:
-
-```text
-provider webhook
--> verify
--> resolve integration/account
--> deduplicate
--> normalize
--> resolve Customer/Conversation
--> persist Message
--> update attention/state
--> invoke/enqueue relevant Flow/AI processing
--> return promptly
-```
-
-Outbound:
-
-```text
-Agent/Rule Action requests send
--> authorize
--> persist stable local operation/message
--> enqueue provider send
--> reconcile result
-```
-
-Rule-triggered Messages need Action idempotency.
-
----
-
-## 18. Transactions and side effects
-
-Prefer:
-
-```text
-authorize/validate
--> transactionally write local truth
--> commit
--> enqueue external side effect
--> reconcile result
-```
-
-Do not keep database transactions open during slow external calls.
-
-Stage progression depends on authoritative local state, not assumed remote atomicity.
-
----
-
-## 19. Background jobs
-
-Jobs handle external APIs, retries, expensive processing, AI inference, messaging, and reconciliation.
-
-They must be:
-
-- tenant-scoped;
-- retry-safe;
-- idempotent/protected;
-- observable;
-- explicit about stale Flow/configuration handling.
-
----
-
-## 20. UI / realtime
-
-Conversation UI should render:
-
-- current Stage;
-- completion progress/missing requirements;
-- relevant Blocks;
-- owner/team;
-- Messages/Notes;
-- selected Items;
-- relevant Appointment state.
-
-Appointment/calendar details should surface relevant selected Items from Conversation context when useful.
-
-Turbo improves shared awareness but never owns domain truth.
-
-Refresh restores correctness.
-
----
-
-## 21. Explainability
-
-Automation should be explainable from structured configuration/execution data.
-
-Examples:
-
-```text
-Ahmed assigned because:
-Stage: Qualification
-Rule: Marrakech requests
-Condition: City = Marrakech
-```
-
-```text
-Stage blocked because:
-Vehicle selection missing
-Pickup Appointment not confirmed
-```
-
----
-
-## 22. Security architecture
-
-- strict Account scoping;
-- server-side authorization;
-- validated Rule configuration;
-- no arbitrary user code;
-- provider credential protection;
-- safe attachments;
-- webhook verification;
-- AI capability enforcement.
-
-Treat Flow configuration as executable business configuration and protect its editing accordingly.
-
----
-
-## 23. Performance and scalability
-
-Scale the monolith before splitting the domain.
-
-Flow evaluation should avoid N+1/configuration query explosions through measured techniques such as:
-
-- preload current Stage configuration;
-- cache compiled validated expressions as projections, never truth;
-- index stable keys/lookups;
-- evaluate only on relevant state changes;
-- enqueue slow Actions;
-- avoid repeated no-op evaluation.
-
-Do not introduce an event bus or microservices merely because Rules exist.
-
----
-
-## 24. Suggested application organization
-
-Do not scaffold folders until code needs them. A plausible future shape:
-
-```text
-app/
-  models/
-  controllers/
-  views/
-  jobs/
-  javascript/controllers/
-  operations/
-  integrations/
-  flow/
-    evaluator.rb
-    predicate.rb
-    state_reader.rb
-```
-
-Names are illustrative. Keep the namespace small and explicit.
-
----
-
-## 25. Anti-pattern checklist
-
-Challenge changes that introduce:
-
-- Service/Car/Room/Property as separate workflow primitives when Catalog/Item is sufficient;
-- Resource/ResourceType duplicating Catalog/Item semantics;
-- required Item/Service on Appointment;
-- global `bookable` flags to make Appointment workflows work;
-- hard-coded `qualification -> service -> appointment` progression;
-- separate routing/assignment/completion condition engines;
-- arbitrary user code in Rules;
-- generic BPM graph engine before branching requirements;
-- universal Entity/Property/Relation metadata model;
-- Stage advancement hidden in callbacks;
-- repeated Rule side effects;
-- undefined in-flight configuration semantics;
-- provider payloads used directly in predicates;
-- client-side Stage truth;
-- cross-account configuration references.
-
----
-
-## 26. Architectural decision test
-
-Before adding an abstraction, ask:
-
-1. What current requirement forces it?
-2. Can a Field express it if it is just a fact?
-3. Can Catalog/Item express it if it is a reusable selectable thing?
-4. Can Appointment express it if it is time-bound scheduling state?
-5. Can existing State + Controls + Predicates + Actions integrate it?
-6. What independent invariant/lifecycle does the new concept own?
-7. Does it preserve one source of truth?
-8. Does it keep the common path traceable?
-
-If the justification is mainly hypothetical future flexibility, do not add it.
+A new feature must justify its state, controls, predicates and actions. A fact is a Field; a reusable selectable thing is an Item; a timed commitment is an Appointment. Anything else must demonstrate an independent invariant. Keep one domain operation path for humans, AI and Rules, one predicate interpreter, one current stage and owner, and one scheduling truth.

@@ -4,6 +4,16 @@ This directory contains durable project truth for humans and AI agents.
 
 Read documents by purpose rather than loading everything for every task.
 
+## Build status and starting point
+
+At the audited baseline `153315d`, this repository contains specifications and agent configuration, not a running Rails application.
+
+- [Gap audit](gap-audit.md): 55 gaps/boundaries, priorities, decisions, and task mapping.
+- [Implementation plan](implementation-plan.md): dependency graph, task acceptance gates, and evidence ledger. Start here when deciding what to implement next.
+- [ADR-002](decisions/002-runtime-and-delivery-contracts.md): concrete runtime/persistence/recovery decisions building on ADR-001.
+
+Do not treat a specification decision as a verified implementation.
+
 ## Core documents
 
 ### `product-requirements.md`

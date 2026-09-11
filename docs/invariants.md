@@ -362,3 +362,41 @@ For every meaningful change ask:
 8. Can a cross-account reference be configured/submitted?
 9. Are we accidentally adding Item bookability semantics?
 10. What database/transaction/test proves the durable truth?
+
+## 14. Concrete build-contract invariants
+
+### INV-120 — Published process meaning is immutable
+
+A Conversation remains pinned to its published FlowVersion. Publication changes only which version new instances use; no implicit migration, stage rewind, or destructive reinterpretation of referenced field types.
+
+### INV-121 — Attention and outcome are distinct
+
+New customer activity can require attention without reopening a completed process. Appointment cancellation does not erase past stage transitions or imply service was delivered.
+
+### INV-122 — Selected context is stable
+
+Selection predicates read the audited selection snapshot, not mutable current Item attributes. Updating listing data cannot silently reroute an old request; refresh/reselection is explicit.
+
+### INV-123 — Pending work survives enqueue failure
+
+Local state changes, accepted webhooks, outbound intents and AI run lifecycle have durable recovery state. Losing a job wakeup cannot lose the work.
+
+### INV-124 — Ambiguous delivery is not assumed failure
+
+If a provider may have accepted a send, retries require deduplication/reconciliation or an explicit operator decision. Do not label the message unsent merely because the local request timed out.
+
+### INV-125 — Shared facts invalidate active readers
+
+Customer profile revision changes durably trigger reevaluation of affected active Conversations. Evaluators read a coherent Customer/Conversation snapshot and record observed revisions.
+
+### INV-126 — Stale AI authority cannot execute new work
+
+Before applying a tool action or claiming an unstarted AI send, current ownership, membership, capabilities and input revisions must still allow it. Already in-flight remote effects are reconciled, not falsely claimed to be recalled.
+
+### INV-127 — Rule bundles have a durable identity and boundary
+
+Each Rule executes at most once successfully per stage entry; its local actions, outbound intents and success guard commit atomically. Failure pauses automatic advancement visibly. Retry never repeats a successful bundle.
+
+### INV-128 — Same-account membership is not universal visibility
+
+Team scope, ownership and capabilities restrict reads and actions within an Account, including Customer context, media, search, realtime and AI snapshots.

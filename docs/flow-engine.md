@@ -705,3 +705,80 @@ Initial semantics:
 Do not initially introduce branching graphs, loops, timers, parallel stages, generic webhooks, arbitrary scripting, or arbitrary code expressions.
 
 The power should come from composition of a few primitives, not from an unlimited workflow language.
+
+## 19. Concrete v1 configuration contract
+
+These choices resolve the earlier high-level requirements. They are a target for implementation, not existing runtime behavior.
+
+FlowVersion is immutable after publication. A Stage stores bounded JSON `blocks`, `rules`, and `completion`; the Conversation references a Stage in its pinned version. Drafts may be incomplete, published versions may not. Stable keys use a restricted identifier format (lowercase letters, digits, underscore; starting with a letter), never labels.
+
+A role referenced in multiple Stages describes the same state throughout that version: same kind, Catalog/cardinality for selectors, and Appointment purpose for appointment roles. Reusing a role exposes the existing state. Two independent selections/appointments need two different keys. Fields reference both scope and key.
+
+Publication rejects missing/cross-account references, unsupported operations, incompatible types, empty stage lists, duplicate positions/keys, conflicting role definitions, impossible cardinality, unavailable targets and invalid completion expressions. A required dependency must be reachable through current/prior controls or an explicitly available authorized workspace action; warn about future-only dependencies and block publication unless an accessible source is configured. Expressions can intentionally require no business object via a literal boolean, including a one-stage `true` completion; preview must make immediate completion obvious.
+
+V1 limits: at most 50 Stages per version, 50 Rules per Stage, 10 Actions per Rule; each expression at most 100 nodes, depth 10 and 32 KiB encoded. Validate input size before traversal. No loops/branch edges/timers/arbitrary scripts, URLs or raw provider payload references. Agent/Item mutation targets in Rules use literal validated IDs initially; publication also checks the 100-extra-target lock-set bound in domain-model §32.
+
+## 20. Predicate AST and evaluation
+
+Example persisted completion expression (JSON, never executable source code):
+
+```json
+{
+  "op": "all",
+  "args": [
+    {"op": "exists", "ref": {"kind": "field", "scope": "customer", "key": "name"}},
+    {"op": "eq", "ref": {"kind": "appointment", "key": "site_visit", "attribute": "status"}, "value": "confirmed"}
+  ]
+}
+```
+
+Human-readable expressions earlier in this document are explanatory notation, not a second parser or language. Initially support `literal`, `exists`, `missing`, `eq`, `neq`, `gt`, `gte`, `lt`, `lte`, `all`, `any`, and `not`. References are allowlisted: field scope/key, owner/team ID/existence, selector existence/count and explicit item quantifier, appointment role/status/time. Each operation declares accepted input types.
+
+Rules and completion use the same interpreter. Operator compatibility is checked at publication and runtime. Ordered comparison is allowed only for compatible numeric/date/time values; prices require currency and unit equality. No regex, implicit string-to-number coercion, arbitrary method lookup, or dynamic SQL.
+
+| Case | Defined result |
+|---|---|
+| Boolean `false` or number `0` | Exists; not missing |
+| Null/unset field, blank normalized text, empty choice list | Missing |
+| Comparison to missing value | Unknown; does not satisfy a gate |
+| `not` of unknown | Unknown; missing data cannot pass by negation |
+| `all` | False if any false, true if all true, otherwise unknown |
+| `any` | True if any true, false if all false, otherwise unknown |
+| Empty AST `all` / `any` | Invalid at publication; use explicit literal |
+| Missing/deleted/cross-account definition or unsupported reference | Configuration error; fail closed and show blocked reason |
+| Empty Item selection | `exists=false`, `count=0` |
+| Item attribute test on multi-selection | Must specify `any_item` or `all_items`; no implicit first item |
+| `all_items` on empty selection | False, not vacuous success |
+| Item attribute absent on an otherwise selected Item | Unknown comparison |
+
+Quantifiers apply the same nested comparison rules to selection snapshots. An expression returns a result tree: node identity, true/false/unknown, permitted reference, expected value, observed value when actor may read it, and reason. Render this tree in UI and AI context. A simple all-of list may show 3/4 satisfied; arbitrary any/not expressions must show logic, not a fake progress percentage. A read-only preview accepts synthetic state and returns this explanation and proposed actions without writing or enqueueing anything.
+
+## 21. Rule firing, ordering and conflicts
+
+V1 Rules are once per stage entry, including assignment and field mutations. A false predicate may become true later; after successful execution it never fires again for that entry even if data toggles. Success is represented by a unique RuleExecution `(conversation, stage_entry, rule_key)` tied to the pinned version. Since reverse progression is absent initially, an entry can be the original stage-entry identity recorded on entry; do not derive identity from a timestamp with insufficient uniqueness.
+
+Evaluate Rules by ascending numeric priority, then stable key. Re-read local state after each successful bundle. When a later Rule makes an earlier unfired predicate true, repeat the ordered pass until no newly eligible Rules remain. Previously successful Rules are skipped. Two eligible assignment Rules run in defined order; later execution wins and both explanations remain visible. The builder warns on obvious overlapping assignment rules, but does not invent a hidden precedence mechanism.
+
+A Rule's local actions are atomic with its success record and outbound intents. If any action fails authorization/domain validation, roll back that bundle, record an error and pause automatic progression; do not run lower-priority rules past the failure. An explicit retry reevaluates predicate/authorization with current state. If a previously failed predicate is now false, clear its blocking error as no longer applicable without marking successful or firing an action. If true and still invalid, remain blocked.
+
+Rule capability comes from the Account automation policy intersected with allowlisted Action support and target eligibility. Deactivated targets fail visibly. If the target cannot be restored, use the documented cancel-and-start-linked-request recovery on a corrected version; retrying an immutable broken target is not a repair. Rules do not impersonate their author or inherit administrative privileges. Fired assignment Rules do not fight later human reassignment; unfired Rules may still run if their condition becomes true, and the UI must expose that configured behavior. No round-robin fairness machinery initially: direct eligible Agent or Team queue assignment suffices; add distribution only as a separate validated requirement.
+
+## 22. Action and evaluator contract
+
+Each action handler is a thin mapping to a normal domain operation with validated arguments, actor, expected revision and stable operation key. There is no generic privileged mutation API. The initial action registry grows with delivered capabilities: update field, assign team/agent, select/clear item, create/change appointment, add note, and request message send. Publication rejects actions whose implementation is not delivered yet.
+
+Evaluation entry point:
+
+1. Resolve and authorize Account work; lock Customer then Conversation. Read current profile and conversation revisions and pinned version. Collect and acquire the complete sorted Agent/Item target set before any rule action, following domain-model §32; individual handlers must not introduce new lock-order inversions.
+2. If process is not active, return without progression. Validate current stage belongs to pinned version.
+3. Execute eligible unfired Rules using §21. Use savepoints for individual local bundles when preserving an already committed user correction in an outer transaction.
+4. Re-read state and evaluate the gate. Advance only if true, no blocking rule error, and all currently eligible local bundles are settled.
+5. Atomically record transition, move current Stage (or set terminal completed), and establish next stage-entry identity. New stage Rules are evaluated by this same loop, never by recursive callbacks.
+6. At a work budget of 100 Action attempts or 10 stage advances per transaction, persist progress and leave evaluation pending for continuation. Exhausting a budget is not business failure. Once-per-entry execution and forward-only stages guarantee finite work for a fixed revision/configuration; repeated no-progress failure requires intervention rather than endless retries.
+7. Mark evaluated revisions only when evaluation has reached a stable blocked-by-data or completed state. An automation error is separately observable and pauses automatic retries until fixed/retried; distinguish it from a legitimate missing answer.
+
+Every domain mutation marks evaluation pending in the same transaction as its state change. Enqueue after commit for latency; a periodic sweeper finds pending revisions after crashes. A new message/profile change during work leaves a newer revision to evaluate. Workers may coalesce duplicate wakeups but cannot lose the persisted pending condition. Customer fan-out follows architecture §7.
+
+Synchronous local evaluation and worker evaluation are the same operation, not two implementations. Lock/unique-index conflicts return retryable domain outcomes. Stale UI/AI mutation is rejected with refreshed state; the evaluator itself reads latest state under lock. History and current pointers commit together.
+
+Remote effects never run here. Message intent creation counts as accepted action; remote delivery state is handled by messaging. Remote-delivery-dependent gates are deferred until a typed Message reference and reconciliation semantics are explicitly delivered, so a sample send action cannot accidentally claim delivery success.
