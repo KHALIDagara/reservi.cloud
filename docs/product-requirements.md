@@ -4,9 +4,9 @@
 
 Reservi is a mobile-first, conversation-centric CRM and operations system for businesses that turn customer conversations into real work.
 
-Its job is not merely to collect leads or schedule services. Its job is to help a customer request progress through the business with minimal friction while keeping operational state truthful automatically.
+Its job is to help a customer request progress through the business with minimal friction while keeping operational state truthful automatically.
 
-The core product model is:
+The core model is:
 
 ```text
 Customer conversation
@@ -15,58 +15,47 @@ Conversation state
       ↓
 Current Stage
       ↓
-Humans + AI + deterministic rules make required state true
+Humans + AI + deterministic Rules make required state true
       ↓
 Stage completion
       ↓
 Next Stage
 ```
 
-The CRM should maintain itself as a side effect of useful work.
+Reservi should feel like a shared inbox plus operational workspace, not a traditional CRM with separate Lead, Opportunity, Activity, and Deal bookkeeping.
 
-The system should feel like a shared inbox plus operational workspace, not like a traditional CRM that forces separate Lead, Opportunity, Activity, and Deal bookkeeping.
+The CRM should maintain itself as a side effect of useful work.
 
 ---
 
 ## 2. Product principles
 
-### 2.1 The Conversation is the lead and process instance
+### 2.1 Conversation is the lead and process instance
 
 A lead is not a separate record pointing to a Conversation.
 
-The Conversation is the operational root for the customer request and exposes the state needed to understand and progress it:
+Conversation is the operational root for a customer request and exposes the state required to understand and progress it:
 
 - customer context;
 - messages and notes;
 - current Stage;
-- fields/structured data;
+- configured Field values;
+- selected Catalog Items;
 - current owner/team;
 - Appointments;
-- selected Resources;
-- assignment/history;
-- AI/human operational context.
-
-Do not duplicate this truth in a parallel CRM object model.
+- history/audit context.
 
 ### 2.2 Stages are work contracts, not labels
 
 A Stage is not merely `new`, `qualified`, `booked`, etc.
 
-A Stage declares:
-
 ```text
 Stage = Blocks + Rules + Completion Predicate
 ```
 
-The Stage answers:
+A Stage declares what controls/capabilities are available now, what deterministic reactions may happen, and what must become true before progression.
 
-- what should the operator/AI be able to do now?;
-- what deterministic reactions should happen when state changes?;
-- what must become true before this request proceeds?
-
-This lets each account configure its operational flow without Reservi hard-coding a specific industry process.
-
-### 2.3 No privileged service → appointment sequence
+### 2.3 No privileged business sequence
 
 Reservi must not assume:
 
@@ -74,66 +63,87 @@ Reservi must not assume:
 qualification -> service -> appointment
 ```
 
-A business may configure:
+Valid configurations include:
 
 ```text
-appointment -> qualification
+appointment -> qualification -> catalog selection
+catalog selection -> assignment -> appointment
+qualification -> appointment
+catalog selection only
+appointment only
 ```
 
-or:
+The account defines what matters and when.
+
+### 2.4 Catalog + Item is the universal selectable business primitive
+
+Reservi should not have separate workflow primitives for Services, Cars, Rooms, Properties, Treatments, Equipment, etc.
+
+A business creates Catalogs such as:
 
 ```text
-resource selection -> appointment
+Services
+Cars
+Rooms
+Properties
+Treatments
+Packages
+Products
 ```
 
-or:
+Each Catalog contains Items with a common shape:
 
-```text
-qualification -> quote -> payment
-```
+- title;
+- images;
+- description;
+- price;
+- additional typed attributes;
+- active/archive state.
 
-or a one-stage flow.
+The same Catalog Selector Block can therefore select a service, car, property, room, product, or any other reusable business Item.
 
-Service selection is optional state. Appointment is independent scheduling state. Resources are optional assets/entities. The account defines which state matters and when.
+### 2.5 Appointment is independent scheduling state
 
-### 2.4 Humans, AI, and rules operate on the same state
+Appointment is a time-bound commitment associated with a Conversation.
 
-Humans and AI share the conceptual `Agent` abstraction.
+Reservi must not require an Item or Service to create an Appointment.
 
-Both should be able, subject to permissions, to inspect current Stage requirements and act on the same Conversation truth.
+Reservi must not require an Item to declare itself `bookable`.
 
-Deterministic Rules also act through the same authorized domain operations.
+A selected Item and an Appointment coexist as independent Conversation state. Their business meaning comes from the configured Flow and shared Conversation context.
 
-There must not be separate human, AI, and automation versions of the business process.
+### 2.6 Humans, AI, and Rules operate on the same state
 
-### 2.5 Flexible through composition, not unlimited programmability
+Human Agents, AI Agents, and deterministic Rules must act on the same authoritative Conversation state and use the same protected domain operations.
 
-Reservi should be configurable enough to support many industries while remaining understandable.
+Do not create parallel workflows for human work, AI work, and automation.
 
-The primary composition primitives are:
+### 2.7 Flexible through composition, not unlimited programmability
+
+Reservi should support many industries through a small set of primitives:
 
 - Fields;
+- Catalogs / Items / Item selections;
 - Appointments;
-- Resources;
-- Agent/Team assignment;
-- Messages/Notes;
+- assignment/team state;
+- Messages / Notes;
 - Rules;
 - Stage completion predicates;
-- future first-class features that expose state/controls/predicates/actions.
+- future first-class features that expose State + Controls + Predicates + Actions.
 
-Reservi is not intended to become a generic no-code database or arbitrary workflow programming platform.
+Reservi is not a general no-code programming platform.
 
-### 2.6 Mobile first
+### 2.8 Mobile first
 
-Core work must remain fully usable on phone-sized screens:
+Core operation must remain usable on phones:
 
-- inbox triage;
-- conversation reading/replying;
-- completing Stage requirements;
-- updating fields;
-- assigning/handoff;
-- selecting Resources;
-- creating/updating Appointments;
+- inbox;
+- conversation;
+- current Stage requirements;
+- Field editing;
+- Catalog Item selection;
+- assignment/handoff;
+- Appointment creation/update;
 - understanding why progression is blocked.
 
 ---
@@ -142,11 +152,11 @@ Core work must remain fully usable on phone-sized screens:
 
 ### Conversation
 
-The customer request / process instance / lead.
+The customer request, lead, and running process instance.
 
 ### Flow
 
-The account-configured ordered set of Stages used for a class of Conversations.
+The account-configured ordered set of Stages.
 
 ### Stage
 
@@ -154,23 +164,31 @@ The current desired-state contract: Blocks + Rules + Completion Predicate.
 
 ### Field
 
-Configurable structured value stored on either Customer or Conversation/request scope.
+Configurable structured fact stored on Customer or Conversation/request scope.
+
+### Catalog
+
+An account-owned collection of reusable selectable business Items.
+
+### Item
+
+A reusable entity inside a Catalog with title, images, description, price, typed attributes, and lifecycle state.
+
+### Item Selection
+
+One or more Items selected into the Conversation through a configured Catalog Selector Block.
 
 ### Appointment
 
-A time-bound commitment associated with a Conversation. It may optionally involve Agents, Resources, locations, or other context. It does not require a Service.
-
-### Resource
-
-An account-owned asset/entity that may be selected, assigned, referenced, scheduled, or reserved, such as a car, property, room, chair, or machine.
+A time-bound commitment associated with the Conversation. It is independent from Item selection.
 
 ### Rule
 
-A deterministic `IF predicate THEN actions` reaction to Conversation state.
+`IF predicate THEN action(s)` over normalized Conversation state.
 
 ### Action
 
-An authorized operation such as assign Agent, assign Team, send Message, update Field, create/change Appointment, or select/release Resource.
+An authorized operation such as assignment, sending a Message, updating a Field, selecting an Item, or managing an Appointment.
 
 See `docs/flow-engine.md` and `docs/domain-model.md` for canonical details.
 
@@ -178,18 +196,18 @@ See `docs/flow-engine.md` and `docs/domain-model.md` for canonical details.
 
 ## 4. Target users
 
-Reservi should support the same mental model across:
+The same model should support:
 
 - individual service providers;
 - salons/clinics/consultants;
-- plumbers/landscapers/installers/field-service businesses;
-- rental businesses with cars/equipment;
+- plumbers/landscapers/installers;
+- rental businesses;
 - property/real-estate/concierge operations;
 - multi-location companies;
-- agencies distributing customer requests across providers/teams;
-- organizations where AI and humans collaborate operationally.
+- agencies distributing requests across teams/providers;
+- organizations where AI and humans collaborate.
 
-The architecture should not require one workflow engine per vertical.
+A new vertical should usually be modeled by different Catalogs, Fields, Stages, and Rules—not by a new workflow architecture.
 
 ---
 
@@ -197,20 +215,18 @@ The architecture should not require one workflow engine per vertical.
 
 ### 5.1 Entry point
 
-An account administrator should be able to open a configuration surface such as:
+An administrator can configure the operational Flow through a surface such as:
 
 ```text
 Settings
 └── Stages / Flow
 ```
 
-A new account may receive a sensible default first Stage named `Qualification`, but every Stage's name and contents are configurable.
+A new Account may begin with a sensible Stage named `Qualification`, but the name and contents are configurable.
 
 ### 5.2 Stage editing
 
-A Stage editor should make the product model understandable without exposing a programming language.
-
-Conceptually:
+Example:
 
 ```text
 Stage: Qualification
@@ -218,12 +234,12 @@ Stage: Qualification
 Blocks
   Name                    Customer field
   Phone                   Customer field
-  City                    Conversation/customer field
+  City                    Conversation field
 
 Rules
   IF City = Marrakech
   THEN Assign Ahmed
-       Send message "Ahmed will handle your request."
+       Send "Ahmed will handle your request."
 
 Complete when
   Name exists
@@ -232,23 +248,33 @@ Complete when
   AND Owner exists
 ```
 
-Another Stage might be:
+Another Stage:
 
 ```text
-Stage: Site Visit
+Stage: Choose Vehicle
 
-Blocks
-  Site Visit              Appointment
+Block
+  Vehicle                 Catalog Selector -> Cars
 
 Complete when
-  Site Visit is confirmed
+  Vehicle selected
 ```
 
-Another account may place that Appointment in Stage 1.
+Another:
 
-### 5.3 Blocks
+```text
+Stage: Pickup
 
-Initial useful Blocks may include:
+Block
+  Pickup                  Appointment
+
+Complete when
+  Pickup Appointment is confirmed
+```
+
+The same Account may place Pickup before Vehicle selection if that is its process.
+
+### 5.3 Initial Block vocabulary
 
 **Fields**
 - text;
@@ -256,26 +282,20 @@ Initial useful Blocks may include:
 - boolean;
 - choice/multi-choice;
 - date/time;
-- location/address;
-- supported reference fields.
+- location/address.
 
-**Operational capabilities**
-- Appointment;
-- Resource selector;
-- Agent/Team selector where permissions allow;
-- future domain capabilities as they become real product features.
+**Catalog**
+- Catalog Item Selector, single or multiple.
 
-**Communication/actions**
-- send configured message as a Rule action;
-- internal Note where useful.
+**Operational**
+- Appointment selector/editor;
+- Agent/Team selector where permissions allow.
 
-Do not make every Action a visual block when a simpler Rule configuration communicates it better.
+Future domain features should add Blocks only when they own meaningful state/capability.
 
 ### 5.4 Completion visibility
 
-The user handling a Conversation must understand what remains incomplete.
-
-Example:
+Operators must understand what remains incomplete.
 
 ```text
 Qualification — 3/4 complete
@@ -286,264 +306,278 @@ Qualification — 3/4 complete
 ○ Owner must be assigned
 ```
 
-This same state should be machine-readable to AI Agents.
+AI Agents should be able to read the same missing requirements from authoritative state.
 
 ---
 
 ## 6. Fields
 
-### 6.1 Scope
+### Customer field
 
-A configurable Field must specify where its truth belongs.
+Durable profile facts across Conversations, such as name, phone, email, language.
 
-**Customer field** — durable across requests, e.g. name, phone, language.
+### Conversation field
 
-**Conversation field** — specific to the current request, e.g. budget, surface, requested service, urgency, property type.
+Facts specific to the request, such as budget, surface, urgency, issue description.
 
-The UI may simply call both `Fields`, but storage/semantics must remain explicit.
+The Stage builder may present both as `Field`, but target scope is explicit.
 
-### 6.2 Service selection
+Fields are for facts. Catalog Items are for reusable selectable entities that deserve their own listing/card.
 
-A Service is not mandatory system state.
+Useful heuristic:
 
-An account may have a service catalog and expose a Service reference/choice Field in any Stage.
-
-The system must support all of:
-
-- Appointment without Service;
-- Service without Appointment;
-- Appointment before Service selection;
-- Service selection before Appointment;
-- no Service concept at all.
-
-Do not make Service a hidden prerequisite for scheduling.
+> If it is a fact about this Customer/request, use a Field. If it is a reusable thing the business presents and selects, use a Catalog Item.
 
 ---
 
-## 7. Appointments
+## 7. Catalogs and Items
 
-### 7.1 Product meaning
+### 7.1 Catalog creation
+
+An Account can create Catalogs such as:
+
+```text
+Services
+Cars
+Rooms
+Properties
+Treatments
+Packages
+Products
+```
+
+No special system behavior is attached merely because a Catalog is named `Services` or `Cars`.
+
+### 7.2 Item shape
+
+Every Item supports common merchandising/presentation data:
+
+- title;
+- images;
+- description;
+- price;
+- typed additional attributes;
+- active/archive state.
+
+Additional attributes can differ by Catalog.
+
+Examples:
+
+```text
+Cars
+  transmission
+  seats
+  fuel_type
+```
+
+```text
+Properties
+  bedrooms
+  area
+  property_type
+```
+
+```text
+Services
+  category
+  estimated_duration
+```
+
+These are data attributes, not subtype behavior.
+
+### 7.3 Catalog Selector Block
+
+A Stage can expose a selector for one Catalog:
+
+```text
+Label: Requested service
+Catalog: Services
+Mode: Single
+Key: requested_service
+```
+
+or:
+
+```text
+Label: Vehicle
+Catalog: Cars
+Mode: Single
+Key: vehicle
+```
+
+or:
+
+```text
+Label: Extras
+Catalog: Add-ons
+Mode: Multiple
+Key: extras
+```
+
+Rules and completion predicates can inspect selected Item identity, price, and supported attributes.
+
+### 7.4 No `bookable` concept by default
+
+An Item does not need to declare:
+
+```text
+bookable = true
+```
+
+Selection is just Conversation state.
+
+If later the product genuinely needs inventory reservation or item-level capacity/conflict guarantees, that is a separate scheduling/reservation requirement and should be modeled deliberately.
+
+---
+
+## 8. Appointments
+
+### 8.1 Meaning
 
 Appointment is the canonical scheduling entity.
 
-A user may say they are "booking" something, but Reservi stores/manages an Appointment.
+A user may call the action a booking, but the durable record is Appointment.
 
-An Appointment is a time-bound commitment related to the Conversation.
+Appointment is a time-bound commitment associated with a Conversation.
 
 Examples:
 
 - phone consultation;
 - site visit;
-- treatment;
 - vehicle pickup;
 - property viewing;
 - installation;
 - delivery;
 - follow-up.
 
-### 7.2 Optional relationships
+### 8.2 Independence from Items
 
-An Appointment may involve:
-
-- zero or more relevant Agents/participants;
-- zero or more Resources;
-- a location;
-- optional reference data such as selected Service;
-- a configured logical role such as `site_visit` or `installation`.
-
-Service must not be mandatory.
-
-### 7.3 Multiple Appointments
-
-One Conversation may contain multiple Appointments.
-
-A Stage must be able to require a specific logical Appointment:
+These configurations must all work:
 
 ```text
-Site Visit status = completed
+Appointment without selected Item       YES
+Item selected without Appointment       YES
+Appointment before Item selection       YES
+Item selection before Appointment       YES
+multiple Item selections                YES
+multiple Appointments                    YES
+no Catalog at all                        YES
 ```
 
-without confusing it with an Installation or Follow-up Appointment.
+### 8.3 Shared context instead of hard coupling
 
-### 7.4 Completion flexibility
-
-An Appointment may be created/confirmed/completed in Stage 1, Stage 2, another Stage, or outside Stage completion entirely depending on account configuration.
-
-There is no global product rule that scheduling happens at a fixed point.
-
----
-
-## 8. Resources
-
-### 8.1 Purpose
-
-Accounts may define Resource Types and Resources for assets/entities that matter operationally.
-
-Examples:
+Suppose the Conversation contains:
 
 ```text
-Car
-Property
-Room
-Equipment
-Chair
-Machine
-Boat
-Rental unit
+Selected vehicle: Range Rover Evoque
+Appointment: Pickup tomorrow at 14:00
 ```
 
-### 8.2 Independent use
+The operator who receives/views the Appointment should also see relevant Conversation context, including the selected vehicle.
 
-A Resource may be selected in a Stage without an Appointment.
+Reservi does not need to infer that the vehicle is a special `bookable Resource`. The configured Flow gave the combination its meaning.
 
-Example:
+Likewise:
 
 ```text
-Stage: Choose vehicle
-Block: Vehicle [Resource selector]
-Complete when: Vehicle selected
+Selected Item: Garden Maintenance
+Appointment: Site visit
 ```
 
-### 8.3 Scheduled use
-
-An Appointment may optionally reserve/associate Resources.
-
-Example:
+and:
 
 ```text
-Appointment: Property Viewing
-Resource: Villa Agdal
-Agent: Ahmed
+Selected Item: Villa Agdal
+Appointment: Property viewing
 ```
 
-If a Resource is exclusive for a time interval, Reservi must prevent conflicting committed Appointments according to configured scheduling rules.
+are simply composed state.
+
+### 8.4 Multiple Appointments
+
+One Conversation may have distinct logical Appointments such as `site_visit`, `installation`, `pickup`, and `follow_up`.
+
+Configured Blocks need stable keys so completion predicates address the intended Appointment.
 
 ---
 
 ## 9. Rules, routing, and assignment
 
-### 9.1 One condition model
+Use one condition model rather than separate routing/assignment/completion languages.
 
-Do not create separate rule engines for:
-
-- routing;
-- assignment;
-- Stage completion;
-- messages.
-
-Use one predicate/expression model against normalized Conversation state.
-
-### 9.2 Assignment as action
-
-Example:
+Examples:
 
 ```text
 IF City = Marrakech
 THEN Assign Ahmed
 ```
 
-or:
-
 ```text
-IF Property.Region = Marrakech
-THEN Assign Marrakech Team
+IF Requested Service.category = irrigation
+THEN Assign Irrigation Team
 ```
 
-or:
-
 ```text
-IF Language = French AND Budget > 5000
+IF Property.area = Marrakech
 THEN Assign Sarah
-     Send premium French intro message
+     Send intro message
 ```
 
-The assignment domain still owns current-owner integrity/history. The Rule merely invokes it.
+Assignment domain logic still owns one-current-owner integrity and history. The Rule merely invokes it.
 
-### 9.3 Stage gate is separate from actions
-
-A Rule may assign Ahmed, while the Stage independently declares:
+Stage completion is separate:
 
 ```text
-Complete when:
-City exists
-AND Owner exists
-```
-
-This separation prevents side effects and progression logic from becoming tangled.
-
-### 9.4 Explainability
-
-Users must be able to understand why an automated action happened.
-
-Example:
-
-```text
-Assigned to Ahmed
-Reason: Stage "Qualification" / Rule "Marrakech requests"
-Matched: City = Marrakech
+Complete when City exists AND Owner exists
 ```
 
 ---
 
 ## 10. Human and AI operation
 
-### 10.1 Shared goal state
-
-The Stage should tell both humans and AI what is missing.
+The current Stage is the shared operational contract.
 
 Example:
 
 ```text
-Current Stage: Qualification
-Required:
-✓ Name
-✓ City
-○ Confirmed Site Visit
+Current Stage: Pickup
+
+✓ Customer identified
+✓ Vehicle selected: Range Rover Evoque
+○ Pickup Appointment confirmed
 ```
 
-A human sees the control. An AI can reason from the same state and, if permitted, ask the customer for missing information or invoke the relevant capability.
+A human sees the same goal an AI sees.
 
-### 10.2 AI extraction
+AI can update allowed Fields, select allowed Items, create/manage Appointments, send Messages, or assign/handoff only through granted capabilities and server-side validation.
 
-AI may extract configured Fields from conversation text only when allowed and all values still pass normal Field validation.
-
-### 10.3 AI cannot define truth by prompt
-
-Prompts/instructions do not replace Flow configuration, authorization, or domain validation.
-
-The durable Stage/Rule/Conversation state is authoritative.
+Flow configuration—not prompt prose—is authoritative process intent.
 
 ---
 
-## 11. Messaging and inbox
+## 11. Inbox and Conversation workspace
 
-Conversation remains the primary daily-work surface.
+The inbox should expose actionable state without becoming a spreadsheet CRM.
 
-The inbox should make it easy to see:
+Useful context includes:
 
-- customer;
+- Customer;
 - current Stage;
 - current owner/team;
-- attention/unread status;
-- useful configured state relevant to the operator;
+- attention/unread state;
+- relevant configured Fields;
+- selected Items relevant to the process;
 - blocked/missing requirement where useful.
 
-From the Conversation, an Agent should be able to:
+From the Conversation an Agent should be able to perform the current Stage's work without excessive navigation.
 
-- read/reply;
-- update current Stage Fields;
-- see missing completion requirements;
-- manage assignment;
-- use Appointment/Resource controls exposed by the current Stage;
-- inspect history/context.
-
-Do not force operators into disconnected CRM modules to complete ordinary flow work.
+Appointment surfaces should display relevant Conversation context, including selected Items, rather than duplicating them into Appointment-specific business columns.
 
 ---
 
-## 12. Flow runtime behavior
+## 12. Flow runtime
 
-On relevant state change, Reservi should conceptually:
+On relevant state mutation:
 
 ```text
 persist authorized state change
@@ -554,112 +588,104 @@ execute newly applicable Actions safely
         ↓
 re-read authoritative state
         ↓
-evaluate Stage completion predicate
+evaluate completion predicate
         ↓
-if complete -> advance to next configured Stage
+if complete -> advance to next Stage
 ```
 
 Requirements:
 
 - deterministic evaluation;
-- explicit Rule priority/order semantics;
+- explicit Rule priority/order;
 - loop protection;
-- idempotency for irreversible actions;
+- idempotency for irreversible Actions;
 - race-safe Stage advancement;
 - explainability/audit for meaningful automated actions;
-- no client-side-only workflow truth.
+- server-side truth.
 
-Initial product should prefer ordered Stages rather than arbitrary graph branching.
+Initial product should use ordered Stages rather than an arbitrary graph.
 
 ---
 
 ## 13. Feature integration contract
 
-A future first-class product feature should integrate into Stage flows by exposing:
+A new first-class feature should integrate by exposing:
 
 ```text
 Feature = State + Controls + Predicates + Actions
 ```
 
-For example, a future Quote feature could expose:
+Example Quote:
 
-- state: quote.status, quote.total;
-- control: Quote Builder;
-- predicates: quote exists, quote accepted;
-- actions: create/send quote.
+- State: quote.status, quote.total;
+- Control: Quote Builder;
+- Predicates: quote exists / accepted;
+- Actions: create/send quote.
 
-Then a Stage can say:
+Then a Stage can require Quote acceptance without changing the central Flow engine.
 
-```text
-Complete when Quote status = accepted
-```
-
-without the central Flow engine gaining quote-specific workflow code.
-
-This is the preferred extensibility mechanism.
+Catalog/Item itself follows this philosophy: Item selection is state, Catalog Selector is the control, predicates inspect Items, actions can select/clear them.
 
 ---
 
-## 14. Multi-tenancy and account configuration
+## 14. Multi-tenancy
 
-Each Account owns its configuration and operational data, including as applicable:
+Each Account owns its:
 
-- Flows/Stages;
+- Flows / Stages / Rules;
 - Field Definitions;
-- Rules;
-- Agents/Teams;
-- Resource Types/Resources;
-- Customers/Conversations;
+- Catalogs / Items;
+- Agents / Teams;
+- Customers / Conversations;
 - Appointments;
-- Channels/Integrations.
+- Channels / Integrations.
 
-One Account must never be able to reference another Account's Agent, Resource, Stage, Rule, Field, Appointment, Customer, or Conversation through configuration or runtime operations.
+A configuration or runtime operation must never reference another Account's Item, Catalog, Agent, Stage, Field, Appointment, Customer, or Conversation.
 
 ---
 
 ## 15. Reliability requirements
 
-Critical operations must tolerate retries, duplicate delivery, stale UI, and concurrent actors.
-
-Particular high-risk areas:
+High-risk cases include:
 
 - duplicate messaging webhooks;
-- Rule action retries;
-- two Rules/users assigning concurrently;
+- repeated Rule evaluation;
+- Rule Action retry;
+- concurrent assignment;
 - concurrent Stage completion/advancement;
-- two users booking an exclusive Agent/Resource;
-- Action executed once remotely but local response lost;
-- configuration changed while Conversations are in-flight.
+- stale UI;
+- configuration changed while Conversations are in flight;
+- Item archived/changed after selection;
+- Appointment changed while a Stage depends on it.
 
 Durable invariants require database/transaction protection where appropriate.
+
+Selected historical Item context may need snapshot/display semantics if mutable Item data later affects operational truth; decide deliberately when that requirement appears rather than copying everything prematurely.
 
 ---
 
 ## 16. Configuration evolution
 
-Changes to Flow configuration must not silently corrupt in-flight Conversations.
+Flow/Catalog configuration affects live Conversations, so destructive edits need explicit semantics.
 
-The implementation must deliberately define semantics for cases such as:
+Examples requiring deliberate behavior:
 
-- Stage renamed;
-- Stage reordered;
-- Stage archived/deleted;
+- Stage renamed/reordered/archived;
 - required Block removed;
-- completion expression changed;
-- Rule changed;
+- Rule/completion expression changed;
 - Field Definition changed;
-- Resource archived;
+- Catalog archived;
+- Item archived/deleted;
+- Item attributes changed while selected;
 - Agent removed.
 
-The simplest viable strategy may be versioned Flow/Stage configuration or constrained edits once active Conversations depend on configuration. Do not assume mutable configuration is harmless.
-
-The exact strategy should be chosen before implementing the builder.
+Versioned configuration, constrained edits, or explicit migration of in-flight Conversations are preferable to silent reinterpretation.
 
 ---
 
 ## 17. Deliberate non-goals
 
-Unless a concrete requirement changes this, Reservi is not trying to become:
+Reservi is not trying to become:
 
 - Salesforce clone;
 - BPMN engine;
@@ -667,13 +693,13 @@ Unless a concrete requirement changes this, Reservi is not trying to become:
 - arbitrary graph workflow editor;
 - general-purpose scripting runtime;
 - Airtable-style universal entity database;
+- a type hierarchy for every business vertical;
 - event-sourced platform;
-- microservice mesh;
-- generic marketing automation suite.
+- microservice mesh.
 
-Do not support arbitrary user-supplied Ruby/JavaScript expressions in Rules.
+Do not create separate `Service`, `Car`, `Room`, and `Property` workflow engines/models merely because the business vocabulary differs.
 
-Flexibility must remain bounded by supported state, predicates, controls, and actions.
+Do not execute arbitrary user Ruby/JavaScript/SQL in Rules.
 
 ---
 
@@ -681,27 +707,26 @@ Flexibility must remain bounded by supported state, predicates, controls, and ac
 
 Reservi is succeeding when:
 
-- an account can model its real customer process without code;
-- the same primitives support a salon, field-service business, rental company, property operation, and agency without separate workflow architecture;
-- Service is optional rather than baked into scheduling;
-- Appointment can appear wherever the business needs it;
-- Resources can participate without spawning vertical-specific code;
-- operators always know what a Conversation needs next;
-- AI can understand the same Stage goal as a human;
+- users can model their real customer process without code;
+- a salon, car rental, property operation, landscaper, and agency use the same core primitives;
+- Services/Cars/Rooms/Properties are just Catalog Items rather than architectural forks;
+- Appointment can appear anywhere without requiring Item selection;
+- selected Items provide business context without a global `bookable` flag;
+- operators always know what the Conversation needs next;
+- AI sees the same Stage goal as humans;
 - Rules are deterministic and explainable;
-- CRM state becomes more accurate because normal work produces it;
 - system complexity grows slower than product capability.
 
 ---
 
 ## 19. Feature acceptance template
 
-Before implementing a feature, express it as:
+Before implementation, define:
 
 ```text
 Actor:
 Trigger:
-Relevant Stage / Flow state:
+Relevant Flow / Stage state:
 Preconditions:
 Expected user-visible result:
 Persisted truth:
@@ -714,12 +739,13 @@ Configuration compatibility:
 Test / verification plan:
 ```
 
-For any new first-class domain capability, additionally answer:
+For any new first-class capability also answer:
 
 ```text
 What State does it expose?
 What Controls does it expose?
 What Predicates can inspect it?
 What Actions can manipulate it?
+Can existing Field or Catalog/Item express the need already?
 Can it integrate without changing the core Stage engine?
 ```
