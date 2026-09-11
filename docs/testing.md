@@ -472,3 +472,13 @@ These are implementation acceptance cases, not tests that already exist. Run aga
 For changes confined to planning documents, check the complete diff, local relative links, task references, invariant identifiers, status claims and contradictions. Obtain independent review as AGENTS.md requires. Do not bootstrap an application just to pretend documentation has runtime tests.
 
 When code exists, each task in [implementation-plan.md](implementation-plan.md) records its actual command/results and evidence. Existing generic guidance above does not require repeating the full suite for every small edit: broaden testing only for a named residual risk or CI gate. Provider contract and model-quality checks supplement deterministic product tests; they cannot replace them.
+
+
+## 20. Account onboarding and AI knowledge acceptance
+
+The detailed scenarios in [Accounts and AI setup](accounts-and-ai-setup.md) §9 supplement AC01–AC38. Prove idempotent multi-account creation and per-tab routing; invite accept/resend/revoke and last-admin races; one assignment picker with inactive-state eligibility; permitted source publication/retrieval/download/cache; document extraction failure; configuration/source invalidation during inference; automatic stage requirements; side-effect-free private preview; and Agent/Account capacity reservation recovery.
+
+Use synthetic distinct-tenant and restricted-source fixtures that would reveal leakage. Include Arabic/French and conflicting/missing source examples for retrieval evaluation. No live invitations are sent by documentation or normal tests; transactional email uses deterministic fixtures until a deliberately configured delivery smoke. Inference preview can consume budget while still prohibiting live domain/channel actions.
+
+
+Prove human/AI workspace parity: equal grants/query return matching source IDs/revisions, equal capabilities produce matching operation validation, and human Knowledge search works with no model/AI configured. Verify Work/Knowledge/Guidance phone tabs preserve drafts, approved reply insertion requires send, preview-as-Agent does not inherit administrator permissions, and restricted source provenance prevents leakage through handoff notes/summaries. These extend S3/S4/S6 acceptance rather than delaying human Knowledge until T10.

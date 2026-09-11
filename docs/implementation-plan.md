@@ -60,12 +60,13 @@ Acceptance: document baseline SHA and clean/dirty status; identify target Ruby/R
 
 ### T01 — Foundation, tenancy and authorization
 
-Create Rails monolith with PostgreSQL, Hotwire, Active Job and Active Storage. Pin supported runtime/dependency versions after checking current official compatibility. Add reproducible setup, test, worker and development commands to root README. Add CI boot/migration/test/lint/security checks that actually run. Start with Account/User/Membership/Agent/Team schema, policies and shared actor context.
+Create Rails monolith with PostgreSQL, Hotwire, Active Job and Active Storage. Pin supported runtime/dependency versions after checking current official compatibility. Add reproducible setup, test, worker and development commands to root README. Add CI boot/migration/test/lint/security checks that actually run. Start with Account/User/Membership/Agent/Team schema, policies and shared actor context. Include idempotent multi-Account creation, the account switcher, default General Team, AccountInvitation acceptance/delivery, and last-admin protection from [Accounts and AI setup](accounts-and-ai-setup.md). Transactional invitation email is a separate adapter/job from the customer messaging channel in T08; first prove it with deterministic delivery fixtures.
 
 Acceptance:
 
 - Clean checkout can install, create/migrate database, start web/worker and run a smoke test.
-- User belongs to two Accounts and switches explicitly; membership in one does not grant access to the other.
+- User creates and administers many Accounts with per-tab routing and pagination; membership in one does not grant access to another.
+- Invitation accept/resend/revoke races produce one verified membership/Agent; pending invitees cannot receive assignments; concurrent last-admin removals fail safely.
 - Account-scoped composite foreign keys reject mismatched associations through direct database writes.
 - Role/capability denial is tested at request and operation boundaries, including inactive memberships and AI identity without User.
 - Login/logout/CSRF/session behavior works on phone viewport; no fixture credentials in production config.
@@ -84,6 +85,7 @@ Acceptance:
 - Two stale edits cannot silently overwrite; requests return current state and preserve user input on conflict.
 - Notes cannot enter the send path; attachment and Turbo access respect the permitted audience.
 - Inbox and message list paginate stably and retain authoritative state after refresh.
+- The workspace reserves common Work/Knowledge/Guidance areas. Integrate S3 human search/read and approved-answer insertion when its library is delivered; this integration requires T02+S3, not T10.
 
 Proof: request/policy tests, concurrency claim test, mobile end-to-end note/reply/refresh test. INV-010, 016, 060–065, 100–104.
 
@@ -134,7 +136,7 @@ Proof: generic fixtures, snapshot/integrity tests, race test, mobile picker/refr
 
 ### T06 — Rules, assignment and execution history
 
-Deliver RuleExecution, actor policy, atomic local action bundles, stable execution keys, priority ordering, bounded reevaluation and visible retry/error controls. Implement assignment to eligible Agent or Team queue using the same operation as manual work. Send-message action remains unavailable until T08 delivers its full intent/reconciliation path.
+Deliver RuleExecution, actor policy, atomic local action bundles, stable execution keys, priority ordering, bounded reevaluation and visible retry/error controls. Implement assignment to eligible Agent or Team queue using the same operation as manual work. Use one roster/picker for humans and AI; draft AI stays visibly unavailable until T10 activation is delivered. Human and AI profiles use shared AgentConfiguration and source grants; human Work/Knowledge/Guidance access must not wait for AI activation. Send-message action remains unavailable until T08 delivers its full intent/reconciliation path.
 
 Acceptance:
 
@@ -200,11 +202,15 @@ Proof: publication tests, safe-preview side-effect assertions, composition brows
 
 ### T10 — AI as a bounded operational Agent
 
-Deliver AiRun, fake/live adapters, permitted snapshot and tool schemas. Use normal domain operations and pending Message intent flow. Implement budgets, leases, stale revision/ownership rejection, explicit handoff and administrator disable controls.
+Deliver AiRun, fake/live adapters, permitted snapshot and tool schemas. Use normal domain operations and pending Message intent flow. Implement budgets, leases, stale revision/ownership rejection, explicit handoff and administrator disable controls. Deliver setup slices S3–S5 in [Accounts and AI setup](accounts-and-ai-setup.md): shared/restricted Knowledge publishing and human search/read access, versioned AI behavior, readiness/private preview, unified assignment admission, automatic current-stage context and source/configuration revocation. Knowledge ingestion/retrieval and human browsing (S3) depend only on T01/Active Storage, with the Conversation panel after T02, and must ship without requiring an AI provider; runtime activation still requires T08/T09.
 
 Acceptance:
 
-- AI and human read the same missing requirements and edit the same facts/selections/appointments.
+- AI and human read the same missing requirements and edit the same facts/selections/appointments without an admin-maintained copy of the Flow in prompts.
+- Q&A, reviewed documents and scenarios ground permitted answers; scoped retrieval excludes foreign/restricted sources before ranking. Failed replacement extraction leaves the previous published revision available.
+- AI appears in the ordinary assignment picker when active and eligible; pause, source/configuration revocation and capacity exhaustion have visible, recoverable behavior.
+- Private preview proposes actions without mutating live work; any model usage is recorded. Source conflict or missing knowledge produces clarification/handoff.
+- Account/Agent capacity and budget reservations are atomic and recover after expired leases; many tenants cannot starve one another.
 - A malicious incoming message cannot add tools, target another Account or modify configuration.
 - Human handoff/reassignment makes old AI output unusable; one active run per Conversation survives duplicate triggers.
 - Invalid tool call, provider outage, budget limit or expired lease produces visible failure/handoff without corrupting state.
@@ -224,7 +230,7 @@ Acceptance:
 - Complete cross-tenant and same-account restricted-team regression suite; independent review has no unresolved critical/high correctness defects.
 - Restore database and media into a clean environment and verify a conversation, selection, attachment and appointment. Adopt provisional RPO <=24h and RTO <=4h only if the pilot operator accepts them and the exercise proves them; otherwise improve the plan before release.
 - Kill/restart workers and show pending ingestion/evaluation/delivery recovery without duplicate irreversible effects.
-- Run mobile core journeys at 360px and desktop, keyboard focus/error feedback, and French/Arabic text including RTL layout.
+- Run mobile core journeys at 360px and desktop, keyboard focus/error feedback, and French/Arabic text including RTL layout. Include Account creation/switch/invite, AI setup and Knowledge review; test Arabic/French retrieval quality and permission revocation, not just translated labels.
 - Load results identify hardware, dataset, timings, query counts and bottlenecks; no claim beyond tested envelope.
 - Monitor provider unknown outcomes, oldest pending work, failed rules, AI spend and DB contention; verify alert and recovery procedures.
 - Rehearse deployment and compatible rollback; record data-repair procedure for migrations that cannot be reversed safely.

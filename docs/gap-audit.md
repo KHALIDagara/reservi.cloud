@@ -83,3 +83,8 @@ Priority: P0 blocks a safe foundation; P1 blocks a usable pilot; P2 can wait for
 ## Remaining choices requiring real evidence
 
 These do not block documentation or the initial build: select supported Ruby/Rails versions at bootstrap; choose the first channel/provider with test credentials before its adapter task; measure hosting capacity/cost; establish customer-data retention and recovery objectives with the pilot operator before production. Do not invent provider guarantees or claim legal compliance from an architecture document.
+
+
+## Subsequent scope: account and AI administration
+
+The 55-entry audit above describes baseline `153315d`. The later user requirement for multi-Account creation, invitations, unified Human/AI assignment and knowledge setup is specified in [Accounts and AI setup](accounts-and-ai-setup.md). Its S1–S6 slices extend T01/T06/T10/T11 and address invitation/last-admin races, AI readiness/pause/capacity, shared/restricted knowledge publication, automatic stage context, and instruction/source revocation. These features remain unimplemented until their acceptance evidence exists.

@@ -14,6 +14,10 @@ At the audited baseline `153315d`, this repository contains specifications and a
 
 Do not treat a specification decision as a verified implementation.
 
+## Account and AI administration
+
+[Accounts and AI setup](accounts-and-ai-setup.md) covers many Accounts per login, invitations, one Human/AI assignment list, simple admin onboarding, Q&A/documents/scenarios, behavior configuration and automatic stage context. It extends T01/T06/T10/T11 without introducing a separate AI workflow.
+
 ## Core documents
 
 ### `product-requirements.md`

@@ -23,4 +23,6 @@ Target stack: Rails, PostgreSQL, Hotwire, Active Job and Active Storage. Keep on
 5. [Implementation plan](docs/implementation-plan.md)
 6. [Invariants](docs/invariants.md) and [testing strategy](docs/testing.md)
 
+For the administration experience, read [Accounts and AI setup](docs/accounts-and-ai-setup.md): multiple Accounts, invitations, AI teammates and shared business knowledge.
+
 The plan contains dependency-ordered tasks and acceptance evidence. No implementation task is currently verified. [Documentation index](docs/README.md) explains the complete reference set.

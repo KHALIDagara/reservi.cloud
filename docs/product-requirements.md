@@ -766,3 +766,19 @@ The following decisions make the above requirements concrete. They are implement
 - **Configuration UX:** preview explains outcomes without causing side effects; unsupported/invalid references fail publication with actionable errors. A logical explanation is shown for complex completion rules instead of a misleading percentage.
 
 Support for other channels, provider-specific capabilities and production data retention is decided and verified before the corresponding release; it is not inferred from generic architecture language.
+
+
+## 21. Account administration and AI teammates
+
+One authenticated User can create and administer many independent Accounts, invite human teammates into each Account, and add AI Agents. Creating an Account makes the creator an administrator there; it does not grant platform-wide tenant access. No fixed Account-count restriction belongs in the domain model; inference/storage usage remains metered and controlled.
+
+The admin experience uses a searchable Account switcher, resumable setup and one **People & AI** roster. Accepted human members and activated eligible AI Agents appear in the same assignment picker and share the Conversation owner field. Pending invitees and draft/paused AI are visibly unavailable. Default Teams and role presets keep setup short; last-administrator removal is prohibited.
+
+An Account has shared Knowledge with Q&A, reviewed documents and scenarios, plus restricted sources explicitly granted to human or AI Agents. Instructions describe behavior; scenarios illustrate responses and tests; neither replaces authoritative Rules/Stage requirements. Source ingestion, publication, revision, access and failure states are visible. Administrators do not repeat the Flow in each AI prompt.
+
+An assigned AI automatically receives permitted current-stage requirements, saved answers, relevant Conversation context and allowed tools from the same backend state reader as humans. Configuration/source changes invalidate stale work. Private preview precedes autonomous activation; budgets, human fallback, pause and accountable handoff are first-class controls.
+
+See [Accounts and AI setup](accounts-and-ai-setup.md) for the complete UX, invitation, knowledge, runtime and acceptance plan.
+
+
+Humans and AI must have the same operational interface: Conversation, current-stage Work, Knowledge, Guidance and permitted Actions. Human operators can search Q&A, read documents/scenarios, consult instructions and insert approved answers into a reply draft. AI receives the same authorized content through the shared structured interface. The admin publishes once for both; Agent kind never independently grants or denies knowledge. Human Knowledge access ships independently from autonomous AI. Full UI and permission-parity behavior is defined in setup §11.

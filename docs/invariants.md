@@ -400,3 +400,35 @@ Each Rule executes at most once successfully per stage entry; its local actions,
 ### INV-128 — Same-account membership is not universal visibility
 
 Team scope, ownership and capabilities restrict reads and actions within an Account, including Customer context, media, search, realtime and AI snapshots.
+
+
+## 15. Account setup and AI knowledge invariants
+
+### INV-130 — Account administration does not imply platform access
+
+Creating/administering many Accounts uses explicit Account memberships. Current tab/session UI cannot retarget a request into another Account or expand visibility.
+
+### INV-131 — Invitation acceptance grants verified membership once
+
+A valid invitation must match the authenticated verified email and current authority; retries cannot duplicate membership/Agent or revive revoked tokens. Reactivation uses newly granted access, not old privileges. At least one active Account administrator remains.
+
+### INV-132 — AI and human share operational assignment identity
+
+Conversation owner and Team membership use Agent for both kinds. Pending invited humans and draft/paused/ineligible AI cannot receive new work. AI does not become a scheduled human calendar participant through assignment.
+
+### INV-133 — Knowledge access is enforced before retrieval
+
+Only permitted published source revisions enter search results, prompts, previews, downloads or caches. A different Account's source or an ungranted restricted source remains inaccessible.
+
+### INV-134 — Instructions and examples cannot override domain truth
+
+Stage requirements and capabilities come from canonical server state. Instructions, documents, Q&A, scenarios and summaries cannot bypass validation, grant actions or directly advance a Stage.
+
+### INV-135 — AI context publication and revocation invalidate stale work
+
+AI configuration, guidance and source-access generations are checked alongside owner/input revisions before new actions and unclaimed sends. Failed extraction does not replace usable published knowledge; archive/revoke immediately removes its authority.
+
+
+### INV-136 — One work interface serves both Agent kinds
+
+Human and AI Agents use the same actor-scoped workspace state, stage explanation, published Knowledge/Guidance and domain operations. Equivalent permissions yield equivalent source eligibility and validation. Agent kind alone does not determine Knowledge access. Handoff does not transfer source grants or leak restricted derived notes/summaries.
