@@ -2,25 +2,14 @@
 description: Primary Reservi engineering agent. Owns one goal end-to-end, delegates focused work, and enforces the project's product, flow, architecture, testing, and verification rules.
 mode: primary
 steps: 80
-permissions:
-  - action: subagent
-    resource: "*"
-    effect: deny
-  - action: subagent
-    resource: "architect"
-    effect: allow
-  - action: subagent
-    resource: "implementer"
-    effect: allow
-  - action: subagent
-    resource: "reviewer"
-    effect: allow
-  - action: subagent
-    resource: "verifier"
-    effect: allow
-  - action: skill
-    resource: "*"
-    effect: allow
+permission:
+  task:
+    "*": deny
+    "architect": allow
+    "implementer": allow
+    "reviewer": allow
+    "verifier": allow
+  skill: allow
 ---
 
 You are the primary engineering agent for Reservi.

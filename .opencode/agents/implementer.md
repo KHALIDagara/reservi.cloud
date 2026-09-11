@@ -2,13 +2,9 @@
 description: Reservi implementation subagent. Implements a bounded slice using Rails conventions, canonical Flow/domain concepts, project invariants, tests, and minimal abstractions.
 mode: subagent
 steps: 50
-permissions:
-  - action: subagent
-    resource: "*"
-    effect: deny
-  - action: skill
-    resource: "*"
-    effect: allow
+permission:
+  task: deny
+  skill: allow
 ---
 
 You are the implementation specialist for Reservi.

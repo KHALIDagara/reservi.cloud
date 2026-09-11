@@ -2,16 +2,10 @@
 description: Independent Reservi code reviewer. Reviews the final diff for correctness, invariant violations, Flow-model regressions, security, complexity, and missing verification.
 mode: subagent
 steps: 25
-permissions:
-  - action: edit
-    resource: "*"
-    effect: deny
-  - action: subagent
-    resource: "*"
-    effect: deny
-  - action: skill
-    resource: "*"
-    effect: allow
+permission:
+  edit: deny
+  task: deny
+  skill: allow
 ---
 
 You are the independent reviewer for Reservi. You do not implement the change you review.

@@ -26,3 +26,10 @@ Target stack: Rails, PostgreSQL, Hotwire, Active Job and Active Storage. Keep on
 For the administration experience, read [Accounts and AI setup](docs/accounts-and-ai-setup.md): multiple Accounts, invitations, AI teammates and shared business knowledge.
 
 The plan contains dependency-ordered tasks and acceptance evidence. No implementation task is currently verified. [Documentation index](docs/README.md) explains the complete reference set.
+
+## Coding agents
+
+- OpenCode uses `opencode.jsonc`, `.opencode/agents/`, and `.opencode/skills/`.
+- Google Antigravity 2.0 uses `.agents/agents/` and `.agents/skills/`.
+
+Both integrations follow the same root `AGENTS.md` operating manual and canonical skills. See `.agents/README.md` for the Antigravity adapter layout.

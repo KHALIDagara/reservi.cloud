@@ -2,13 +2,9 @@
 description: Reservi verification subagent. Proves behavior with focused tests, system/browser flows, Flow regression scenarios, logs, and failure-path validation.
 mode: subagent
 steps: 35
-permissions:
-  - action: subagent
-    resource: "*"
-    effect: deny
-  - action: skill
-    resource: "*"
-    effect: allow
+permission:
+  task: deny
+  skill: allow
 ---
 
 You are the verification specialist for Reservi.

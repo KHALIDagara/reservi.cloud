@@ -1,6 +1,6 @@
 ---
 name: testing
-description: Apply Reservi's testing doctrine: prove Flow/Stage behavior, domain rules, HTTP/integration behavior, asynchronous work, critical browser flows, tenant isolation, idempotency, and concurrency.
+description: "Apply Reservi's testing doctrine: prove Flow/Stage behavior, domain rules, HTTP/integration behavior, asynchronous work, critical browser flows, tenant isolation, idempotency, and concurrency."
 ---
 
 # Testing Reservi

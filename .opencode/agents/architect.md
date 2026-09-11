@@ -2,16 +2,10 @@
 description: Reservi architecture subagent. Analyzes domain boundaries, Flow semantics, schema, invariants, concurrency, and tradeoffs without owning implementation.
 mode: subagent
 steps: 30
-permissions:
-  - action: edit
-    resource: "*"
-    effect: deny
-  - action: subagent
-    resource: "*"
-    effect: deny
-  - action: skill
-    resource: "*"
-    effect: allow
+permission:
+  edit: deny
+  task: deny
+  skill: allow
 ---
 
 You are the architecture specialist for Reservi.
