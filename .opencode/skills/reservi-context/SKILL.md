@@ -1,6 +1,6 @@
 ---
 name: reservi-context
-description: Load the durable product, architecture, domain, invariants, and engineering context for Reservi before any meaningful design or implementation work.
+description: Load the durable product, flow, architecture, domain, invariants, and engineering context for Reservi before meaningful design or implementation work.
 ---
 
 # Reservi Context
@@ -9,106 +9,190 @@ Load this skill before any non-trivial Reservi task.
 
 ## Read order
 
-Start with the closest `AGENTS.md`, then read only the relevant durable docs:
+Start with the closest `AGENTS.md`, then read only relevant durable docs:
 
-1. `docs/product-requirements.md` — product purpose, users, workflows, scope, non-goals.
-2. `docs/architecture.md` — system shape, boundaries, technical principles.
-3. `docs/domain-model.md` — domain concepts and relationships.
-4. `docs/invariants.md` — truths that must never be broken.
-5. `docs/testing.md` — proof strategy and completion standards.
+1. `docs/product-requirements.md` — product purpose and behavior.
+2. `docs/flow-engine.md` — canonical Stage/Rule/Field/Catalog/Item/Appointment composition model.
+3. `docs/architecture.md` — system shape and technical boundaries.
+4. `docs/domain-model.md` — durable concepts and relationships.
+5. `docs/invariants.md` — truths that cannot be broken.
+6. `docs/testing.md` — proof strategy.
 
 Use `docs/README.md` as an index when uncertain.
 
-## Core mental model
+## Canonical mental model
 
-Reservi is a mobile-first, conversation-centric CRM and service-operations system for service businesses and agencies.
+Reservi is a mobile-first, conversation-centric CRM and operations system.
 
-The operating loop is:
+A lead is the Conversation.
 
-INCOMING CONVERSATION
--> identify/resolve customer
--> capture intent and qualification
--> route to the right team/agent/location
--> collaborate through the same conversation
--> schedule service as quickly as possible
--> perform/complete the service
--> retain truthful history/context automatically
+The Conversation is also the running process instance.
 
-A lead is literally a conversation. The conversation is the central operational object.
+```text
+Conversation state
+      ↓
+Current Stage
+      ↓
+Humans + AI + Rules change state
+      ↓
+Stage completion predicate becomes true
+      ↓
+Next Stage
+```
 
-Do not recreate traditional CRM abstractions (`Lead`, `Opportunity`, `Deal`, generic `Activity`) merely because other CRMs have them. Introduce a new durable concept only when it has its own lifecycle, truth, and behavior that cannot be expressed coherently through existing concepts.
+A Stage is not a status label:
 
-Humans and AI use the same conceptual `Agent` abstraction. They may differ by capabilities, permissions, runtime/instructions, or presence, but should not become two parallel operational architectures.
+```text
+Stage = Blocks + Rules + Completion Predicate
+```
 
-Teams group agents and participate in routing. A conversation normally has one current owner at a time while retaining assignment history.
+A Rule is:
 
-Bookings are operational commitments attached to the customer/conversation context, not a detached calendar product.
+```text
+Rule = Predicate + Actions
+```
 
-The CRM should maintain itself as a side effect of useful operational work. Avoid forcing staff to update redundant records just to keep a pipeline tidy.
+The extension contract is:
+
+```text
+Feature = State + Controls + Predicates + Actions
+```
+
+## Three questions that prevent most bad modeling
+
+Before adding a business concept, ask:
+
+1. Is it a fact about Customer/request? -> `Field`.
+2. Is it a reusable selectable business thing? -> `Catalog` + `Item`.
+3. Is it a time-bound commitment? -> `Appointment`.
+
+Create another first-class concept only if it owns a real independent lifecycle/invariant that these primitives cannot express coherently.
+
+## Catalog / Item rule
+
+Services, cars, rooms, properties, treatments, packages, products, and similar things are not separate Flow primitives.
+
+They are Catalog Items.
+
+Examples:
+
+```text
+Catalog: Services   -> Item: Garden Maintenance
+Catalog: Cars       -> Item: Range Rover Evoque
+Catalog: Properties -> Item: Villa Agdal
+```
+
+Item base shape:
+
+- title;
+- images;
+- description;
+- price;
+- typed additional attributes;
+- lifecycle state.
+
+Do not introduce separate `Service`, `Resource`, `ResourceType`, `Car`, `Room`, or `Property` workflow abstractions when Catalog/Item is sufficient.
+
+A configured Catalog Selector places Item selection into Conversation state under a stable role key.
+
+Selection means selection only. It does not inherently mean booked, reserved, exclusive, owned, or scheduled.
+
+## Appointment rule
+
+`Appointment` is the canonical scheduling entity.
+
+It is a time-bound commitment associated with the Conversation and is independent from Catalog Item selection.
+
+Never assume:
+
+- Appointment requires Service;
+- Appointment requires Item;
+- Item requires Appointment;
+- Item needs a `bookable` flag;
+- Item selection must happen before Appointment.
+
+All of these are valid:
+
+```text
+Appointment without Item
+Item without Appointment
+Appointment before Item
+Item before Appointment
+multiple Items
+multiple Appointments
+no Catalog at all
+```
+
+If a Conversation selected `Range Rover Evoque` and later has a `Pickup` Appointment, an operator understands the relation from the shared Conversation context. The core app does not need to infer that the Item is bookable.
+
+Do not add item-level reservation/capacity semantics until a real requirement requires them.
+
+## Human / AI symmetry
+
+Humans and AI share the conceptual `Agent` abstraction.
+
+They operate against the same current Stage, Fields, ItemSelections, Appointments, ownership, Messages, and rules, subject to capabilities.
+
+Do not put the authoritative business flow only in an AI prompt. Flow configuration is authoritative; prompts help AI operate inside it.
 
 ## Product north star
 
-Optimize the whole system for one practical outcome:
+Optimize for:
 
-**Turn a customer message into correctly understood, correctly routed, scheduled, and completed work with as little friction and bookkeeping as possible.**
+> Move a customer Conversation through the business to its intended outcome with the least friction and bookkeeping while preserving truthful operational state.
 
-The product must work for:
-
-- an individual service provider;
-- a local service business with several operators;
-- an agency distributing leads across multiple locations/service providers;
-- teams where AI and humans collaborate;
-- tens of agents/teams without changing the core mental model.
+The product should work for individual providers, teams, agencies, rentals, property operations, service businesses, and future verticals through configuration rather than parallel architectures.
 
 ## Engineering north star
 
-ONE ENGINE, ONE GOAL.
+**ONE ENGINE, ONE GOAL.**
 
-Prefer a compact Rails monolith whose frontend and backend share the same domain and rendering model. Prefer boring, mature primitives over distributed architecture.
+Prefer:
 
-Default preferences:
-
-- Ruby on Rails monolith.
-- PostgreSQL as source of durable truth.
-- Hotwire: Turbo + Stimulus for the web UI.
-- HTML/server state before client-side state.
-- Active Job for asynchronous work; choose a concrete backend only when deployment needs it.
-- Active Storage for managed attachments where appropriate.
-- REST/resourceful routes before custom RPC endpoints.
-- Database constraints + application validations for real invariants.
-- Explicit integration adapters for WhatsApp/email/SMS/AI/provider APIs.
+- Rails monolith;
+- PostgreSQL;
+- Turbo + Stimulus;
+- server-rendered truth;
+- Active Job;
+- explicit integration adapters;
+- database constraints for real invariants;
+- small deterministic Flow runtime.
 
 Avoid by default:
 
 - microservices;
-- separate SPA unless a concrete need justifies it;
-- GraphQL as an internal default;
+- separate SPA;
 - CQRS/event sourcing;
 - repository/DTO/command-bus layers;
 - service-object explosion;
-- speculative plugin frameworks;
-- duplicating provider state in the core domain;
-- adding abstractions for imagined future scale.
+- generic BPM engines;
+- arbitrary scripting in Rules;
+- universal Entity/Property/Relation schema;
+- vertical-specific workflow engines;
+- abstractions for imagined future scale.
 
 ## Decision heuristics
 
-Before creating a model/table/class/service, ask:
+Before creating a model/table/class/service ask:
 
-1. Is this a real domain concept or merely an implementation step?
-2. Does it have an independent lifecycle?
-3. Does it own durable truth?
-4. Can it be an attribute, association, value object, scope, or derived value instead?
-5. Are we duplicating existing state?
-6. Does the abstraction make common changes easier or harder?
-7. Would a new engineer understand it without a diagram?
+1. Is this a real domain concept or just an implementation step?
+2. Can Field express it?
+3. Can Catalog/Item express it?
+4. Can Appointment express it?
+5. Does it have an independent lifecycle/invariant?
+6. Does it duplicate current Conversation state?
+7. Can it integrate through State + Controls + Predicates + Actions?
+8. Would a new engineer understand it without learning an internal framework?
 
-Before adding infrastructure, ask:
+Before infrastructure ask:
 
 1. What current failure does this solve?
-2. Could Rails/PostgreSQL already solve it?
+2. Can Rails/PostgreSQL solve it?
 3. Does it create a second source of truth?
-4. Is the operational burden justified today?
+4. Is the operational burden justified now?
 
 ## Context discipline
 
-Checked-in code and docs beat remembered discussion. If reality differs from these documents, surface the mismatch. Update durable docs only when the durable decision itself changes.
+Checked-in code/docs beat remembered discussion.
+
+If reality differs from docs, surface the mismatch. Update durable docs only when durable truth changes.
