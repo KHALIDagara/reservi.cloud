@@ -2,475 +2,422 @@
 
 ## 1. Purpose
 
-Testing in Reservi exists to prove product truth, protect invariants, and let humans and AI agents change the system quickly without fear-driven overengineering.
+Testing in Reservi exists to prove product truth, protect invariants, and let humans and AI agents change a configurable operational system safely.
 
-The goal is not maximum test count or line coverage.
+The goal is not maximum test count. The goal is confidence that:
 
-The goal is confidence that:
+- configured Stages progress correctly;
+- Rules execute exactly when intended;
+- Actions preserve domain invariants;
+- Catalog/Item works across business verticals without special-case architecture;
+- Appointment is independent from Item selection;
+- tenant boundaries hold;
+- retries/concurrency do not duplicate Actions or Stage transitions;
+- humans and AI operate on the same authoritative state;
+- critical flows work through the real UI.
 
-- the requested behavior works;
-- the database remains truthful;
-- one tenant cannot affect another;
-- retries/duplicate events are safe;
-- concurrent operations cannot create impossible states;
-- critical user journeys still work through the real interface.
-
----
-
-## 2. Testing principles
-
-### 2.1 Test behavior, not implementation trivia
-
-Prefer assertions about observable state, authorization, responses, messages, assignments, bookings, and side effects.
-
-Avoid tests that merely pin private method call sequences unless the interaction itself is a contract.
-
-### 2.2 Use the lowest useful layer
-
-Start at the layer where the rule can be proven cheaply and deterministically.
-
-Then add higher-level proof when boundaries/integration create meaningful risk.
-
-### 2.3 Critical workflows deserve system proof
-
-Unit/model/request tests cannot prove that Turbo frames, forms, Stimulus behavior, authorization, and rendered state work together.
-
-Critical operator journeys should have a small number of valuable system/browser tests.
-
-### 2.4 Bugs normally gain regression tests
-
-A bug fix should usually include a test that reproduces the defect before the fix and passes after it.
-
-### 2.5 Tests do not excuse weak database integrity
-
-Do not use tests as a substitute for a unique/check/foreign-key/exclusion constraint when the database can enforce a durable invariant.
-
-### 2.6 Never weaken valid tests to make a change pass
-
-If a test encodes obsolete behavior, update the product requirement/invariant explicitly. Do not silently delete or loosen coverage.
+Read `docs/flow-engine.md` and `docs/invariants.md` before testing Flow/Stage/Rule/Catalog/Appointment behavior.
 
 ---
 
-## 3. Test layers
+## 2. Principles
 
-## 3.1 Model/domain tests
+### Test behavior, not implementation trivia
+
+Prefer assertions about authoritative state, progression, assignments, selected Items, Appointments, Messages, authorization, and side effects.
+
+### Use the lowest useful layer
+
+Prove deterministic predicate/domain logic cheaply, then add request/job/system/concurrency proof where boundaries create risk.
+
+### Configurability requires scenario testing
+
+Do not test only one default Flow such as qualification -> service -> appointment.
+
+The suite must prove different valid account configurations without hard-coded ordering assumptions.
+
+### Bugs normally gain regression tests
+
+Reproduce the defect, then protect the corrected product truth.
+
+### Tests do not replace DB integrity
+
+Use database constraints/locking/exclusion semantics where durable truth requires concurrency protection.
+
+---
+
+## 3. Predicate / expression tests
+
+The shared predicate engine needs fast tests for:
+
+- equality/inequality;
+- exists/missing;
+- numeric/date comparison where supported;
+- all/any/not composition where supported;
+- Customer/Conversation Field references;
+- owner/team references;
+- ItemSelection references;
+- Item price/attribute references;
+- Appointment role/status references;
+- invalid/stale references;
+- cross-account references rejected;
+- deterministic result for identical state/configuration.
+
+No arbitrary-code tests are needed because arbitrary user code must not be supported.
+
+---
+
+## 4. Domain/model tests
 
 Use for:
 
-- validation rules;
-- state transitions;
-- assignment rules;
-- qualification validation;
-- booking calculations/conflict semantics;
-- capability predicates;
-- domain methods;
-- scope/query semantics;
-- history creation rules.
+- Field definition/value validation;
+- Catalog/Item lifecycle and attribute validation;
+- ItemSelection single/multiple semantics;
+- stable selector keys across label changes;
+- Stage completion;
+- Flow ordering/current Stage;
+- assignment/history;
+- Appointment state/time/conflict semantics actually defined by product;
+- Agent capability rules;
+- Action domain operations.
 
 Examples:
 
 ```text
-Conversation assignment
-- assigning an eligible agent changes current owner
-- previous assignment is closed/preserved
-- assigning an agent from another account is rejected
-
-Qualification
-- enum value outside configured options is rejected
-- AI and human updates run the same validation
+Catalog Item
+- Cars and Services use the same Item model semantics
+- Item from another Account cannot be selected
+- archived Item cannot be newly selected when policy forbids it
 ```
 
-Keep these fast and deterministic.
+```text
+Appointment
+- can be created with no Item selection
+- remains valid when no Catalog exists
+- does not require service_id/item_id/bookable flag
+```
 
 ---
 
-## 3.2 Request/integration tests
+## 5. Flow runtime tests
+
+The Flow runtime is a critical subsystem.
+
+Prove:
+
+```text
+state mutation
+-> applicable Rules evaluate
+-> matching Actions execute
+-> resulting authoritative state is re-read
+-> completion predicate evaluates
+-> Stage remains or advances exactly once
+```
+
+At minimum:
+
+- no matching Rule -> no side effect;
+- matching Rule -> intended Action;
+- repeated evaluation with unchanged true predicate -> no duplicate irreversible Action;
+- Action changes state -> completion sees resulting state;
+- completion false -> Stage remains;
+- completion true -> advances once;
+- newly entered Stage follows defined evaluation semantics;
+- bounded cascade prevents infinite Rule loop;
+- stale/invalid configuration fails safely and observably.
+
+---
+
+## 6. Configuration-composition tests
+
+Protect the product's architectural flexibility with explicit scenarios.
+
+### Appointment first, no Catalog
+
+```text
+Stage 1: Appointment
+complete when Appointment confirmed
+```
+
+Expected: works with no Catalog, Item, or Service concept configured.
+
+### Catalog selection only
+
+```text
+Stage 1: Vehicle selector -> Cars
+complete when vehicle selected
+```
+
+Expected: Flow completes without Appointment.
+
+### Item then Appointment
+
+```text
+Stage 1: Vehicle selector -> Cars
+Stage 2: Pickup Appointment
+```
+
+Expected: selected vehicle remains visible in Conversation context; Appointment does not require Item linkage/bookable flag.
+
+### Appointment then Item
+
+```text
+Stage 1: Consultation Appointment
+Stage 2: Package selector
+```
+
+Expected: valid progression; no hidden ordering assumption.
+
+### Same Item abstraction across verticals
+
+Create Catalogs `Services`, `Cars`, `Properties` with Items and prove selectors/predicates use the same domain path.
+
+These scenarios are architecture regression tests, not merely examples.
+
+---
+
+## 7. Request/integration tests
 
 Use for:
 
-- authentication;
-- authorization;
+- authentication/authorization;
 - tenant scoping;
-- nested resource lookups;
-- controller behavior;
-- Turbo/HTML response contracts where important;
+- Stage builder/configuration endpoints;
+- invalid cross-account Rule references;
+- Field updates;
+- Catalog/Item CRUD and selection;
+- Appointment mutations;
+- manual assignment;
 - webhook endpoints;
-- API/integration boundaries;
-- malformed/unauthorized requests.
+- Turbo/HTML contracts where important.
 
-Every important account-owned mutation should have at least one authorization/tenant-boundary proof somewhere in the suite.
-
-Examples:
-
-```text
-- Account A cannot POST an assignment against Account B's conversation ID.
-- A valid WhatsApp webhook resolves the configured channel/account.
-- A webhook with an invalid signature is rejected.
-- Duplicate provider message ID does not create a second Message.
-```
+Every important account-owned mutation needs tenant/authorization proof somewhere in the suite.
 
 ---
 
-## 3.3 Job tests
+## 8. Job tests
 
 Use for:
 
-- retry behavior;
-- idempotency;
-- external side-effect orchestration;
+- retryable Rule Actions;
+- outbound Messages;
 - AI processing;
-- message sending;
-- reconciliation;
-- delayed follow-up.
+- provider reconciliation;
+- delayed external effects.
 
-Test the job's durable contract, not every client library call.
+Always test second execution and partial failure.
 
-Important questions:
+Questions:
 
-- What happens on second execution?
-- What happens after a timeout?
-- What if the remote side succeeded but the local response was lost?
-- Does the job re-scope through the tenant?
-- Can retry send a duplicate customer message?
+- Does retry duplicate a Message?
+- Does retry recreate an Appointment?
+- Does retry repeat the same logical assignment?
+- Does the job re-scope through Account?
+- Does it use stable Rule/Action execution identity?
 
 ---
 
-## 3.4 System/browser tests
+## 9. System/browser tests
 
-System tests are for workflows where real integration matters.
+Keep a small number of high-value end-to-end flows.
 
-Priority journeys:
-
-### Inbox and conversation
+### Stage completion
 
 ```text
-sign in
-→ open assigned/unassigned inbox
-→ open conversation
-→ read context
-→ send reply
-→ see reply in timeline
+admin configures Stage requirements
+-> operator opens Conversation
+-> completes required state
+-> progress indicator updates
+-> Stage advances
 ```
 
-### Assignment/handoff
+### Assignment Rule
 
 ```text
-open conversation
-→ assign/reassign to eligible agent
-→ owner updates visibly
-→ history is preserved
+City=Marrakech
+-> Rule assigns Ahmed
+-> owner updates visibly
+-> explanation/history identifies Rule
+-> repeated evaluation does not duplicate logical action
 ```
 
-### Qualification
+### Catalog selector
 
 ```text
-open conversation
-→ fill/update qualification field
-→ save
-→ refresh
-→ value remains correct
+admin creates Cars Catalog + Items
+-> adds Vehicle selector to Stage
+-> operator selects Range Rover Evoque
+-> refresh
+-> selection remains
+-> Stage completion sees it
 ```
 
-### Booking
+### Appointment without Item
 
 ```text
-open conversation
-→ choose booking action
-→ select valid slot
-→ confirm
-→ booking appears in conversation and calendar
-→ reschedule/cancel as relevant
+Stage contains Appointment block
+-> no Catalog configured
+-> create/confirm Appointment
+-> Stage completes
+```
+
+### Item + later Appointment
+
+```text
+select Villa Agdal in Property Stage
+-> advance
+-> create Viewing Appointment in later Stage
+-> Appointment view displays relevant Conversation selection
+-> no bookable/resource/service field is required
 ```
 
 ### Human/AI handoff
 
-Where deterministic test doubles make it feasible:
+Where deterministic doubles are appropriate:
 
 ```text
-AI-assigned conversation
-→ AI action reaches allowed domain boundary
-→ escalation/handoff to human
-→ human sees preserved context
+AI reads missing Stage requirement
+-> performs allowed action
+-> hands off
+-> human sees same Conversation state
 ```
 
-System tests should be few, stable, and high-value. Do not use them to test every validation permutation.
+System tests must also cover phone-sized viewport for core workflows.
 
 ---
 
-## 3.5 Concurrency tests
+## 10. Concurrency tests
 
-Add targeted concurrency tests where correctness depends on simultaneous operations.
+Add targeted concurrency tests where simultaneous operations can break truth.
 
 High-risk examples:
 
-- two workers attempt to assign the same conversation;
-- two users book the same exclusive slot/resource;
-- two duplicate webhooks process simultaneously;
-- two jobs attempt the same outbound operation;
-- a stale state transition races with a newer one.
+- two evaluators complete/advance the same Stage;
+- two Rules/users assign the same Conversation;
+- duplicate webhooks process simultaneously;
+- two jobs execute the same irreversible Rule Action;
+- two users modify the same selection/state;
+- two users create conflicting Appointments for an explicitly constrained Agent.
 
-A concurrency test should prove the invariant, not rely on arbitrary `sleep` timing.
+Do not invent Item-level scheduling conflict tests unless the product actually introduces item-level reservation semantics.
 
-Use barriers/latches/transactions or direct database-level assertions appropriate to the test framework.
-
----
-
-## 3.6 Integration contract tests
-
-External provider SDKs should be wrapped behind our adapter boundary.
-
-Test:
-
-- request normalization;
-- expected provider payload mapping;
-- response/error normalization;
-- signature verification;
-- idempotency key behavior;
-- rate-limit/transient failure classification.
-
-Avoid making the normal test suite dependent on live provider APIs.
-
-Use recorded/sandbox integration checks separately when they provide meaningful confidence.
+Use barriers/transactions/database assertions rather than arbitrary sleep timing.
 
 ---
 
-## 4. Mandatory invariant coverage
+## 11. Messaging and integration idempotency
 
-`docs/invariants.md` is the source of hard truths.
+Prove:
 
-At minimum, the suite should accumulate explicit proof for these classes:
+- duplicate inbound provider ID -> one Message;
+- repeated delivery callback safe;
+- outbound retry does not casually double-send;
+- Rule-triggered send executes once per logical trigger;
+- provider payload is normalized before Flow predicates consume relevant state.
 
-### Tenant isolation
-
-- cross-account reads fail/not found;
-- cross-account writes fail;
-- search is scoped;
-- jobs re-scope;
-- broadcasts/subscriptions are scoped.
-
-### Messaging idempotency
-
-- same inbound provider ID twice -> one Message;
-- same retryable outbound operation does not casually double-send;
-- delivery callback repetition is safe.
-
-### Assignment
-
-- at most one current owner;
-- concurrent reassignment resolves consistently;
-- history remains truthful;
-- ineligible/unauthorized actors are rejected.
-
-### Booking
-
-- invalid time/resource is rejected;
-- concurrent exclusive booking cannot double-commit;
-- reschedule/cancel state remains consistent;
-- conversation and calendar reflect the same record.
-
-### AI actions
-
-- prompt/tool output cannot bypass capability checks;
-- invalid structured values are rejected;
-- cross-tenant target IDs are rejected;
-- disallowed actions require denial/approval according to policy.
+Normal suite should not depend on live external APIs.
 
 ---
 
-## 5. Test data strategy
+## 12. AI-specific testing
 
-Use factories/fixtures in a way that makes domain intent obvious.
+Separate deterministic product correctness from probabilistic model quality.
 
-Prefer named setups such as:
+Deterministic tests cover:
 
-```text
-account
-sales_team
-human_agent
-ai_agent
-customer
-whatsapp_channel
-conversation
-booking
-```
-
-over giant generic fixtures with dozens of irrelevant fields.
-
-Keep defaults valid and minimal.
-
-For tenant tests, always create at least two accounts explicitly so cross-account mistakes are visible.
-
----
-
-## 6. External service strategy
-
-Normal test suite:
-
-- no real LLM/API calls;
-- no real WhatsApp/email/SMS sends;
-- no dependency on internet availability.
-
-Wrap external clients and inject/stub at the adapter boundary.
-
-Keep provider response examples close to adapter tests when useful.
-
-Secrets must never be required for ordinary tests.
-
----
-
-## 7. AI-specific testing
-
-Separate deterministic product behavior from probabilistic model quality.
-
-### Deterministic tests
-
-Test:
-- prompt/context assembly logic where it is product-critical;
-- available tool/capability list;
-- structured action schema validation;
+- current Stage/missing-requirement representation;
+- tool/capability list;
+- structured action validation;
 - authorization after model output;
-- handoff/escalation rules;
-- idempotency of executed actions;
-- fallback/error behavior.
+- allowed Field/ItemSelection/Appointment actions;
+- cross-account target rejection;
+- Rule/domain invariant preservation;
+- idempotent action execution;
+- escalation/handoff behavior.
 
-### Model-quality evaluation
-
-Do not put brittle exact-string LLM expectations into the normal unit suite.
-
-For AI quality, maintain scenario/evaluation fixtures later as product usage matures, e.g.:
-- correctly classify service intent;
-- ask for missing required qualification;
-- do not invent price/availability;
-- escalate sensitive/uncertain case;
-- produce appropriate language/tone.
-
-These evaluations are distinct from domain correctness tests.
+Model-quality evaluations may later cover intent/extraction/tone, but exact LLM strings do not belong in the normal unit suite.
 
 ---
 
-## 8. Browser/mobile verification
+## 13. Configuration evolution tests
 
-Reservi is mobile-first.
+Because configuration affects in-flight Conversations, test whichever strategy the implementation chooses.
 
-For UI changes affecting critical workflows, system/manual verification should include a narrow viewport representative of a phone.
+Cases include:
 
-Check:
+- Stage rename;
+- Stage reorder/archive;
+- required Block removed;
+- completion expression changed;
+- Rule changed;
+- Field definition changed;
+- Catalog archived;
+- Item archived/changed while selected;
+- Agent removed.
 
-- no critical control is off-screen/inaccessible;
-- conversation timeline remains readable;
-- composer remains usable;
-- assignment/qualification/booking controls remain operable;
-- Turbo navigation preserves expected back/forward behavior;
-- modals/drawers/forms remain keyboard/focus accessible enough for normal usage.
-
-Do not approve a desktop-only implementation of a core workflow.
-
----
-
-## 9. Performance verification
-
-Do not add performance tests everywhere.
-
-For hot operational screens/paths, inspect for:
-
-- N+1 queries;
-- unbounded message loads;
-- repeated counts;
-- missing indexes;
-- excessive broadcasts;
-- synchronous remote calls.
-
-When a performance regression is fixed, add a focused guard when practical (query-count assertion, benchmark outside normal flaky suite, or documented observation).
+The expected behavior must be explicit rather than accidental.
 
 ---
 
-## 10. Security verification
+## 14. Security verification
 
-For security-sensitive work, test at least the relevant boundaries:
+Test relevant boundaries:
 
 - authentication required;
-- authorization enforced server-side;
-- account scope enforced;
-- webhook authenticity checked;
-- unsafe attachment access denied;
-- CSRF/session behavior remains valid;
-- mass assignment/parameter handling does not expose privileged fields;
-- AI tool actions cannot bypass permissions.
-
-Use static/security tooling appropriate to Rails once the app is bootstrapped, but tools supplement—not replace—behavioral tests.
+- server-side authorization;
+- strict Account scope;
+- cross-account Catalog Item selection rejected;
+- cross-account Rule references rejected;
+- unsafe configuration operators rejected;
+- arbitrary code not accepted in predicates/actions;
+- webhook authenticity;
+- attachment access;
+- AI actions cannot bypass capabilities.
 
 ---
 
-## 11. Test execution workflow
+## 15. Performance verification
+
+For hot paths inspect:
+
+- N+1 queries while rendering/evaluating Stage state;
+- unbounded Message/Item loads;
+- repeated predicate queries;
+- missing indexes for stable keys/current Stage/selection lookups;
+- excessive broadcasts;
+- synchronous external calls;
+- repeated no-op Flow evaluation.
+
+Optimize measured bottlenecks only.
+
+---
+
+## 16. Test execution workflow
 
 During implementation:
 
-1. run the focused test/example;
-2. run the containing test file;
-3. run the relevant subsystem tests;
-4. run system test for changed critical workflow;
-5. run broader/full suite for meaningful integration/high-risk changes;
-6. run lint/security/static checks configured by the repository.
+1. run focused test/example;
+2. run containing file;
+3. run related subsystem tests;
+4. run relevant system/browser flow;
+5. run concurrency proof when required;
+6. run broader/full suite for meaningful integration/high-risk change;
+7. run configured lint/security/static checks.
 
-Before claiming completion, record exactly what was executed.
-
-If the full suite was not run, say so.
-
-If browser verification was not possible, say so and explain the remaining risk.
+Report exactly what was executed. Never imply a browser flow or full suite ran if it did not.
 
 ---
 
-## 12. Bug-fix workflow
+## 17. Definition of verified
 
-For defects:
-
-```text
-reproduce
-→ write failing regression test when practical
-→ identify root cause
-→ make smallest correction
-→ regression test passes
-→ relevant surrounding tests pass
-→ original user/system flow verified
-```
-
-Do not start with a broad rewrite.
-
----
-
-## 13. Test naming
-
-Names should describe behavior and conditions.
-
-Good:
-
-```text
-rejects assigning an agent from another account
-creates only one message for duplicate provider message id
-prevents two confirmed bookings for the same exclusive resource and time
-```
-
-Weak:
-
-```text
-test assign
-test webhook
-test booking works
-```
-
-A failing test name should make the broken product truth obvious.
-
----
-
-## 14. Definition of verified
-
-A change is **verified** only when applicable proof exists for:
+A change is verified only when applicable proof exists for:
 
 - requested behavior;
 - relevant invariant(s);
 - tenant/authorization boundary;
-- important retry/duplicate/concurrency behavior;
-- critical user interface path;
-- regression around the defect/change.
-
-A change can still ship with consciously accepted gaps, but those gaps must be reported rather than hidden behind the word "tested".
+- Flow/Rule semantics;
+- retry/duplicate/concurrency behavior;
+- critical UI path;
+- regression around defects;
+- architectural independence where relevant (especially Appointment vs Item selection).
