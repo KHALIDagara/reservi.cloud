@@ -5,137 +5,197 @@ description: Execute a Reservi feature or change from requirement through implem
 
 # Feature Execution
 
-Use this skill for any feature, behavior change, refactor tied to a product goal, or cross-cutting engineering task.
+Use this skill for any feature, behavior change, product-tied refactor, or cross-cutting engineering task.
 
 ## Goal
 
-Deliver the smallest complete vertical slice that advances the product while preserving invariants.
+Deliver the smallest complete vertical slice that advances Reservi while preserving its canonical ontology and invariants.
 
-## Workflow
+## 1. Understand the requested behavior
 
-### 1. Understand the request
-
-Translate the request into observable user/system behavior.
+Translate the request into observable behavior.
 
 Identify:
+
 - actor;
 - trigger;
+- current Flow/Stage context if relevant;
 - expected result;
 - persisted truth;
-- side effects;
+- predicates / completion requirements;
+- Actions / side effects;
 - permissions;
 - failure behavior;
+- configuration semantics;
 - acceptance criteria.
 
-Resolve ambiguity by inspecting existing code/docs before inventing behavior.
+Do not invent behavior before inspecting current code/docs.
 
-### 2. Inspect before designing
+## 2. Classify the domain need before creating a model
+
+Ask:
+
+```text
+Fact about Customer/request?          -> Field
+Reusable selectable business thing?  -> Catalog Item
+Time-bound commitment?                -> Appointment
+```
+
+Examples:
+
+- budget, city, surface -> Field;
+- service, car, property, room, treatment -> Catalog Item;
+- consultation, pickup, viewing, site visit -> Appointment.
+
+Only add a new first-class concept when it owns a real lifecycle/invariant these cannot express.
+
+Never add a special `Service`/`Resource` workflow model solely because a business calls an Item by that name.
+
+## 3. Inspect before designing
 
 Trace the current path through:
+
 - routes;
 - controllers;
 - models;
+- Flow/Stage evaluation;
+- Fields/Catalogs/Items/Appointments as relevant;
 - queries/scopes;
 - jobs;
 - views/Turbo/Stimulus;
 - integrations;
-- tests;
-- schema/indexes/constraints.
+- schema/indexes/constraints;
+- tests.
 
-Reuse existing patterns when they are sound.
+Reuse sound existing patterns.
 
-### 3. Identify invariants and risks
+## 4. Identify invariants and risks
 
-Read `docs/invariants.md` and list which truths could be affected.
+Read `docs/invariants.md`.
 
 Always consider:
-- tenant isolation;
-- authorization;
-- duplicate external events;
-- concurrent assignment/booking updates;
-- stale browser state;
-- retries;
-- partial failure;
-- data migration safety.
 
-### 4. Design the smallest coherent change
+- Account isolation;
+- authorization;
+- stable configured references;
+- duplicate external events;
+- repeated Rule evaluation;
+- Action idempotency;
+- concurrent Stage completion;
+- concurrent assignment;
+- defined Appointment conflicts;
+- stale browser state;
+- configuration changes while Conversations are in-flight;
+- retries / partial external failure.
+
+For Flow work also explicitly ask:
+
+- Did we make Service special?
+- Did Item selection accidentally imply reservation?
+- Did Appointment become dependent on Item/bookability?
+- Did we create another condition language?
+
+## 5. Design the smallest coherent change
 
 Prefer a vertical slice through the monolith over a generalized framework.
 
-Avoid introducing a new durable concept unless it has its own lifecycle and truth.
+For persistence define:
 
-When adding persistence:
-- define source of truth;
-- define foreign keys;
-- add indexes for expected access paths;
-- add uniqueness/check constraints for durable invariants;
-- define deletion/retention behavior.
+- source of truth;
+- Account ownership path;
+- foreign keys;
+- access indexes;
+- uniqueness/check/exclusion constraints for actual invariants;
+- deletion/archive behavior;
+- active configuration compatibility.
 
-When adding asynchronous work:
-- make it idempotent;
-- define retry behavior;
-- avoid making job order an undocumented invariant.
+For asynchronous work define:
 
-### 5. Define proof before implementation
+- stable operation identity;
+- idempotency;
+- retry behavior;
+- stale-state handling.
 
-For each acceptance criterion, decide how it will be proven:
-- model/domain test;
+## 6. Define proof before implementation
+
+Map each acceptance criterion to proof:
+
+- predicate/domain test;
 - request/integration test;
 - job test;
 - system/browser test;
 - concurrency test;
 - manual operational check.
 
-Prefer writing the failing regression/behavior test first for non-trivial logic and bugs.
+For Flow-related work include architecture regression scenarios where relevant:
 
-### 6. Implement in small reversible steps
+- Appointment with no Item;
+- Item with no Appointment;
+- Appointment before Item;
+- Item before Appointment;
+- repeated Rule evaluation;
+- concurrent Stage completion.
+
+## 7. Implement in small reversible steps
 
 Keep diffs focused.
-Do not refactor unrelated areas.
-Do not add dependencies casually.
-Keep provider-specific logic at adapters/boundaries.
-Prefer Turbo/Stimulus before a client framework.
 
-### 7. Verify
+- no unrelated refactors;
+- no casual dependencies;
+- provider logic stays at boundaries;
+- prefer Turbo/Stimulus to a client framework;
+- no arbitrary code execution in user Rules;
+- no broad callback webs for Flow progression;
+- use stable keys/IDs rather than labels for configured references.
 
-Run focused tests first, then surrounding tests.
+## 8. Verify
 
-For user-visible flows, exercise the actual system/browser path.
+Run focused tests, then surrounding tests.
+
+For user-visible Flow changes exercise the real browser path including mobile viewport when appropriate.
 
 Check:
+
 - happy path;
-- important failure path;
+- blocking/incomplete path;
 - authorization/tenant boundary;
-- duplicate/retry behavior where relevant;
-- mobile interaction where relevant.
+- duplicate/retry behavior;
+- concurrency where truth can race;
+- explainability of automated Actions;
+- refresh restores the same truth.
 
-### 8. Review independently
+## 9. Review independently
 
-Inspect `git diff` completely.
-For meaningful changes ask the `reviewer` subagent to review the real diff.
-Fix high-confidence findings and re-run relevant verification.
+Inspect complete `git diff`.
 
-### 9. Update durable context only if truth changed
+For meaningful changes ask `reviewer` to review the actual diff. Fix high-confidence findings and re-run relevant proof.
 
-Update docs when the product model, architecture, invariant, or testing doctrine changed.
-Do not turn docs into a changelog.
+## 10. Update durable context only when truth changed
 
-### 10. Report precisely
+Update product/flow/domain/architecture/invariant/testing docs when the durable model changes.
+
+Do not use docs as a changelog.
+
+## 11. Report precisely
 
 State:
+
 - behavior delivered;
-- files/areas changed;
-- tests and checks actually run;
+- areas/files changed;
+- tests/checks actually run;
 - unresolved risks/assumptions;
-- follow-up work only if truly separate.
+- configuration/migration behavior if relevant.
 
 ## Definition of done
 
 A change is done when:
+
 - requested behavior exists;
+- design fits Reservi's Field / Catalog Item / Appointment classification;
 - relevant invariants remain true;
-- tests cover the meaningful behavior;
-- user-visible behavior is exercised where appropriate;
+- Flow semantics remain deterministic where applicable;
+- tests prove meaningful behavior;
+- UI behavior is exercised where appropriate;
 - diff is reviewed;
-- docs match durable reality;
-- no claim of verification is fabricated.
+- durable docs match reality;
+- no verification claim is fabricated.
