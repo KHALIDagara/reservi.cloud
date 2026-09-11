@@ -1,8 +1,6 @@
 # Reservi Invariants
 
-These are hard product and engineering truths. Features may evolve, but these constraints must remain true unless a deliberate product/architecture decision explicitly changes them.
-
-When a change can violate an invariant under concurrency, retries, configuration edits, malformed input, or unauthorized access, happy-path application checks are not sufficient.
+These are hard product and engineering truths. Features may evolve, but these constraints remain true unless a deliberate product/architecture decision explicitly changes them.
 
 Read `docs/flow-engine.md` for the model these invariants protect.
 
@@ -14,33 +12,23 @@ Read `docs/flow-engine.md` for the model these invariants protect.
 
 An Account must never read, mutate, search, export, subscribe to, execute, or receive data/configuration belonging to another Account.
 
-This applies to:
-
-- Conversations/Customers;
-- Agents/Teams;
-- Flows/Stages/Rules/Blocks;
-- Field Definitions/Values;
-- Resources/Resource Types;
-- Appointments;
-- jobs/realtime/search/exports;
-- integrations;
-- AI/tool execution.
+This includes Conversations, Customers, Agents, Teams, Flows, Stages, Rules, Fields, Catalogs, Items, ItemSelections, Appointments, jobs, realtime, integrations, and AI/tool execution.
 
 ### INV-002 — Authorization is server-side
 
-UI visibility does not grant authority. Every protected mutation must be authorized server-side.
+UI visibility does not grant authority. Every protected mutation is authorized server-side.
 
 ### INV-003 — External payloads cannot choose tenant context
 
-Inbound provider events resolve Account through trusted integration/channel configuration, never from an arbitrary tenant ID in the payload.
+Inbound provider events resolve Account through trusted integration/channel configuration, never an arbitrary tenant ID in the payload.
 
 ### INV-004 — Configuration references remain tenant-local
 
-A Stage/Rule/Field/Resource selector configured in one Account cannot reference another Account's Agent, Team, Resource, Field, Flow, Stage, or other owned record.
+A Stage/Rule/Field/Catalog selector configured in Account A cannot reference Account B's Agent, Team, Catalog, Item, Field, Flow, Stage, or Appointment.
 
 ---
 
-## 2. Conversation and process truth
+## 2. Conversation and Stage truth
 
 ### INV-010 — Conversation is the lead/process instance
 
@@ -48,33 +36,27 @@ Reservi must not maintain a second canonical Lead/Opportunity/Deal record contai
 
 ### INV-011 — One authoritative current Stage
 
-A Conversation participating in a Flow has one authoritative current Stage at a time.
+A Conversation participating in a Flow has one authoritative current Stage.
 
-History may record transitions but cannot compete with current truth.
+### INV-012 — Stage is an executable contract, not a decorative label
 
-### INV-012 — Stage is not merely a label
+Progression is governed by the configured completion predicate over authoritative state.
 
-Progression is governed by the configured completion predicate for the current Stage, not by arbitrary UI status editing that bypasses required truth.
+### INV-013 — Completion reads server truth
 
-Administrative override, if ever supported, must be explicit, authorized, attributable, and semantically defined.
-
-### INV-013 — Stage completion reads authoritative server state
-
-A completion predicate evaluates against server-side authoritative Conversation/domain state. Ephemeral browser state, AI prose, or stale cached UI does not make a Stage complete.
+Browser state, AI prose, stale cache, or optimistic UI cannot independently make a Stage complete.
 
 ### INV-014 — Stage advancement is race-safe and idempotent
 
-Concurrent evaluators must not advance the same logical Stage twice, execute duplicate transition side effects, or leave current Stage/history contradictory.
+Concurrent evaluators must not advance the same logical Stage twice or produce duplicate transition side effects.
 
 ### INV-015 — In-flight configuration semantics are deliberate
 
-Changing active Flow/Stage configuration must not silently invalidate or reinterpret in-flight Conversations without defined semantics.
-
-Versioning, constrained edits, or explicit migration must be used where needed.
+Changing active Flow/Stage configuration must not silently reinterpret or invalidate in-flight Conversations without defined semantics.
 
 ### INV-016 — Internal Notes never become customer Messages
 
-An internal Note must never be transported through a customer-facing channel accidentally.
+Internal Notes must never be transported through a customer-facing channel accidentally.
 
 ---
 
@@ -82,124 +64,137 @@ An internal Note must never be transported through a customer-facing channel acc
 
 ### INV-020 — One predicate model
 
-Routing, assignment conditions, Stage completion, and other configurable conditional behavior should use one normalized predicate/expression model rather than conflicting condition engines.
+Stage completion, assignment/routing conditions, messaging Rules, and other configurable conditions should use one normalized expression model.
 
 ### INV-021 — Rules do not bypass domain operations
 
-A Rule Action must invoke the same authorized domain operation that a human/API/AI action would use.
-
-Rules cannot directly mutate records in ways that bypass assignment history, Appointment conflict checks, Field validation, tenant scope, etc.
+A Rule Action invokes the same protected domain operation a human/AI/API would use.
 
 ### INV-022 — Rule side effects are idempotent/protected
 
-If a Rule predicate remains true across repeated evaluations, repeat evaluation must not repeatedly perform the same logical irreversible side effect such as sending the same Message or creating the same Appointment.
+Repeated evaluation of a true predicate must not repeatedly perform the same logical irreversible Action.
 
 ### INV-023 — Rule evaluation is bounded
 
-Rule/action cascades must have explicit loop protection. A configuration cannot create unbounded recursion or infinite state mutation.
+Rule/action cascades must have explicit loop protection.
 
 ### INV-024 — Rule execution is explainable
 
-For operationally significant automated changes, Reservi should be able to identify the Stage/Rule/condition/action that caused the change to the degree needed for debugging and user trust.
+For meaningful automated changes, Reservi should be able to identify the Stage, Rule, matched condition, and Action that caused the change.
 
-### INV-025 — User rules cannot execute arbitrary code
+### INV-025 — User Rules cannot execute arbitrary code
 
-Account-configured predicates/actions use supported structured operators/capabilities. They do not execute arbitrary Ruby, JavaScript, SQL, shell, or provider payload expressions.
+Configured predicates/actions use supported structured operators/capabilities, not arbitrary Ruby, JavaScript, SQL, shell, or raw provider expressions.
 
 ---
 
-## 4. Field/state invariants
+## 4. Field invariants
 
-### INV-030 — Configurable values have explicit scope
+### INV-030 — Configurable Fields have explicit scope
 
-A configurable Field's authoritative target is explicit: Customer/profile state or Conversation/request state (or another supported first-class target introduced deliberately).
-
-Request-specific state must not silently contaminate durable Customer profile state.
+A Field's authoritative target is explicit, at minimum Customer/profile or Conversation/request.
 
 ### INV-031 — Field values conform to definitions
 
-Every configured Field value validates against its current applicable type/options/constraints before becoming authoritative.
+Values validate against type/options/constraints before becoming authoritative.
 
-### INV-032 — AI-extracted Field values are not exempt
+### INV-032 — AI-extracted values are not exempt
 
-AI output is untrusted input and follows the same validation, tenant, authorization, and reference rules as human/API input.
+AI output follows the same validation, authorization, and Account rules as human/API input.
 
-### INV-033 — Stable configured references survive label changes
+### INV-033 — Stable keys survive label changes
 
-Rules/predicates must reference stable keys/IDs, not mutable display labels alone.
-
-Renaming `Site visit` or `City` must not silently break or redirect existing logic.
+Rules/predicates reference stable keys/IDs rather than mutable display labels alone.
 
 ### INV-034 — One source of truth per value
 
-Projections/search indexes/caches may duplicate a value for performance, but exactly one authoritative writable source must be identifiable.
+Search indexes/caches/projections may duplicate a value, but one authoritative writable source must remain identifiable.
 
 ---
 
-## 5. Appointment invariants
+## 5. Catalog and Item invariants
 
-### INV-040 — Appointment is the canonical scheduling entity
+### INV-040 — Catalog + Item is the common selectable business primitive
+
+Services, cars, rooms, properties, treatments, packages, products, and similar reusable selectable business objects should not become separate Flow primitives when Catalog/Item expresses them cleanly.
+
+### INV-041 — Item type/name does not grant hidden behavior
+
+An Item does not become schedulable, reservable, or otherwise privileged merely because it lives in a Catalog named `Services`, `Cars`, `Rooms`, etc.
+
+### INV-042 — No global `bookable` prerequisite
+
+Core Appointment behavior must not require `item.bookable = true` or equivalent classification.
+
+### INV-043 — ItemSelection means selection, not reservation
+
+Selecting an Item into Conversation state does not inherently mean that the Item is booked, reserved, owned, exclusive, or scheduled.
+
+### INV-044 — ItemSelection roles are unambiguous
+
+Configured selector keys/roles identify which Item selection a predicate refers to when multiple selections exist.
+
+### INV-045 — Item attributes are validated data, not subtype behavior
+
+Catalog-specific additional attributes must follow their configured definitions/types when used in Rules/search/UI.
+
+Do not introduce subtype classes merely because attributes differ.
+
+### INV-046 — Item lifecycle changes do not silently corrupt in-flight state
+
+Archiving/deleting/changing an Item referenced by active Conversations must have defined behavior. Historical/current selections must not become meaningless silently.
+
+---
+
+## 6. Appointment invariants
+
+### INV-050 — Appointment is the canonical scheduling entity
 
 Reservi must not maintain competing `Booking` and `Appointment` entities as separate scheduling truths.
 
-`Booking` may be UI/action language; the durable scheduling record is Appointment.
+`Booking` may be UI/action language; the durable entity is Appointment.
 
-### INV-041 — Appointment is not globally Service-bound
+### INV-051 — Appointment is independent from Catalog Item selection
 
-Appointment creation/confirmation/completion must not require a Service unless the relevant Account/Stage configuration explicitly requires Service state.
+Appointment creation/confirmation/completion must not globally require a selected Item.
 
-These configurations must remain representable:
+Likewise, selecting an Item must not require an Appointment.
 
-- Appointment without Service;
-- Service without Appointment;
-- Appointment before Service selection;
-- Service before Appointment;
-- multiple Appointments;
-- no Service concept.
+These all remain valid:
 
-### INV-042 — Multiple Appointment roles are unambiguous
+```text
+Appointment without Item selection
+Item selection without Appointment
+Appointment before Item selection
+Item selection before Appointment
+multiple Item selections
+multiple Appointments
+no Catalog at all
+```
 
-When a Conversation has multiple Appointments, Stage predicates/actions must address the intended Appointment by stable role/key/reference rather than ambiguous `any appointment` semantics unless `any` is explicitly requested.
+### INV-052 — Appointment does not infer Item bookability
 
-### INV-043 — Appointment time is unambiguous
+The presence of an Appointment plus a selected Item does not require the system to infer or persist that the Item itself is `bookable`.
 
-Persisted appointment instants are stored consistently; timezone controls interpretation/display, not ambiguous local persistence.
+The business meaning can come from shared Conversation context and configured Stage order.
 
-### INV-044 — Exclusive participant/resource conflicts survive concurrency
+### INV-053 — Multiple Appointment roles are unambiguous
 
-If configured rules say an Agent/Resource cannot participate in overlapping committed Appointments, concurrent attempts must not both commit a conflict.
+When several Appointments exist, predicates/actions identify the intended logical Appointment by stable role/key/reference.
 
-Use transaction/database protection appropriate to the selected model.
+### INV-054 — Appointment time is unambiguous
 
-### INV-045 — Conversation and calendar show the same Appointment truth
+Persisted appointment instants use consistent timezone-safe semantics.
 
-Conversation UI, calendar UI, and Stage predicates must resolve to the same authoritative Appointment record/state.
+### INV-055 — Defined scheduling conflicts survive concurrency
 
-### INV-046 — Appointment history/state is truthful
+If the product/configuration defines an Agent or other explicit scheduling participant as unable to overlap committed Appointments, concurrent attempts must not both commit an invalid conflict.
 
-Reschedule/cancel/complete operations must preserve enough history/attribution to understand what happened where product operations require it.
+Do not automatically treat every selected Item as such a participant.
 
----
+### INV-056 — Conversation and calendar show the same Appointment truth
 
-## 6. Resource invariants
-
-### INV-050 — Resource is independent from Appointment
-
-A Resource may be selected/referenced without scheduling, and an Appointment may exist without a Resource.
-
-Do not force a global Resource -> Appointment dependency in either direction.
-
-### INV-051 — Resource types do not erase real domain concepts
-
-Agent, Customer, Conversation, Appointment, Message, and other concepts with independent invariants must not be modeled as generic Resources merely for schema uniformity.
-
-### INV-052 — Resource role references are unambiguous
-
-When several Resource selections of the same/different types participate in one Conversation, configured roles/keys must identify the intended state reliably.
-
-### INV-053 — Resource exclusivity is configured, not assumed
-
-Not every Resource participates in scheduling conflicts. Exclusivity/availability semantics must be explicit for the Resource/Type/use case.
+Calendar and Conversation views resolve to the same authoritative Appointment state.
 
 ---
 
@@ -211,23 +206,23 @@ A Conversation normally has at most one authoritative current Agent owner at a t
 
 ### INV-061 — Reassignment preserves history
 
-Reassignment changes current ownership without destroying previous ownership/attribution.
+Reassignment changes current ownership without erasing previous ownership/attribution.
 
-### INV-062 — Rule/AI/manual assignment share the same authority
+### INV-062 — Manual, Rule, and AI assignment share the same boundary
 
-Whether assignment originates from a user, AI, or Rule, it must pass the same account/eligibility/authorization/invariant boundary.
+All assignment origins pass the same tenant, eligibility, authorization, and concurrency rules.
 
 ### INV-063 — Human and AI actors obey the same domain constraints
 
-An AI Agent cannot bypass a rule/permission simply because the request came from a prompt/tool call.
+AI cannot bypass domain invariants because the request came from a prompt/tool call.
 
 ### INV-064 — Prompts do not grant capabilities
 
-Runtime prompts can suggest an operation; server-side capability/authorization determines whether it can execute.
+Server-side capability/authorization determines whether an AI action can execute.
 
 ### INV-065 — Significant actions are attributable
 
-Messages, assignments, Appointment mutations, Stage overrides/transitions, and other operationally important changes should be attributable to an Agent/system/rule execution where useful for reliable operations.
+Messages, assignments, Appointment mutations, Stage transitions/overrides, Item selections when operationally important, and other significant changes should be attributable enough for reliable operations.
 
 ---
 
@@ -235,19 +230,19 @@ Messages, assignments, Appointment mutations, Stage overrides/transitions, and o
 
 ### INV-070 — Inbound duplicate delivery is safe
 
-Duplicate provider delivery must not create duplicate customer Messages or duplicate downstream irreversible actions.
+Duplicate provider delivery must not create duplicate customer Messages or duplicate downstream irreversible Actions.
 
-### INV-071 — Outbound retry does not casually duplicate Messages
+### INV-071 — Outbound retries do not casually duplicate Messages
 
-Stable operation/provider identity or equivalent protection must prevent/reconcile duplicate sends whenever provider semantics allow.
+Stable operation/provider identity or equivalent protection must prevent/reconcile duplicate sends whenever possible.
 
 ### INV-072 — Rule-triggered Messages are execution-idempotent
 
-Repeated Stage evaluation must not resend the same logical configured Message action simply because its predicate is still true.
+Repeated Stage evaluation must not resend the same logical configured Message Action simply because its predicate remains true.
 
 ### INV-073 — Provider state is not hidden process truth
 
-Conversation Stage, Appointment, assignment, Resource selection, and Field state must not silently depend on provider-only state Reservi cannot reconcile.
+Stage, Appointment, assignment, Field, and ItemSelection state must not silently depend on provider-only state Reservi cannot reconcile.
 
 ---
 
@@ -255,7 +250,7 @@ Conversation Stage, Appointment, assignment, Resource selection, and Field state
 
 ### INV-080 — Foreign relationships are valid
 
-Durable ownership/association relationships use database foreign keys where practical.
+Durable associations use database foreign keys where practical.
 
 ### INV-081 — Race-sensitive uniqueness is database-enforced where possible
 
@@ -263,13 +258,13 @@ Model validation alone is insufficient for durable uniqueness/conflict truth und
 
 ### INV-082 — Known durable truth is modeled explicitly
 
-Do not hide stable/queryable domain truth entirely in unvalidated JSON solely to avoid schema design.
+Do not hide stable/queryable domain truth entirely in unvalidated JSON just to avoid schema design.
 
-Validated structured configuration/AST JSON is acceptable where the shape is genuinely configurable.
+Validated structured configuration/AST data is acceptable where shape is genuinely configurable.
 
 ### INV-083 — Historical records are not rewritten to fake the present
 
-History describes what happened; current fields describe what is current.
+History describes what happened; current fields/projections describe what is current.
 
 ---
 
@@ -281,7 +276,7 @@ Every retryable job is naturally idempotent or uses stable guards/operation iden
 
 ### INV-091 — Local + remote operations are not assumed atomic
 
-Database writes and provider calls are not one transaction. Model intermediate/reconciliation state where correctness requires it.
+Database writes and provider calls are not one transaction. Model reconciliation/intermediate state where correctness requires it.
 
 ### INV-092 — Provider credentials never enter source control/normal logs
 
@@ -297,19 +292,23 @@ Flow predicates/actions do not depend directly on arbitrary raw provider payload
 
 ### INV-100 — Server truth survives refresh
 
-Refreshing may change presentation but must restore the same authoritative process/domain truth.
+Refreshing restores the same authoritative process/domain truth.
 
 ### INV-101 — Stage progress is explainable
 
-The UI should be able to show what requirements are satisfied/missing for the current Stage without inventing a second completion model.
+The UI can show which completion requirements are satisfied/missing without inventing a second completion model.
 
-### INV-102 — Core workflows are mobile-usable
+### INV-102 — Appointment surfaces can derive relevant Item context from Conversation
 
-Inbox, conversation, current Stage controls, Fields, assignment, Resource selection, and Appointment management remain usable on phone-sized screens.
+An operator viewing an Appointment should be able to see relevant selected Items from the Conversation without requiring duplicate Appointment-specific Service/Resource fields.
 
-### INV-103 — Realtime cannot leak Accounts
+### INV-103 — Core workflows are mobile-usable
 
-Turbo/WebSocket subscription identifiers and broadcasts maintain tenant isolation.
+Inbox, Conversation, Stage controls, Fields, Catalog selectors, assignment, and Appointment management remain usable on phone-sized screens.
+
+### INV-104 — Realtime cannot leak Accounts
+
+Realtime subscription/broadcast identifiers preserve tenant isolation.
 
 ---
 
@@ -317,45 +316,49 @@ Turbo/WebSocket subscription identifiers and broadcasts maintain tenant isolatio
 
 ### INV-110 — No abstraction without present value
 
-A new framework/layer solves a current need, not only imagined future scale.
+A new framework/layer solves a current need, not imagined future scale.
 
 ### INV-111 — Future features integrate through the common contract
 
-A new first-class feature should, where practical, integrate with Flow through:
+A new first-class feature should, where practical, integrate through:
 
 ```text
 State + Controls + Predicates + Actions
 ```
 
-rather than adding feature-specific transition code to the central Stage engine.
+rather than feature-specific transition code in the Stage engine.
 
 ### INV-112 — No privileged service workflow
 
-Core Flow/Appointment architecture must not regress to an assumption that Service is always selected, bookable, or required before scheduling.
+Core Flow/Appointment architecture must never regress to an assumption that Service selection is mandatory or precedes scheduling.
 
-### INV-113 — No universal metadata universe
+### INV-113 — Prefer Catalog/Item before vertical object types
 
-Do not erase the domain into generic `Entity/Property/Relation/Node/Edge` structures merely to claim flexibility.
+Before adding Service/Car/Room/Property/etc. models, prove that Catalog/Item + typed attributes cannot express the requirement without losing a real invariant.
 
-### INV-114 — Common paths remain traceable
+### INV-114 — No universal metadata universe
 
-An engineer/AI agent must be able to trace state mutation -> Flow evaluation -> Rule Actions -> Stage completion without navigating hidden callback chains or a distributed event maze.
+Do not erase all domain concepts into generic Entity/Property/Relation/Node/Edge structures.
+
+Catalog/Item is generic only for reusable selectable business objects.
+
+### INV-115 — Common paths remain traceable
+
+An engineer/AI agent should be able to trace state mutation -> Flow evaluation -> Rule Actions -> Stage completion without hidden callback chains or a distributed event maze.
 
 ---
 
 ## 13. Implementation checklist
 
-For every meaningful feature/change ask:
+For every meaningful change ask:
 
 1. Which invariants are touched?
-2. Which State does this feature expose?
-3. Does it need a Control, Predicate, or Action integration?
-4. Can it be represented without modifying the central Flow engine?
-5. Can retries execute an Action twice?
+2. Is this a fact (Field), a reusable selectable thing (Catalog Item), or time-bound commitment (Appointment)?
+3. Which State does the capability expose?
+4. Which Controls/Predicates/Actions are needed?
+5. Can repeated evaluation execute an Action twice?
 6. Can concurrent mutation advance a Stage twice?
 7. Can active configuration changes invalidate in-flight state?
-8. Can a cross-account reference be configured or submitted?
-9. What DB constraint/transaction protects durable truth?
-10. What test proves the invariant?
-
-If a hard invariant genuinely changes, update this document and the related architecture/product context deliberately in the same change.
+8. Can a cross-account reference be configured/submitted?
+9. Are we accidentally adding Item bookability semantics?
+10. What database/transaction/test proves the durable truth?
