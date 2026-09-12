@@ -1,6 +1,6 @@
 # Reservi implementation plan
 
-Status: planning complete; implementation not started. Baseline: `153315d`, specifications only. No task below is marked done because documentation exists.
+Status: T00 verified (2026-09-12); T01 bootstrap in progress. The audited specification baseline is `153315d`; the implementation baseline is `c6e0923` (specifications plus agent tooling). No task marked VERIFIED below claims behavior that is not proven by a commit and recorded checks.
 
 ## 1. Delivery strategy
 
@@ -35,7 +35,7 @@ T05/T06/T07 have independent feature scopes once T04's interfaces stabilize; par
 
 | Task | Dependencies | Status | Visible deliverable |
 |---|---|---|---|
-| T00 | None | TODO | Checked baseline and reproducible scope |
+| T00 | None | VERIFIED | Checked baseline and reproducible scope |
 | T01 | T00 | TODO | Bootable, secured multi-account Rails application |
 | T02 | T01 | TODO | Human inbox, messages, internal notes, ownership and attention |
 | T03 | T02 | TODO | Typed customer/request data and correction UI |
@@ -247,7 +247,7 @@ Append one row per verified task; keep TODO tasks out of the verified ledger. If
 
 | Task | Commit | Actual checks and results | Evidence / remaining limitation |
 |---|---|---|---|
-| None | — | No runtime checks exist at documentation baseline | Implementation not started |
+| T00 | `c6e0923` (verified `HEAD`, see commit after this row) | At implementation baseline no Rails app, Gemfile, schema, migrations, executable tests, or CI existed (verified by directory listing). Working tree was dirty with agent-tooling configuration only (`.agents/agents/*` sandbox→allow, `opencode.jsonc` permission allow, untracked `mise.toml` pinning Ruby 3.4.4); no application artifacts. Runtime verified on the build host: Ruby 3.4.4 / Bundler 2.6.7 (mise), Rails 8.1.3.1, PostgreSQL server 13.23 (aarch64 RHEL role `opc` superuser; peer auth for OS `opc`), Node 26.8.1 (tooling only; importmap pipeline, no JS build step). System-test browser available: Playwright Chromium 1234 at `~/.cache/ms-playwright/chromium-1234/chrome-linux/chrome`. Retained exclusions from §5 apply. | Target Ruby 3.4.4, Rails 8.1.x, PostgreSQL >= 13 were selected from the verified host. PostgreSQL contrib extensions (`btree_gist`, `pg_trgm`, `unaccent`) are **not installed** (only `plpgsql` available); `postgresql-contrib-13.23` is installable via dnf `ol9_appstream` and must be verified at T05/T07, not deferred silently. |
 
 ## 7. Working agreement for an implementation agent
 
