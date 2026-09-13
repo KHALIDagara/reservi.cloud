@@ -1,0 +1,47 @@
+alpha_dora_pending:
+  account: alpha
+  email: dora@example.com
+  role: operator
+  team_ids: [<%= ActiveRecord::FixtureSet.identify(:alpha_general) %>]
+  inviter_membership: alpha_alice
+  token_digest: <%= Digest::SHA256.hexdigest("test-invite-token-dora") %>
+  expires_at: <%= 7.days.from_now %>
+  status: pending
+  delivery_status: delivered
+  delivery_attempts: 1
+
+alpha_revoked:
+  account: alpha
+  email: revoked@example.com
+  role: operator
+  team_ids: [<%= ActiveRecord::FixtureSet.identify(:alpha_general) %>]
+  inviter_membership: alpha_alice
+  token_digest: <%= Digest::SHA256.hexdigest("test-invite-token-revoked") %>
+  expires_at: <%= 7.days.from_now %>
+  status: revoked
+  delivery_status: delivered
+  delivery_attempts: 1
+
+alpha_expired:
+  account: alpha
+  email: expired@example.com
+  role: operator
+  team_ids: [<%= ActiveRecord::FixtureSet.identify(:alpha_general) %>]
+  inviter_membership: alpha_alice
+  token_digest: <%= Digest::SHA256.hexdigest("test-invite-token-expired") %>
+  expires_at: <%= 1.day.ago %>
+  status: pending
+  delivery_status: delivered
+  delivery_attempts: 1
+
+beta_operator_pending:
+  account: beta
+  email: frank@example.com
+  role: operator
+  team_ids: [<%= ActiveRecord::FixtureSet.identify(:beta_general) %>]
+  inviter_membership: beta_carol
+  token_digest: <%= Digest::SHA256.hexdigest("test-invite-token-frank") %>
+  expires_at: <%= 7.days.from_now %>
+  status: pending
+  delivery_status: delivered
+  delivery_attempts: 1

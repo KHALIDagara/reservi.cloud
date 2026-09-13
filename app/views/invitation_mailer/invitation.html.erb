@@ -1,0 +1,10 @@
+<p>
+  You're invited to <strong><%= @account.name %></strong> on Reservi, with the role of
+  <strong><%= @invitation.role %></strong>.
+</p>
+
+<p>
+  <%= link_to "Accept the invitation", @accept_url %>
+</p>
+
+<p>This link expires on <%= @expires_at.to_date %>. If you were not expecting this invitation you can safely ignore this email.</p>

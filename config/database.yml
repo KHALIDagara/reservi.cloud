@@ -1,0 +1,46 @@
+# PostgreSQL local development and test connect over the unix socket using
+# the OS user's peer-mapped role (no password needed). CI and production
+# override the URLs with real credentials; production secrets are never
+# fixture values in this file.
+#
+#   RESERVI_DATABASE_URL      development override
+#   RESERVI_TEST_DATABASE_URL test override
+#
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  # For details on connection pooling, see Rails configuration guide
+  # https://guides.rubyonrails.org/configuring.html#database-pooling
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+
+development:
+  <<: *default
+  url: <%= ENV.fetch("RESERVI_DATABASE_URL", "postgresql:///reservi_cloud_development") %>
+
+test:
+  <<: *default
+  url: <%= ENV.fetch("RESERVI_TEST_DATABASE_URL", "postgresql:///reservi_cloud_test") %>
+
+# As with config/credentials.yml, you never want to store sensitive information,
+# like your database password, in your source code. If your source code is
+# ever seen by anyone, they now have access to your database.
+#
+# Provide a full connection URL as an environment variable when you boot the
+# app: RESERVI_DATABASE_URL. Read https://guides.rubyonrails.org/configuring.html
+# for a full overview.
+production:
+  primary: &primary_production
+    <<: *default
+    url: <%= ENV["RESERVI_DATABASE_URL"] %>
+  cache:
+    <<: *primary_production
+    url: <%= ENV["RESERVI_CACHE_DATABASE_URL"] %>
+    migrations_paths: db/cache_migrate
+  queue:
+    <<: *primary_production
+    url: <%= ENV["RESERVI_QUEUE_DATABASE_URL"] %>
+    migrations_paths: db/queue_migrate
+  cable:
+    <<: *primary_production
+    url: <%= ENV["RESERVI_CABLE_DATABASE_URL"] %>
+    migrations_paths: db/cable_migrate

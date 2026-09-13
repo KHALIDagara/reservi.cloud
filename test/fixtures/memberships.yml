@@ -1,0 +1,35 @@
+alpha_alice:
+  account: alpha
+  user: alice
+  role: admin
+  active: true
+
+alpha_bob:
+  account: alpha
+  user: bob
+  role: operator
+  active: true
+
+alpha_dora:
+  account: alpha
+  user: dora
+  role: operator
+  active: false
+
+beta_alice:
+  account: beta
+  user: alice
+  role: admin
+  active: true
+
+beta_carol:
+  account: beta
+  user: carol
+  role: admin
+  active: true
+
+beta_eve:
+  account: beta
+  user: eve
+  role: operator
+  active: true

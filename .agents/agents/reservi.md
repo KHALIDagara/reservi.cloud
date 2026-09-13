@@ -10,7 +10,7 @@ tools:
 mainAgent: true
 subagent: false
 model: inherit
-commandExecutionPolicy: sandbox
+commandExecutionPolicy: allow
 skills:
   - skills/reservi-context
   - skills/feature-execution

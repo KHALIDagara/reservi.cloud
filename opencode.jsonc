@@ -3,7 +3,7 @@
   "default_agent": "reservi",
   "permission": {
     "skill": "allow",
-    "external_directory": "ask",
-    "doom_loop": "ask"
+    "external_directory": "allow",
+    "doom_loop": "allow"
   }
 }

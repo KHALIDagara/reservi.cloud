@@ -1,0 +1,23 @@
+alpha_alice_general:
+  account: alpha
+  team: alpha_general
+  agent: alpha_alice_human
+  active: true
+
+alpha_bob_general:
+  account: alpha
+  team: alpha_general
+  agent: alpha_bob_human
+  active: true
+
+beta_carol_general:
+  account: beta
+  team: beta_general
+  agent: beta_carol_human
+  active: true
+
+beta_eve_general:
+  account: beta
+  team: beta_general
+  agent: beta_eve_human
+  active: true

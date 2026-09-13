@@ -9,7 +9,7 @@ tools:
 mainAgent: false
 subagent: true
 model: inherit
-commandExecutionPolicy: sandbox
+commandExecutionPolicy: allow
 skills:
   - skills/reservi-context
   - skills/repository-navigation

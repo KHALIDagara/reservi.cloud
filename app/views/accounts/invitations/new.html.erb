@@ -1,0 +1,41 @@
+<h1 class="text-2xl font-semibold tracking-tight">Invite people</h1>
+<p class="mt-1 text-sm text-stone-500">
+  Invitations are delivered by email with a single-use, time-limited link. They become assignable teammates only after acceptance.
+</p>
+
+<%= form_with url: account_invitations_path(current_account), class: "mt-6 space-y-5" do |form| %>
+  <div>
+    <%= form.label :emails, "Email addresses", class: "mb-1 block text-sm font-medium" %>
+    <%= form.text_area :emails, name: "invitation[emails]", rows: 3, required: true, autofocus: true,
+                       placeholder: "ahmed@example.com, lina@example.com",
+                       class: "w-full rounded-md border border-stone-300 px-3 py-2 focus:border-stone-500 focus:outline-none" %>
+    <p class="mt-1 text-xs text-stone-400">Separate addresses with spaces, commas or new lines.</p>
+  </div>
+
+  <div>
+    <span class="mb-1 block text-sm font-medium">Role</span>
+    <div class="grid gap-2 sm:grid-cols-3">
+      <% Membership::ROLES.each do |role| %>
+        <label class="flex items-center gap-2 rounded-md border border-stone-200 bg-white px-3 py-2">
+          <%= form.radio_button :role, role, name: "invitation[role]", checked: role == "operator" %>
+          <span class="text-sm capitalize"><%= role %></span>
+        </label>
+      <% end %>
+    </div>
+    <p class="mt-1 text-xs text-stone-400">Administrator is explicit, never the default.</p>
+  </div>
+
+  <div>
+    <span class="mb-1 block text-sm font-medium">Teams</span>
+    <div class="grid gap-2 sm:grid-cols-3">
+      <% @teams.each do |team| %>
+        <label class="flex items-center gap-2 rounded-md border border-stone-200 bg-white px-3 py-2">
+          <%= form.check_box :team_ids, { multiple: true, name: "invitation[team_ids][]", checked: team.name == "General" }, team.id, nil %>
+          <span class="text-sm"><%= team.name %></span>
+        </label>
+      <% end %>
+    </div>
+  </div>
+
+  <%= form.submit "Send invitations", class: "w-full rounded-md bg-stone-900 px-4 py-2.5 font-medium text-white hover:bg-stone-700 sm:w-auto" %>
+<% end %>

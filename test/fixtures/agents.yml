@@ -1,0 +1,47 @@
+alpha_alice_human:
+  account: alpha
+  kind: human
+  membership: alpha_alice
+  name: Alice Admin
+  active: true
+  capabilities: {}
+
+alpha_bob_human:
+  account: alpha
+  kind: human
+  membership: alpha_bob
+  name: Bob Operator
+  active: true
+  capabilities: {}
+
+alpha_dora_human:
+  account: alpha
+  kind: human
+  membership: alpha_dora
+  name: Dora Newcomer
+  active: false
+  capabilities: {}
+
+beta_alice_human:
+  account: beta
+  kind: human
+  membership: beta_alice
+  name: Alice Admin
+  active: true
+  capabilities: {}
+
+beta_carol_human:
+  account: beta
+  kind: human
+  membership: beta_carol
+  name: Carol Manager
+  active: true
+  capabilities: {}
+
+beta_eve_human:
+  account: beta
+  kind: human
+  membership: beta_eve
+  name: Eve Operator
+  active: true
+  capabilities: {}

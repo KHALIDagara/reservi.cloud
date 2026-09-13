@@ -1,0 +1,7 @@
+You're invited to <%= @account.name %> on Reservi, with the role of <%= @invitation.role %>.
+
+Accept the invitation here:
+
+<%= @accept_url %>
+
+This link expires on <%= @expires_at.to_date %>. If you were not expecting this invitation you can safely ignore this email.

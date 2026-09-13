@@ -1,0 +1,68 @@
+<div class="flex items-center justify-between">
+  <h1 class="text-2xl font-semibold tracking-tight">People &amp; AI</h1>
+  <%= link_to "Invite people", new_account_invitation_path(current_account), class: "rounded-md bg-stone-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-stone-700" %>
+</div>
+
+<section class="mt-6">
+  <h2 class="text-sm font-semibold uppercase tracking-wide text-stone-500">Members</h2>
+  <ul class="mt-2 divide-y divide-stone-200 rounded-lg border border-stone-200 bg-white">
+    <% @members.each do |membership| %>
+      <li class="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+        <div class="min-w-0">
+          <p class="truncate font-medium"><%= membership.user.name %>
+            <% if membership.agent %>
+              <span class="ml-1 rounded bg-stone-100 px-1.5 py-0.5 text-xs text-stone-500">human Agent</span>
+            <% end %>
+          </p>
+          <p class="truncate text-sm text-stone-500"><%= membership.user.email_address %></p>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <%= form_with url: account_membership_role_path(current_account, membership), method: :post, class: "flex items-center gap-1" do |form| %>
+            <%= form.select :role, Membership::ROLES, { selected: membership.role }, name: "membership[role]", class: "rounded-md border border-stone-300 px-2 py-1 text-sm" %>
+            <% unless membership == current_membership %>
+              <%= form.submit "Save", class: "rounded-md border border-stone-300 px-2 py-1 text-sm text-stone-600 hover:bg-stone-100" %>
+            <% end %>
+          <% end %>
+
+          <% unless membership == current_membership %>
+            <%= button_to "Remove",
+                          account_membership_remove_path(current_account, membership),
+                          method: :post,
+                          data: { turbo_confirm: "Remove #{membership.user.name} from this Account?" },
+                          class: "rounded-md border border-red-200 px-2 py-1 text-sm text-red-600 hover:bg-red-50" %>
+          <% end %>
+        </div>
+      </li>
+    <% end %>
+  </ul>
+</section>
+
+<section class="mt-8">
+  <h2 class="text-sm font-semibold uppercase tracking-wide text-stone-500">Pending invitations</h2>
+  <% if @invitations.any? %>
+    <ul class="mt-2 divide-y divide-stone-200 rounded-lg border border-stone-200 bg-white">
+      <% @invitations.each do |invitation| %>
+        <li class="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+          <div class="min-w-0">
+            <p class="truncate font-medium"><%= invitation.email %></p>
+            <p class="text-sm text-stone-500">
+              <%= invitation.role %> ·
+              <%= invitation.delivery_status %> ·
+              expires <%= invitation.expires_at.to_date %>
+            </p>
+          </div>
+          <div class="flex items-center gap-2">
+            <%= button_to "Resend", resend_account_invitation_path(current_account, invitation), method: :post, class: "rounded-md border border-stone-300 px-2 py-1 text-sm text-stone-600 hover:bg-stone-100" %>
+            <%= button_to "Revoke", revoke_account_invitation_path(current_account, invitation), method: :post, data: { turbo_confirm: "Revoke the invitation for #{invitation.email}?" }, class: "rounded-md border border-red-200 px-2 py-1 text-sm text-red-600 hover:bg-red-50" %>
+          </div>
+        </li>
+      <% end %>
+    </ul>
+  <% else %>
+    <p class="mt-2 rounded-lg border border-dashed border-stone-300 bg-white p-4 text-sm text-stone-500">
+      No pending invitations.
+      <%= link_to "Invite a teammate", new_account_invitation_path(current_account), class: "underline" %>.
+    </p>
+  <% end %>
+</section>

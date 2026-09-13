@@ -1,0 +1,14 @@
+alice_session:
+  user: alice
+  ip_address: 127.0.0.1
+  user_agent: FixtureAgent
+
+bob_session:
+  user: bob
+  ip_address: 127.0.0.1
+  user_agent: FixtureAgent
+
+carol_session:
+  user: carol
+  ip_address: 127.0.0.1
+  user_agent: FixtureAgent

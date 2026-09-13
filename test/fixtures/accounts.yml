@@ -1,0 +1,13 @@
+alpha:
+  name: Alpha Garden
+  locale: en
+  timezone: UTC
+  settings: {}
+  active: true
+
+beta:
+  name: Beta Agency
+  locale: en
+  timezone: UTC
+  settings: {}
+  active: true

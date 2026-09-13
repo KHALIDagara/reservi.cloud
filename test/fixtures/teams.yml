@@ -1,0 +1,9 @@
+alpha_general:
+  account: alpha
+  name: General
+  active: true
+
+beta_general:
+  account: beta
+  name: General
+  active: true

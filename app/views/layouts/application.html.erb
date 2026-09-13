@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= content_for(:title) || "Reservi" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="Reservi">
+    <meta name="mobile-web-app-capable" content="yes">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <%= yield :head %>
+
+    <link rel="icon" href="/icon.png" type="image/png">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/icon.png">
+
+    <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+  </head>
+
+  <body class="min-h-screen bg-stone-50 text-stone-900 antialiased">
+    <% if authenticated? %>
+      <header class="sticky top-0 z-10 border-b border-stone-200 bg-white">
+        <nav class="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3">
+          <div class="flex min-w-0 items-center gap-3">
+            <%= link_to root_path, class: "shrink-0 font-semibold tracking-tight" do %>
+              Reservi
+            <% end %>
+            <% if current_account %>
+              <%= link_to account_home_path(current_account), class: "truncate rounded-md border border-stone-200 px-2 py-1 text-sm text-stone-600 hover:bg-stone-100" do %>
+                <%= current_account.name %>
+              <% end %>
+            <% end %>
+          </div>
+          <div class="flex items-center gap-2 text-sm">
+            <% if current_account %>
+              <%= link_to "People", account_people_path(current_account), class: "rounded-md px-2 py-1 text-stone-600 hover:bg-stone-100" %>
+            <% end %>
+            <%= link_to "Accounts", accounts_path, class: "rounded-md px-2 py-1 text-stone-600 hover:bg-stone-100" %>
+            <%= button_to "Sign out", session_path, method: :delete, class: "rounded-md px-2 py-1 text-stone-600 hover:bg-stone-100" %>
+          </div>
+        </nav>
+      </header>
+    <% end %>
+
+    <main class="mx-auto w-full max-w-3xl px-4 py-6">
+      <%= render "shared/flash" %>
+      <%= yield %>
+    </main>
+  </body>
+</html>

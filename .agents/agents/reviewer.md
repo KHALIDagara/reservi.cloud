@@ -8,7 +8,7 @@ tools:
 mainAgent: false
 subagent: true
 model: inherit
-commandExecutionPolicy: off
+commandExecutionPolicy: allow
 skills:
   - skills/reservi-context
   - skills/flow-engine
