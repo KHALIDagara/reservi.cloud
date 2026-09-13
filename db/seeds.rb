@@ -14,13 +14,29 @@ unless Rails.env.production?
     u.verified_at = Time.current
   end
 
-  Accounts::Create.call(
+  account = Accounts::Create.call(
     user: user,
     name: account_name,
     operation_key: "reservi-dev-seed-#{account_name.parameterize}",
     locale: "en",
     timezone: "UTC"
   )
+
+  # Create default Flow with one published Stage (literal=false completion —
+  # never completes on its own; T04 adds the full interpreter).
+  unless account.flows.exists?
+    flow = account.flows.create!(name: "Default")
+    version = flow.versions.create!(version_number: 1, status: "published", published_at: Time.current)
+    stage = version.stages.create!(
+      key: "stage_1",
+      label: "Intake",
+      position: 1,
+      blocks: [],
+      rules: [],
+      completion: { "literal" => false }
+    )
+    flow.update!(current_version: version)
+  end
 
   puts "Seed complete: Account '#{account_name}', user '#{email}'"
 end

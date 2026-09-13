@@ -1,0 +1,7 @@
+alpha_default:
+  account: alpha
+  name: Default
+
+beta_default:
+  account: beta
+  name: Default

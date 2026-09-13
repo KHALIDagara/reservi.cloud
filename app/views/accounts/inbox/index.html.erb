@@ -1,0 +1,54 @@
+<div class="flex items-center justify-between">
+  <h1 class="text-2xl font-semibold tracking-tight">Inbox</h1>
+  <%= link_to "New conversation", new_account_conversation_path(current_account), class: "rounded-md bg-stone-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-stone-700" %>
+</div>
+
+<div class="mt-4 flex gap-2 text-sm">
+  <%= link_to "All", account_inbox_path(current_account),
+      class: "rounded-md px-3 py-1.5 #{params[:filter].blank? ? 'bg-stone-900 text-white' : 'bg-stone-200 text-stone-700 hover:bg-stone-300'}" %>
+  <%= link_to "Mine", account_inbox_path(current_account, filter: "mine"),
+      class: "rounded-md px-3 py-1.5 #{params[:filter] == 'mine' ? 'bg-stone-900 text-white' : 'bg-stone-200 text-stone-700 hover:bg-stone-300'}" %>
+  <%= link_to "Unowned", account_inbox_path(current_account, filter: "unowned"),
+      class: "rounded-md px-3 py-1.5 #{params[:filter] == 'unowned' ? 'bg-stone-900 text-white' : 'bg-stone-200 text-stone-700 hover:bg-stone-300'}" %>
+</div>
+
+<% page_size = 25 %>
+<% if @conversations.first(page_size).any? %>
+  <ul class="mt-4 divide-y divide-stone-200 rounded-lg border border-stone-200 bg-white">
+    <% @conversations.first(page_size).each do |conversation| %>
+      <li>
+        <%= link_to account_conversation_path(current_account, conversation), class: "flex items-start gap-3 px-4 py-3 hover:bg-stone-50 #{conversation.attention ? 'border-l-2 border-stone-900' : ''}" do %>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2">
+              <p class="truncate font-medium"><%= conversation.customer.name %></p>
+              <% if conversation.attention %>
+                <span class="shrink-0 rounded-full bg-stone-900 px-2 py-0.5 text-xs text-white">New</span>
+              <% end %>
+            </div>
+            <p class="mt-0.5 truncate text-sm text-stone-500">
+              <%= conversation.messages.reverse_chronological.first&.content&.truncate(80) %>
+            </p>
+            <p class="mt-0.5 text-xs text-stone-400">
+              <%= time_ago_in_words(conversation.last_activity_at || conversation.created_at) %> ago
+              <% if conversation.owner.present? %>
+                · <%= conversation.owner.name %>
+              <% end %>
+            </p>
+          </div>
+        <% end %>
+      </li>
+    <% end %>
+  </ul>
+
+  <% if @next_cursor %>
+    <p class="mt-4 text-sm">
+      <%= link_to "Older conversations", account_inbox_path(current_account, before: @next_cursor, filter: params[:filter]), class: "text-stone-600 underline hover:text-stone-900" %>
+    </p>
+  <% end %>
+<% else %>
+  <div class="mt-6 rounded-lg border border-dashed border-stone-300 bg-white p-8 text-center">
+    <p class="font-medium">No conversations yet</p>
+    <p class="mt-1 text-sm text-stone-500">Create one to start working with a customer.</p>
+    <%= link_to "New conversation", new_account_conversation_path(current_account), class: "mt-4 inline-block rounded-md bg-stone-900 px-4 py-2 text-sm font-medium text-white hover:bg-stone-700" %>
+  </div>
+<% end %>

@@ -1,0 +1,11 @@
+alpha_v1:
+  flow: alpha_default
+  version_number: 1
+  status: published
+  published_at: <%= 1.day.ago %>
+
+beta_v1:
+  flow: beta_default
+  version_number: 1
+  status: published
+  published_at: <%= 1.day.ago %>

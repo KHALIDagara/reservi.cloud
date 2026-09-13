@@ -1,0 +1,19 @@
+alpha_stage1:
+  flow_version: alpha_v1
+  key: stage_1
+  label: Intake
+  position: 1
+  blocks: []
+  rules: []
+  completion:
+    literal: false
+
+beta_stage1:
+  flow_version: beta_v1
+  key: stage_1
+  label: Intake
+  position: 1
+  blocks: []
+  rules: []
+  completion:
+    literal: false

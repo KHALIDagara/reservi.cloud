@@ -1,0 +1,24 @@
+alpha_wilma:
+  account: alpha
+  name: Wilma Customer
+  email_address: wilma@example.com
+  phone: "+15551234567"
+  locale: en
+  custom_values: {}
+  profile_revision: 1
+
+alpha_fred:
+  account: alpha
+  name: Fred Customer
+  email_address: fred@example.com
+  locale: en
+  custom_values: {}
+  profile_revision: 1
+
+beta_greg:
+  account: beta
+  name: Greg Customer
+  email_address: greg@example.com
+  locale: en
+  custom_values: {}
+  profile_revision: 1
