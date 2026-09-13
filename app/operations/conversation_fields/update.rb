@@ -22,7 +22,14 @@ module ConversationFields
       @conversation.with_lock do
         @conversation.update!(custom_values: @conversation.custom_values.merge(custom))
         @conversation
+      end.tap do
+        # Re-evaluate rules after field change — predicates may now match
+        @conversation.reload
+        Reservi::RuleExecutor.evaluate(conversation: @conversation)
       end
+    rescue => e
+      Rails.logger.warn "Rule evaluation after field update failed: #{e.message}"
+      raise
     end
   end
 end

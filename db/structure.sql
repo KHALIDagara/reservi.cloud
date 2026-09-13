@@ -581,6 +581,45 @@ ALTER SEQUENCE public.notes_id_seq OWNED BY public.notes.id;
 
 
 --
+-- Name: rule_executions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.rule_executions (
+    id bigint NOT NULL,
+    conversation_id bigint NOT NULL,
+    stage_id bigint NOT NULL,
+    rule_key character varying NOT NULL,
+    execution_key character varying NOT NULL,
+    predicate_result boolean NOT NULL,
+    status character varying DEFAULT 'evaluated'::character varying NOT NULL,
+    actions_executed jsonb DEFAULT '[]'::jsonb NOT NULL,
+    error_message text,
+    explanation text,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: rule_executions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.rule_executions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: rule_executions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.rule_executions_id_seq OWNED BY public.rule_executions.id;
+
+
+--
 -- Name: schema_migrations; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -904,6 +943,13 @@ ALTER TABLE ONLY public.notes ALTER COLUMN id SET DEFAULT nextval('public.notes_
 
 
 --
+-- Name: rule_executions id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rule_executions ALTER COLUMN id SET DEFAULT nextval('public.rule_executions_id_seq'::regclass);
+
+
+--
 -- Name: sessions id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -1074,6 +1120,14 @@ ALTER TABLE ONLY public.notes
 
 
 --
+-- Name: rule_executions rule_executions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rule_executions
+    ADD CONSTRAINT rule_executions_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: schema_migrations schema_migrations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1141,6 +1195,13 @@ CREATE INDEX idx_item_selections_on_conversation_role ON public.item_selections 
 --
 
 CREATE UNIQUE INDEX idx_item_selections_on_conversation_role_item ON public.item_selections USING btree (conversation_id, role_key, item_id);
+
+
+--
+-- Name: idx_rule_execs_on_conversation_stage_rule; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_rule_execs_on_conversation_stage_rule ON public.rule_executions USING btree (conversation_id, stage_id, rule_key);
 
 
 --
@@ -1564,6 +1625,27 @@ CREATE UNIQUE INDEX index_notes_on_conversation_id_and_id ON public.notes USING 
 
 
 --
+-- Name: index_rule_executions_on_conversation_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_rule_executions_on_conversation_id ON public.rule_executions USING btree (conversation_id);
+
+
+--
+-- Name: index_rule_executions_on_execution_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_rule_executions_on_execution_key ON public.rule_executions USING btree (execution_key);
+
+
+--
+-- Name: index_rule_executions_on_stage_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_rule_executions_on_stage_id ON public.rule_executions USING btree (stage_id);
+
+
+--
 -- Name: index_sessions_on_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1805,11 +1887,27 @@ ALTER TABLE ONLY public.sessions
 
 
 --
+-- Name: rule_executions fk_rails_7644e74964; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rule_executions
+    ADD CONSTRAINT fk_rails_7644e74964 FOREIGN KEY (stage_id) REFERENCES public.stages(id);
+
+
+--
 -- Name: account_invitations fk_rails_7a9e106543; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.account_invitations
     ADD CONSTRAINT fk_rails_7a9e106543 FOREIGN KEY (account_id) REFERENCES public.accounts(id);
+
+
+--
+-- Name: rule_executions fk_rails_7be42fd232; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rule_executions
+    ADD CONSTRAINT fk_rails_7be42fd232 FOREIGN KEY (conversation_id) REFERENCES public.conversations(id);
 
 
 --
@@ -1995,6 +2093,7 @@ ALTER TABLE ONLY public.team_memberships
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260913203056'),
 ('20260913184243'),
 ('20260913184242'),
 ('20260913184241'),

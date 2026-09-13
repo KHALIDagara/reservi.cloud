@@ -116,6 +116,59 @@ class Flows::AdvanceTest < ActiveSupport::TestCase
     assert_equal "completed", @conversation.process_status
   end
 
+  test "fires rules on the target stage after advancement" do
+    stage = @conversation.current_stage
+    alice = agents(:alpha_alice_human)
+
+    target_stage = @conversation.flow_version.stages.create!(
+      key: "target_with_rules",
+      label: "Target",
+      position: 2,
+      blocks: [],
+      rules: [
+        { "key" => "auto_assign",
+          "predicate" => { "literal" => true },
+          "actions" => [{ "type" => "assign", "agent_name" => "Alice Admin" }] }
+      ],
+      completion: { "literal" => false }
+    )
+    stage.update!(completion: { "literal" => true })
+
+    result = Flows::Advance.call(conversation: @conversation)
+    assert result[:advanced]
+
+    @conversation.reload
+    assert_equal target_stage.id, @conversation.current_stage_id
+    assert_equal alice.id, @conversation.owner_id
+
+    # Verify RuleExecution was recorded for the target stage
+    executions = @conversation.rule_executions
+    assert_equal 1, executions.length
+    assert_equal "auto_assign", executions.first.rule_key
+    assert_equal "executed", executions.first.status
+  end
+
+  test "does not fire rules on terminal completion (no next stage)" do
+    stage = @conversation.current_stage
+    stage.update!(
+      completion: { "literal" => true },
+      rules: [
+        { "key" => "final_rule",
+          "predicate" => { "literal" => true },
+          "actions" => [{ "type" => "assign", "agent_name" => "Alice Admin" }] }
+      ]
+    )
+
+    result = Flows::Advance.call(conversation: @conversation)
+    assert result[:advanced]
+    assert result[:complete]
+
+    @conversation.reload
+    assert_equal "completed", @conversation.process_status
+    # Owner should be nil (terminal completion clears it)
+    assert_nil @conversation.owner_id
+  end
+
   test "does not advance when not active" do
     stage = @conversation.current_stage
     stage.update!(completion: { "literal" => true })

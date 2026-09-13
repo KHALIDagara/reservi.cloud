@@ -61,6 +61,11 @@ module Flows
         { advanced: true, transition: transition,
           complete: @conversation.process_status == "completed",
           explanation: result[:explanation] }
+      end.tap do |result|
+        # Evaluate rules for the new stage after releasing the lock.
+        # Rules are independent of the transition lock — they call domain
+        # operations that acquire their own locks.
+        evaluate_rules if result[:advanced] && !result[:complete]
       end
     end
 
@@ -86,6 +91,14 @@ module Flows
       { advanced: false, transition: nil,
         complete: false,
         explanation: result[:explanation] }
+    end
+
+    def evaluate_rules
+      @conversation.reload
+      Reservi::RuleExecutor.evaluate(conversation: @conversation)
+    rescue => e
+      Rails.logger.warn "Rule evaluation failed for conversation #{@conversation.id}: #{e.message}"
+      # Rule evaluation failures do not block progression
     end
   end
 end
