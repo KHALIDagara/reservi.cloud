@@ -1,0 +1,33 @@
+alpha_active:
+  account: alpha
+  customer: alpha_wilma
+  flow_version: alpha_v1
+  current_stage: alpha_stage1
+  process_status: active
+  owner: alpha_alice_human
+  attention: true
+  first_attention_at: <%= 1.hour.ago %>
+  last_activity_at: <%= 5.minutes.ago %>
+  custom_values: {}
+
+alpha_cancelled:
+  account: alpha
+  customer: alpha_fred
+  flow_version: alpha_v1
+  current_stage: alpha_stage1
+  process_status: cancelled
+  owner: alpha_alice_human
+  attention: false
+  custom_values: {}
+
+beta_active:
+  account: beta
+  customer: beta_greg
+  flow_version: beta_v1
+  current_stage: beta_stage1
+  process_status: active
+  owner: beta_alice_human
+  attention: true
+  first_attention_at: <%= 2.hours.ago %>
+  last_activity_at: <%= 30.minutes.ago %>
+  custom_values: {}

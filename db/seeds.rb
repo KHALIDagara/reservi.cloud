@@ -48,5 +48,43 @@ unless Rails.env.production?
     flow.update!(current_version: version)
   end
 
+  # Create a two-stage Flow for development testing
+  unless account.flows.where(name: "Intake + Qualification").exists?
+    flow2 = account.flows.create!(name: "Intake + Qualification")
+    version2 = flow2.versions.create!(version_number: 1, status: "published", published_at: Time.current)
+    version2.stages.create!(
+      key: "intake",
+      label: "Intake",
+      position: 1,
+      blocks: [{ "type" => "field", "key" => "budget", "required" => true }],
+      rules: [],
+      completion: { "exists" => { "kind" => "field", "scope" => "conversation", "key" => "budget" } }
+    )
+    version2.stages.create!(
+      key: "qualification",
+      label: "Qualification",
+      position: 2,
+      blocks: [],
+      rules: [],
+      completion: { "literal" => true }
+    )
+    flow2.update!(current_version: version2)
+  end
+
+  # Seed catalogs and items
+  unless account.catalogs.exists?
+    services = account.catalogs.create!(title: "Services")
+    services.items.create!(title: "Garden Maintenance", price: 150, currency: "USD", unit: "visit",
+      account: account)
+    services.items.create!(title: "Pool Cleaning", price: 200, currency: "USD", unit: "visit",
+      account: account)
+
+    cars = account.catalogs.create!(title: "Cars")
+    cars.items.create!(title: "Range Rover Evoque", price: 120, currency: "USD", unit: "day",
+      account: account)
+    cars.items.create!(title: "Mercedes C300", price: 90, currency: "USD", unit: "day",
+      account: account)
+  end
+
   puts "Seed complete: Account '#{account_name}', user '#{email}'"
 end

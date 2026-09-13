@@ -11,6 +11,8 @@ class Conversation < ApplicationRecord
   has_many :messages, dependent: :destroy
   has_many :notes, dependent: :destroy
   has_many :conversation_reads, dependent: :destroy
+  has_many :stage_transitions, dependent: :destroy
+  has_many :item_selections, dependent: :destroy
 
   validates :process_status, inclusion: { in: PROCESS_STATUSES }
 

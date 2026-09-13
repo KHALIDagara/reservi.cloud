@@ -9,6 +9,9 @@ class Account < ApplicationRecord
   has_many :flows
   has_many :conversations
   has_many :field_definitions
+  has_many :catalogs
+  has_many :items
+  has_many :item_selections
 
   validates :name, presence: true
   validates :locale, presence: true

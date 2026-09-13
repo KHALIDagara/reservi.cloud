@@ -1,0 +1,27 @@
+<h1 class="text-2xl font-semibold tracking-tight">Catalogs</h1>
+<%= link_to "New Catalog", new_catalog_path(account_id: current_account), class: "mt-4 inline-block rounded-md bg-stone-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-stone-700" %>
+
+<% if @catalogs.any? %>
+  <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <% @catalogs.each do |catalog| %>
+      <div class="rounded-lg border border-stone-200 bg-white p-4">
+        <h2 class="font-medium"><%= catalog.title %></h2>
+        <p class="mt-1 text-sm text-stone-500"><%= pluralize(catalog.items.active.count, "item") %></p>
+        <% if catalog.items.active.any? %>
+          <ul class="mt-2 space-y-1">
+            <% catalog.items.active.ordered.first(5).each do |item| %>
+              <li class="text-sm text-stone-700">
+                <%= item.title %>
+                <% if item.price %>
+                  — <%= number_to_currency(item.price, unit: item.currency || "USD") %>
+                <% end %>
+              </li>
+            <% end %>
+          </ul>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+<% else %>
+  <p class="mt-6 text-sm text-stone-500">No catalogs yet.</p>
+<% end %>

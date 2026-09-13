@@ -47,6 +47,18 @@ Rails.application.routes.draw do
     # Customer profile fields
     get "customers/:customer_id/fields/edit", to: "customer_fields#edit", as: :edit_account_customer_fields
     post "customers/:customer_id/fields", to: "customer_fields#update", as: :account_customer_fields
+
+    # Catalogs (admin for create)
+    resources :catalogs, only: [:index, :new, :create], controller: "catalogs" do
+      get :items, on: :member
+    end
+
+    # Item selections
+    resources :item_selections, only: [:create, :destroy]
+
+    # Flow management (admin)
+    get "flows", to: "flow_versions#index", as: :account_flow_versions
+    post "flows/:flow_id/versions/:id/publish", to: "flow_versions#publish", as: :publish_account_flow_version
   end
 
   get "up" => "rails/health#show", as: :rails_health_check

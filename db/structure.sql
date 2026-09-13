@@ -146,6 +146,40 @@ CREATE TABLE public.ar_internal_metadata (
 
 
 --
+-- Name: catalogs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.catalogs (
+    id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    title character varying NOT NULL,
+    item_attributes jsonb DEFAULT '{}'::jsonb NOT NULL,
+    archived boolean DEFAULT false NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: catalogs_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.catalogs_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: catalogs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.catalogs_id_seq OWNED BY public.catalogs.id;
+
+
+--
 -- Name: conversation_reads; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -366,6 +400,82 @@ ALTER SEQUENCE public.flows_id_seq OWNED BY public.flows.id;
 
 
 --
+-- Name: item_selections; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.item_selections (
+    id bigint NOT NULL,
+    conversation_id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    catalog_id bigint NOT NULL,
+    item_id bigint NOT NULL,
+    role_key character varying NOT NULL,
+    ordinal integer,
+    snapshot jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: item_selections_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.item_selections_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: item_selections_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.item_selections_id_seq OWNED BY public.item_selections.id;
+
+
+--
+-- Name: items; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.items (
+    id bigint NOT NULL,
+    catalog_id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    title character varying NOT NULL,
+    description text,
+    price numeric(12,2),
+    currency character varying DEFAULT 'USD'::character varying NOT NULL,
+    unit character varying,
+    attributes_json jsonb DEFAULT '{}'::jsonb NOT NULL,
+    archived boolean DEFAULT false NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: items_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.items_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: items_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.items_id_seq OWNED BY public.items.id;
+
+
+--
 -- Name: memberships; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -510,6 +620,42 @@ CREATE SEQUENCE public.sessions_id_seq
 --
 
 ALTER SEQUENCE public.sessions_id_seq OWNED BY public.sessions.id;
+
+
+--
+-- Name: stage_transitions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.stage_transitions (
+    id bigint NOT NULL,
+    conversation_id bigint NOT NULL,
+    from_stage_id bigint NOT NULL,
+    to_stage_id bigint,
+    entry_identity character varying NOT NULL,
+    reason character varying,
+    input_revisions jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: stage_transitions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.stage_transitions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: stage_transitions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.stage_transitions_id_seq OWNED BY public.stage_transitions.id;
 
 
 --
@@ -674,6 +820,13 @@ ALTER TABLE ONLY public.agents ALTER COLUMN id SET DEFAULT nextval('public.agent
 
 
 --
+-- Name: catalogs id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.catalogs ALTER COLUMN id SET DEFAULT nextval('public.catalogs_id_seq'::regclass);
+
+
+--
 -- Name: conversation_reads id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -716,6 +869,20 @@ ALTER TABLE ONLY public.flows ALTER COLUMN id SET DEFAULT nextval('public.flows_
 
 
 --
+-- Name: item_selections id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.item_selections ALTER COLUMN id SET DEFAULT nextval('public.item_selections_id_seq'::regclass);
+
+
+--
+-- Name: items id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.items ALTER COLUMN id SET DEFAULT nextval('public.items_id_seq'::regclass);
+
+
+--
 -- Name: memberships id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -741,6 +908,13 @@ ALTER TABLE ONLY public.notes ALTER COLUMN id SET DEFAULT nextval('public.notes_
 --
 
 ALTER TABLE ONLY public.sessions ALTER COLUMN id SET DEFAULT nextval('public.sessions_id_seq'::regclass);
+
+
+--
+-- Name: stage_transitions id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stage_transitions ALTER COLUMN id SET DEFAULT nextval('public.stage_transitions_id_seq'::regclass);
 
 
 --
@@ -804,6 +978,14 @@ ALTER TABLE ONLY public.ar_internal_metadata
 
 
 --
+-- Name: catalogs catalogs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.catalogs
+    ADD CONSTRAINT catalogs_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: conversation_reads conversation_reads_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -852,6 +1034,22 @@ ALTER TABLE ONLY public.flows
 
 
 --
+-- Name: item_selections item_selections_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.item_selections
+    ADD CONSTRAINT item_selections_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: items items_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.items
+    ADD CONSTRAINT items_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: memberships memberships_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -892,6 +1090,14 @@ ALTER TABLE ONLY public.sessions
 
 
 --
+-- Name: stage_transitions stage_transitions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stage_transitions
+    ADD CONSTRAINT stage_transitions_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: stages stages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -921,6 +1127,20 @@ ALTER TABLE ONLY public.teams
 
 ALTER TABLE ONLY public.users
     ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: idx_item_selections_on_conversation_role; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_item_selections_on_conversation_role ON public.item_selections USING btree (conversation_id, role_key);
+
+
+--
+-- Name: idx_item_selections_on_conversation_role_item; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_item_selections_on_conversation_role_item ON public.item_selections USING btree (conversation_id, role_key, item_id);
 
 
 --
@@ -991,6 +1211,27 @@ CREATE UNIQUE INDEX index_agents_on_account_id_and_id ON public.agents USING btr
 --
 
 CREATE INDEX index_agents_on_membership_id ON public.agents USING btree (membership_id);
+
+
+--
+-- Name: index_catalogs_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_catalogs_on_account_id ON public.catalogs USING btree (account_id);
+
+
+--
+-- Name: index_catalogs_on_account_id_and_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_catalogs_on_account_id_and_id ON public.catalogs USING btree (account_id, id);
+
+
+--
+-- Name: index_catalogs_on_account_id_and_title; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_catalogs_on_account_id_and_title ON public.catalogs USING btree (account_id, title);
 
 
 --
@@ -1169,6 +1410,76 @@ CREATE INDEX index_flows_on_current_version_id ON public.flows USING btree (curr
 
 
 --
+-- Name: index_item_selections_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_item_selections_on_account_id ON public.item_selections USING btree (account_id);
+
+
+--
+-- Name: index_item_selections_on_account_id_and_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_item_selections_on_account_id_and_id ON public.item_selections USING btree (account_id, id);
+
+
+--
+-- Name: index_item_selections_on_catalog_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_item_selections_on_catalog_id ON public.item_selections USING btree (catalog_id);
+
+
+--
+-- Name: index_item_selections_on_conversation_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_item_selections_on_conversation_id ON public.item_selections USING btree (conversation_id);
+
+
+--
+-- Name: index_item_selections_on_item_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_item_selections_on_item_id ON public.item_selections USING btree (item_id);
+
+
+--
+-- Name: index_items_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_items_on_account_id ON public.items USING btree (account_id);
+
+
+--
+-- Name: index_items_on_account_id_and_catalog_id_and_title; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_items_on_account_id_and_catalog_id_and_title ON public.items USING btree (account_id, catalog_id, title);
+
+
+--
+-- Name: index_items_on_account_id_and_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_items_on_account_id_and_id ON public.items USING btree (account_id, id);
+
+
+--
+-- Name: index_items_on_catalog_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_items_on_catalog_id ON public.items USING btree (catalog_id);
+
+
+--
+-- Name: index_items_on_catalog_id_and_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_items_on_catalog_id_and_id ON public.items USING btree (catalog_id, id);
+
+
+--
 -- Name: index_memberships_on_account_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1257,6 +1568,27 @@ CREATE UNIQUE INDEX index_notes_on_conversation_id_and_id ON public.notes USING 
 --
 
 CREATE INDEX index_sessions_on_user_id ON public.sessions USING btree (user_id);
+
+
+--
+-- Name: index_stage_transitions_on_conversation_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_stage_transitions_on_conversation_id ON public.stage_transitions USING btree (conversation_id);
+
+
+--
+-- Name: index_stage_transitions_on_conversation_id_and_entry_identity; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_stage_transitions_on_conversation_id_and_entry_identity ON public.stage_transitions USING btree (conversation_id, entry_identity);
+
+
+--
+-- Name: index_stage_transitions_on_conversation_id_and_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_stage_transitions_on_conversation_id_and_id ON public.stage_transitions USING btree (conversation_id, id);
 
 
 --
@@ -1361,6 +1693,14 @@ ALTER TABLE ONLY public.agents
 
 
 --
+-- Name: item_selections fk_item_selections_conversation_account_scoped; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.item_selections
+    ADD CONSTRAINT fk_item_selections_conversation_account_scoped FOREIGN KEY (account_id, conversation_id) REFERENCES public.conversations(account_id, id);
+
+
+--
 -- Name: conversations fk_rails_00afd02cba; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1377,11 +1717,35 @@ ALTER TABLE ONLY public.flows
 
 
 --
+-- Name: item_selections fk_rails_0aabf16132; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.item_selections
+    ADD CONSTRAINT fk_rails_0aabf16132 FOREIGN KEY (item_id) REFERENCES public.items(id);
+
+
+--
 -- Name: conversations fk_rails_0b87b55aff; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.conversations
     ADD CONSTRAINT fk_rails_0b87b55aff FOREIGN KEY (account_id, team_id) REFERENCES public.teams(account_id, id);
+
+
+--
+-- Name: items fk_rails_13270fc162; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.items
+    ADD CONSTRAINT fk_rails_13270fc162 FOREIGN KEY (account_id) REFERENCES public.accounts(id);
+
+
+--
+-- Name: stage_transitions fk_rails_31d1222ff4; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stage_transitions
+    ADD CONSTRAINT fk_rails_31d1222ff4 FOREIGN KEY (to_stage_id) REFERENCES public.stages(id);
 
 
 --
@@ -1393,11 +1757,35 @@ ALTER TABLE ONLY public.messages
 
 
 --
+-- Name: stage_transitions fk_rails_3c3ceeec32; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stage_transitions
+    ADD CONSTRAINT fk_rails_3c3ceeec32 FOREIGN KEY (conversation_id) REFERENCES public.conversations(id);
+
+
+--
+-- Name: catalogs fk_rails_42305b367e; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.catalogs
+    ADD CONSTRAINT fk_rails_42305b367e FOREIGN KEY (account_id) REFERENCES public.accounts(id);
+
+
+--
 -- Name: conversation_reads fk_rails_446634b7c3; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.conversation_reads
     ADD CONSTRAINT fk_rails_446634b7c3 FOREIGN KEY (agent_id) REFERENCES public.agents(id);
+
+
+--
+-- Name: stage_transitions fk_rails_5080c03c85; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stage_transitions
+    ADD CONSTRAINT fk_rails_5080c03c85 FOREIGN KEY (from_stage_id) REFERENCES public.stages(id);
 
 
 --
@@ -1433,6 +1821,14 @@ ALTER TABLE ONLY public.messages
 
 
 --
+-- Name: item_selections fk_rails_8b89aa738d; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.item_selections
+    ADD CONSTRAINT fk_rails_8b89aa738d FOREIGN KEY (account_id) REFERENCES public.accounts(id);
+
+
+--
 -- Name: notes fk_rails_9259470eb1; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1465,6 +1861,14 @@ ALTER TABLE ONLY public.conversations
 
 
 --
+-- Name: items fk_rails_ac675f13b9; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.items
+    ADD CONSTRAINT fk_rails_ac675f13b9 FOREIGN KEY (catalog_id) REFERENCES public.catalogs(id);
+
+
+--
 -- Name: notes fk_rails_b47a62c385; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1489,11 +1893,27 @@ ALTER TABLE ONLY public.conversation_reads
 
 
 --
+-- Name: item_selections fk_rails_bd05ae966c; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.item_selections
+    ADD CONSTRAINT fk_rails_bd05ae966c FOREIGN KEY (catalog_id) REFERENCES public.catalogs(id);
+
+
+--
 -- Name: field_definitions fk_rails_c5aa27cbc1; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.field_definitions
     ADD CONSTRAINT fk_rails_c5aa27cbc1 FOREIGN KEY (account_id) REFERENCES public.accounts(id);
+
+
+--
+-- Name: item_selections fk_rails_c9756ae455; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.item_selections
+    ADD CONSTRAINT fk_rails_c9756ae455 FOREIGN KEY (conversation_id) REFERENCES public.conversations(id);
 
 
 --
@@ -1575,6 +1995,10 @@ ALTER TABLE ONLY public.team_memberships
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260913184243'),
+('20260913184242'),
+('20260913184241'),
+('20260913182455'),
 ('20260913175317'),
 ('20260913160630'),
 ('20260913160621'),
