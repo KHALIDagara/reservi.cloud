@@ -1,0 +1,48 @@
+<h1 class="text-2xl font-semibold tracking-tight"><%= @customer.name %></h1>
+<p class="mt-1 text-sm text-stone-500">Edit customer profile</p>
+
+<%= form_with model: @customer, url: account_customer_fields_path(current_account, @customer), scope: :customer, class: "mt-6 space-y-5" do |f| %>
+  <div>
+    <%= f.label :name, class: "mb-1 block text-sm font-medium" %>
+    <%= f.text_field :name, class: "w-full rounded-md border border-stone-300 px-3 py-2" %>
+  </div>
+  <div>
+    <%= f.label :phone, class: "mb-1 block text-sm font-medium" %>
+    <%= f.telephone_field :phone, class: "w-full rounded-md border border-stone-300 px-3 py-2" %>
+  </div>
+  <div>
+    <%= f.label :email_address, class: "mb-1 block text-sm font-medium" %>
+    <%= f.email_field :email_address, class: "w-full rounded-md border border-stone-300 px-3 py-2" %>
+  </div>
+
+  <% @definitions.each do |defn| %>
+    <div>
+      <%= label_tag "customer_custom_values_#{defn.key}", defn.label.presence || defn.key.humanize, class: "mb-1 block text-sm font-medium" %>
+      <% value = @customer.custom_values[defn.key] %>
+      <% case defn.field_type %>
+      <% when "text" %>
+        <%= text_field_tag "customer[custom_values][#{defn.key}]", value, class: "w-full rounded-md border border-stone-300 px-3 py-2" %>
+      <% when "number" %>
+        <%= number_field_tag "customer[custom_values][#{defn.key}]", value, class: "w-full rounded-md border border-stone-300 px-3 py-2" %>
+      <% when "boolean" %>
+        <%= hidden_field_tag "customer[custom_values][#{defn.key}]", "false" %>
+        <%= check_box_tag "customer[custom_values][#{defn.key}]", "true", value == true || value == "true", class: "rounded border-stone-300" %>
+      <% when "single_choice" %>
+        <%= select_tag "customer[custom_values][#{defn.key}]", options_for_select(defn.options.map { |o| [o.is_a?(Hash) ? o["label"] : o, o.is_a?(Hash) ? o["key"] : o] }, value), include_blank: true, class: "w-full rounded-md border border-stone-300 px-3 py-2" %>
+      <% when "multi_choice" %>
+        <% defn.options.each do |opt| %>
+          <% opt_key = opt.is_a?(Hash) ? opt["key"] : opt.to_s %>
+          <% opt_label = opt.is_a?(Hash) ? opt["label"] : opt.to_s %>
+          <label class="flex items-center gap-2">
+            <%= check_box_tag "customer[custom_values][#{defn.key}][]", opt_key, Array(value).include?(opt_key), class: "rounded border-stone-300" %>
+            <%= opt_label %>
+          </label>
+        <% end %>
+      <% when "date" %>
+        <%= date_field_tag "customer[custom_values][#{defn.key}]", value, class: "w-full rounded-md border border-stone-300 px-3 py-2" %>
+      <% end %>
+    </div>
+  <% end %>
+
+  <%= f.submit "Save", class: "rounded-md bg-stone-900 px-4 py-2 font-medium text-white" %>
+<% end %>

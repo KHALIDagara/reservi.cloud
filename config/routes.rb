@@ -37,6 +37,16 @@ Rails.application.routes.draw do
     post "invitations/:id/revoke", to: "invitations#revoke", as: :revoke_account_invitation
     post "memberships/:id/role", to: "memberships#update_role", as: :account_membership_role
     post "memberships/:id/remove", to: "memberships#remove", as: :account_membership_remove
+
+    # Field definitions (admin)
+    get "field_definitions", to: "field_definitions#index", as: :account_field_definitions
+    get "field_definitions/new", to: "field_definitions#new", as: :new_account_field_definition
+    post "field_definitions", to: "field_definitions#create", as: :account_field_definitions_create
+    post "field_definitions/:id/archive", to: "field_definitions#archive", as: :archive_account_field_definition
+
+    # Customer profile fields
+    get "customers/:customer_id/fields/edit", to: "customer_fields#edit", as: :edit_account_customer_fields
+    post "customers/:customer_id/fields", to: "customer_fields#update", as: :account_customer_fields
   end
 
   get "up" => "rails/health#show", as: :rails_health_check

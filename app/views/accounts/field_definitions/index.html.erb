@@ -1,0 +1,20 @@
+<h1 class="text-2xl font-semibold tracking-tight">Field definitions</h1>
+<%= link_to "New field", new_account_field_definition_path(current_account), class: "mt-4 inline-block rounded-md bg-stone-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-stone-700" %>
+
+<% if @definitions.any? %>
+  <ul class="mt-4 divide-y divide-stone-200 rounded-lg border border-stone-200 bg-white">
+    <% @definitions.each do |defn| %>
+      <li class="flex items-center justify-between px-4 py-3">
+        <div>
+          <p class="font-medium"><%= defn.label.presence || defn.key %></p>
+          <p class="text-sm text-stone-500"><%= defn.key %> · <%= defn.scope %> · <%= defn.field_type %><%= " · bound to #{defn.built_in_binding}" if defn.built_in_binding %><%= " · archived" if defn.archived %></p>
+        </div>
+        <% unless defn.archived %>
+          <%= button_to "Archive", archive_account_field_definition_path(current_account, defn), method: :post, class: "text-sm text-red-600 hover:text-red-700" %>
+        <% end %>
+      </li>
+    <% end %>
+  </ul>
+<% else %>
+  <p class="mt-6 text-sm text-stone-500">No field definitions yet.</p>
+<% end %>

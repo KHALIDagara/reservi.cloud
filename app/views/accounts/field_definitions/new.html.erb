@@ -1,0 +1,24 @@
+<h1 class="text-2xl font-semibold tracking-tight">New field definition</h1>
+<%= form_with model: @definition, url: account_field_definitions_create_path(current_account), class: "mt-6 space-y-5" do |f| %>
+  <div>
+    <%= f.label :key, class: "mb-1 block text-sm font-medium" %>
+    <%= f.text_field :key, required: true, class: "w-full rounded-md border border-stone-300 px-3 py-2" %>
+  </div>
+  <div>
+    <%= f.label :label, class: "mb-1 block text-sm font-medium" %>
+    <%= f.text_field :label, class: "w-full rounded-md border border-stone-300 px-3 py-2" %>
+  </div>
+  <div>
+    <%= f.label :scope, class: "mb-1 block text-sm font-medium" %>
+    <%= f.select :scope, options_for_select([["Customer", "customer"], ["Conversation", "conversation"]]), {}, class: "w-full rounded-md border border-stone-300 px-3 py-2" %>
+  </div>
+  <div>
+    <%= f.label :field_type, class: "mb-1 block text-sm font-medium" %>
+    <%= f.select :field_type, options_for_select([["Text", "text"], ["Number", "number"], ["Boolean", "boolean"], ["Single choice", "single_choice"], ["Multi choice", "multi_choice"], ["Date", "date"]]), {}, class: "w-full rounded-md border border-stone-300 px-3 py-2" %>
+  </div>
+  <div>
+    <%= f.label :built_in_binding, class: "mb-1 block text-sm font-medium" %>
+    <%= f.select :built_in_binding, options_for_select([["None", ""], ["Name", "name"], ["Phone", "phone"], ["Email", "email_address"], ["Locale", "locale"]]), {}, class: "w-full rounded-md border border-stone-300 px-3 py-2" %>
+  </div>
+  <%= f.submit "Create field", class: "rounded-md bg-stone-900 px-4 py-2 font-medium text-white" %>
+<% end %>

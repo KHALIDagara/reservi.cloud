@@ -8,6 +8,7 @@ class Account < ApplicationRecord
   has_many :customers
   has_many :flows
   has_many :conversations
+  has_many :field_definitions
 
   validates :name, presence: true
   validates :locale, presence: true

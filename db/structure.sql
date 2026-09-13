@@ -34,9 +34,9 @@ CREATE TABLE public.account_invitations (
     accepted_at timestamp(6) without time zone,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    CONSTRAINT account_invitations_delivery_status_check CHECK (((delivery_status)::text = ANY (ARRAY[('pending'::character varying)::text, ('delivered'::character varying)::text, ('failed'::character varying)::text, ('unknown'::character varying)::text]))),
-    CONSTRAINT account_invitations_role_check CHECK (((role)::text = ANY (ARRAY[('admin'::character varying)::text, ('manager'::character varying)::text, ('operator'::character varying)::text]))),
-    CONSTRAINT account_invitations_status_check CHECK (((status)::text = ANY (ARRAY[('pending'::character varying)::text, ('accepted'::character varying)::text, ('revoked'::character varying)::text])))
+    CONSTRAINT account_invitations_delivery_status_check CHECK (((delivery_status)::text = ANY ((ARRAY['pending'::character varying, 'delivered'::character varying, 'failed'::character varying, 'unknown'::character varying])::text[]))),
+    CONSTRAINT account_invitations_role_check CHECK (((role)::text = ANY ((ARRAY['admin'::character varying, 'manager'::character varying, 'operator'::character varying])::text[]))),
+    CONSTRAINT account_invitations_status_check CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'accepted'::character varying, 'revoked'::character varying])::text[])))
 );
 
 
@@ -109,7 +109,7 @@ CREATE TABLE public.agents (
     capabilities jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    CONSTRAINT agents_kind_check CHECK (((kind)::text = ANY (ARRAY[('human'::character varying)::text, ('ai'::character varying)::text]))),
+    CONSTRAINT agents_kind_check CHECK (((kind)::text = ANY ((ARRAY['human'::character varying, 'ai'::character varying])::text[]))),
     CONSTRAINT agents_kind_membership_check CHECK (((((kind)::text = 'human'::text) AND (membership_id IS NOT NULL)) OR (((kind)::text = 'ai'::text) AND (membership_id IS NULL))))
 );
 
@@ -257,6 +257,48 @@ ALTER SEQUENCE public.customers_id_seq OWNED BY public.customers.id;
 
 
 --
+-- Name: field_definitions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.field_definitions (
+    id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    scope character varying NOT NULL,
+    key character varying NOT NULL,
+    label character varying DEFAULT ''::character varying NOT NULL,
+    field_type character varying NOT NULL,
+    options jsonb DEFAULT '[]'::jsonb NOT NULL,
+    constraints jsonb DEFAULT '{}'::jsonb NOT NULL,
+    built_in_binding character varying,
+    "position" integer DEFAULT 0 NOT NULL,
+    archived boolean DEFAULT false NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    CONSTRAINT field_definitions_scope_check CHECK (((scope)::text = ANY ((ARRAY['customer'::character varying, 'conversation'::character varying])::text[]))),
+    CONSTRAINT field_definitions_type_check CHECK (((field_type)::text = ANY ((ARRAY['text'::character varying, 'number'::character varying, 'boolean'::character varying, 'single_choice'::character varying, 'multi_choice'::character varying, 'date'::character varying])::text[])))
+);
+
+
+--
+-- Name: field_definitions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.field_definitions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: field_definitions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.field_definitions_id_seq OWNED BY public.field_definitions.id;
+
+
+--
 -- Name: flow_versions; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -335,7 +377,7 @@ CREATE TABLE public.memberships (
     active boolean DEFAULT true NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    CONSTRAINT memberships_role_check CHECK (((role)::text = ANY (ARRAY[('admin'::character varying)::text, ('manager'::character varying)::text, ('operator'::character varying)::text])))
+    CONSTRAINT memberships_role_check CHECK (((role)::text = ANY ((ARRAY['admin'::character varying, 'manager'::character varying, 'operator'::character varying])::text[])))
 );
 
 
@@ -653,6 +695,13 @@ ALTER TABLE ONLY public.customers ALTER COLUMN id SET DEFAULT nextval('public.cu
 
 
 --
+-- Name: field_definitions id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.field_definitions ALTER COLUMN id SET DEFAULT nextval('public.field_definitions_id_seq'::regclass);
+
+
+--
 -- Name: flow_versions id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -776,6 +825,14 @@ ALTER TABLE ONLY public.conversations
 
 ALTER TABLE ONLY public.customers
     ADD CONSTRAINT customers_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: field_definitions field_definitions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.field_definitions
+    ADD CONSTRAINT field_definitions_pkey PRIMARY KEY (id);
 
 
 --
@@ -1032,6 +1089,34 @@ CREATE UNIQUE INDEX index_customers_on_account_id_and_email_address ON public.cu
 --
 
 CREATE UNIQUE INDEX index_customers_on_account_id_and_id ON public.customers USING btree (account_id, id);
+
+
+--
+-- Name: index_field_definitions_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_field_definitions_on_account_id ON public.field_definitions USING btree (account_id);
+
+
+--
+-- Name: index_field_definitions_on_account_id_and_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_field_definitions_on_account_id_and_id ON public.field_definitions USING btree (account_id, id);
+
+
+--
+-- Name: index_field_definitions_on_account_id_and_scope_and_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_field_definitions_on_account_id_and_scope_and_key ON public.field_definitions USING btree (account_id, scope, key);
+
+
+--
+-- Name: index_field_definitions_on_account_id_and_scope_and_position; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_field_definitions_on_account_id_and_scope_and_position ON public.field_definitions USING btree (account_id, scope, "position");
 
 
 --
@@ -1404,6 +1489,14 @@ ALTER TABLE ONLY public.conversation_reads
 
 
 --
+-- Name: field_definitions fk_rails_c5aa27cbc1; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.field_definitions
+    ADD CONSTRAINT fk_rails_c5aa27cbc1 FOREIGN KEY (account_id) REFERENCES public.accounts(id);
+
+
+--
 -- Name: conversations fk_rails_d057651dc2; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1482,6 +1575,7 @@ ALTER TABLE ONLY public.team_memberships
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260913175317'),
 ('20260913160630'),
 ('20260913160621'),
 ('20260913160620'),
