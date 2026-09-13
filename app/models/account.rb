@@ -12,6 +12,7 @@ class Account < ApplicationRecord
   has_many :catalogs
   has_many :items
   has_many :item_selections
+  has_many :appointments
 
   validates :name, presence: true
   validates :locale, presence: true

@@ -2,7 +2,7 @@
 # Run with: bin/rails db:seed
 # This is idempotent — safe to run multiple times.
 
-unless Rails.env.production?
+if Rails.env.development?
   email = ENV.fetch("RESERVI_SEED_EMAIL", "admin@reservi.dev")
   password = ENV.fetch("RESERVI_SEED_PASSWORD", "password123")
   account_name = ENV.fetch("RESERVI_SEED_ACCOUNT_NAME", "Reservi Dev")

@@ -9,6 +9,20 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
+--
+-- Name: btree_gist; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS btree_gist WITH SCHEMA public;
+
+
+--
+-- Name: EXTENSION btree_gist; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON EXTENSION btree_gist IS 'support for indexing common datatypes in GiST';
+
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -131,6 +145,50 @@ CREATE SEQUENCE public.agents_id_seq
 --
 
 ALTER SEQUENCE public.agents_id_seq OWNED BY public.agents.id;
+
+
+--
+-- Name: appointments; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.appointments (
+    id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    conversation_id bigint NOT NULL,
+    role_key character varying NOT NULL,
+    scheduled_agent_id bigint,
+    status character varying DEFAULT 'pending'::character varying NOT NULL,
+    starts_at timestamp(6) without time zone NOT NULL,
+    ends_at timestamp(6) without time zone NOT NULL,
+    duration_minutes integer,
+    timezone character varying DEFAULT 'UTC'::character varying NOT NULL,
+    purpose text,
+    cancellation_reason character varying,
+    cancelled_at timestamp(6) without time zone,
+    completed_at timestamp(6) without time zone,
+    superseded_by_id bigint,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: appointments_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.appointments_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: appointments_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.appointments_id_seq OWNED BY public.appointments.id;
 
 
 --
@@ -859,6 +917,13 @@ ALTER TABLE ONLY public.agents ALTER COLUMN id SET DEFAULT nextval('public.agent
 
 
 --
+-- Name: appointments id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.appointments ALTER COLUMN id SET DEFAULT nextval('public.appointments_id_seq'::regclass);
+
+
+--
 -- Name: catalogs id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -1016,6 +1081,14 @@ ALTER TABLE ONLY public.agents
 
 
 --
+-- Name: appointments appointments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.appointments
+    ADD CONSTRAINT appointments_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: ar_internal_metadata ar_internal_metadata_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1112,6 +1185,14 @@ ALTER TABLE ONLY public.messages
 
 
 --
+-- Name: appointments no_overlapping_confirmed_appointments; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.appointments
+    ADD CONSTRAINT no_overlapping_confirmed_appointments EXCLUDE USING gist (account_id WITH =, scheduled_agent_id WITH =, tsrange(starts_at, ends_at, '[)'::text) WITH &&) WHERE (((scheduled_agent_id IS NOT NULL) AND ((status)::text = 'confirmed'::text)));
+
+
+--
 -- Name: notes notes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1181,6 +1262,20 @@ ALTER TABLE ONLY public.teams
 
 ALTER TABLE ONLY public.users
     ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: idx_appointments_account_scheduled_agent; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_appointments_account_scheduled_agent ON public.appointments USING btree (account_id, scheduled_agent_id);
+
+
+--
+-- Name: idx_current_appointment_per_role; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_current_appointment_per_role ON public.appointments USING btree (conversation_id, role_key) WHERE (superseded_by_id IS NULL);
 
 
 --
@@ -1272,6 +1367,27 @@ CREATE UNIQUE INDEX index_agents_on_account_id_and_id ON public.agents USING btr
 --
 
 CREATE INDEX index_agents_on_membership_id ON public.agents USING btree (membership_id);
+
+
+--
+-- Name: index_appointments_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_appointments_on_account_id ON public.appointments USING btree (account_id);
+
+
+--
+-- Name: index_appointments_on_conversation_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_appointments_on_conversation_id ON public.appointments USING btree (conversation_id);
+
+
+--
+-- Name: index_appointments_on_scheduled_agent_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_appointments_on_scheduled_agent_id ON public.appointments USING btree (scheduled_agent_id);
 
 
 --
@@ -1927,6 +2043,14 @@ ALTER TABLE ONLY public.item_selections
 
 
 --
+-- Name: appointments fk_rails_920ecef82c; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.appointments
+    ADD CONSTRAINT fk_rails_920ecef82c FOREIGN KEY (conversation_id) REFERENCES public.conversations(id);
+
+
+--
 -- Name: notes fk_rails_9259470eb1; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1956,6 +2080,14 @@ ALTER TABLE ONLY public.flow_versions
 
 ALTER TABLE ONLY public.conversations
     ADD CONSTRAINT fk_rails_a72440fed6 FOREIGN KEY (customer_id) REFERENCES public.customers(id);
+
+
+--
+-- Name: appointments fk_rails_aa14456f23; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.appointments
+    ADD CONSTRAINT fk_rails_aa14456f23 FOREIGN KEY (account_id) REFERENCES public.accounts(id);
 
 
 --
@@ -2071,6 +2203,14 @@ ALTER TABLE ONLY public.team_memberships
 
 
 --
+-- Name: appointments fk_rails_fa77b27f94; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.appointments
+    ADD CONSTRAINT fk_rails_fa77b27f94 FOREIGN KEY (scheduled_agent_id) REFERENCES public.agents(id);
+
+
+--
 -- Name: team_memberships fk_team_memberships_agent_account_scoped; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2093,6 +2233,8 @@ ALTER TABLE ONLY public.team_memberships
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260913211038'),
+('20260913210939'),
 ('20260913203056'),
 ('20260913184243'),
 ('20260913184242'),

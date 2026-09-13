@@ -49,7 +49,7 @@ module Flows
       stage.rules.each do |rule|
         (rule["actions"] || []).each do |action|
           action_type = action["type"]
-          unless %w[assign send_message].include?(action_type)
+          unless %w[assign send_message create_appointment confirm_appointment cancel_appointment].include?(action_type)
             raise Reservi::Errors::OperationError,
               "Stage '#{stage.key}', rule '#{rule['key']}': unsupported action type '#{action_type}'"
           end

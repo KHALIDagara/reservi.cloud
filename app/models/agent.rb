@@ -8,6 +8,7 @@ class Agent < ApplicationRecord
   has_many :team_memberships
   has_many :teams, through: :team_memberships
   has_many :owned_conversations, class_name: "Conversation", foreign_key: :owner_id, inverse_of: :owner
+  has_many :appointments, foreign_key: :scheduled_agent_id, inverse_of: :scheduled_agent
 
   validates :name, presence: true
   validates :kind, inclusion: { in: KINDS }

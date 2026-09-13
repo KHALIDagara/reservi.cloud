@@ -155,6 +155,8 @@ module Reservi
       case action_config["type"]
       when "assign"
         Rules::AssignAction.call(action_config, conversation: @conversation, context: context)
+      when "create_appointment", "confirm_appointment", "cancel_appointment"
+        Rules::AppointmentAction.call(action_config, conversation: @conversation, context: context)
       when "send_message"
         # T08: not yet implemented
         { type: "send_message", status: "skipped", reason: "Message sending not yet available (T08)" }
