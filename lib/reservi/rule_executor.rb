@@ -158,8 +158,7 @@ module Reservi
       when "create_appointment", "confirm_appointment", "cancel_appointment"
         Rules::AppointmentAction.call(action_config, conversation: @conversation, context: context)
       when "send_message"
-        # T08: not yet implemented
-        { type: "send_message", status: "skipped", reason: "Message sending not yet available (T08)" }
+        Rules::SendMessageAction.call(action_config, conversation: @conversation, context: context)
       else
         { type: action_config["type"], status: "failed", error: "Unknown action type: #{action_config['type']}" }
       end

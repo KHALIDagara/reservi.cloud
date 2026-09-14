@@ -13,6 +13,9 @@ class Account < ApplicationRecord
   has_many :items
   has_many :item_selections
   has_many :appointments
+  has_many :channels, dependent: :destroy
+  has_many :channel_threads, dependent: :destroy
+  has_many :message_deliveries, dependent: :destroy
 
   validates :name, presence: true
   validates :locale, presence: true

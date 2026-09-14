@@ -238,6 +238,79 @@ ALTER SEQUENCE public.catalogs_id_seq OWNED BY public.catalogs.id;
 
 
 --
+-- Name: channel_threads; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.channel_threads (
+    id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    channel_id bigint NOT NULL,
+    conversation_id bigint NOT NULL,
+    external_thread_id character varying NOT NULL,
+    external_contact_id character varying,
+    external_contact_name character varying,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: channel_threads_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.channel_threads_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: channel_threads_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.channel_threads_id_seq OWNED BY public.channel_threads.id;
+
+
+--
+-- Name: channels; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.channels (
+    id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    name character varying NOT NULL,
+    provider_type character varying NOT NULL,
+    active boolean DEFAULT true NOT NULL,
+    inbound_token character varying NOT NULL,
+    default_team_name character varying,
+    rate_limit_per_minute integer DEFAULT 10,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: channels_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.channels_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: channels_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.channels_id_seq OWNED BY public.channels.id;
+
+
+--
 -- Name: conversation_reads; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -566,6 +639,45 @@ CREATE SEQUENCE public.memberships_id_seq
 --
 
 ALTER SEQUENCE public.memberships_id_seq OWNED BY public.memberships.id;
+
+
+--
+-- Name: message_deliveries; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.message_deliveries (
+    id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    channel_id bigint NOT NULL,
+    message_id bigint NOT NULL,
+    status character varying DEFAULT 'pending'::character varying NOT NULL,
+    operation_key character varying NOT NULL,
+    provider_message_id character varying,
+    error_message text,
+    retry_count integer DEFAULT 0 NOT NULL,
+    last_attempt_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: message_deliveries_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.message_deliveries_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: message_deliveries_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.message_deliveries_id_seq OWNED BY public.message_deliveries.id;
 
 
 --
@@ -931,6 +1043,20 @@ ALTER TABLE ONLY public.catalogs ALTER COLUMN id SET DEFAULT nextval('public.cat
 
 
 --
+-- Name: channel_threads id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.channel_threads ALTER COLUMN id SET DEFAULT nextval('public.channel_threads_id_seq'::regclass);
+
+
+--
+-- Name: channels id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.channels ALTER COLUMN id SET DEFAULT nextval('public.channels_id_seq'::regclass);
+
+
+--
 -- Name: conversation_reads id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -991,6 +1117,13 @@ ALTER TABLE ONLY public.items ALTER COLUMN id SET DEFAULT nextval('public.items_
 --
 
 ALTER TABLE ONLY public.memberships ALTER COLUMN id SET DEFAULT nextval('public.memberships_id_seq'::regclass);
+
+
+--
+-- Name: message_deliveries id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.message_deliveries ALTER COLUMN id SET DEFAULT nextval('public.message_deliveries_id_seq'::regclass);
 
 
 --
@@ -1105,6 +1238,22 @@ ALTER TABLE ONLY public.catalogs
 
 
 --
+-- Name: channel_threads channel_threads_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.channel_threads
+    ADD CONSTRAINT channel_threads_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: channels channels_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.channels
+    ADD CONSTRAINT channels_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: conversation_reads conversation_reads_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1174,6 +1323,14 @@ ALTER TABLE ONLY public.items
 
 ALTER TABLE ONLY public.memberships
     ADD CONSTRAINT memberships_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: message_deliveries message_deliveries_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.message_deliveries
+    ADD CONSTRAINT message_deliveries_pkey PRIMARY KEY (id);
 
 
 --
@@ -1272,10 +1429,38 @@ CREATE INDEX idx_appointments_account_scheduled_agent ON public.appointments USI
 
 
 --
+-- Name: idx_channel_threads_on_account_conversation; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_channel_threads_on_account_conversation ON public.channel_threads USING btree (account_id, conversation_id);
+
+
+--
+-- Name: idx_channel_threads_on_channel_and_thread; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_channel_threads_on_channel_and_thread ON public.channel_threads USING btree (channel_id, external_thread_id);
+
+
+--
 -- Name: idx_current_appointment_per_role; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE UNIQUE INDEX idx_current_appointment_per_role ON public.appointments USING btree (conversation_id, role_key) WHERE (superseded_by_id IS NULL);
+
+
+--
+-- Name: idx_deliveries_on_account_message; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_deliveries_on_account_message ON public.message_deliveries USING btree (account_id, message_id);
+
+
+--
+-- Name: idx_deliveries_on_channel_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_deliveries_on_channel_status ON public.message_deliveries USING btree (channel_id, status);
 
 
 --
@@ -1409,6 +1594,48 @@ CREATE UNIQUE INDEX index_catalogs_on_account_id_and_id ON public.catalogs USING
 --
 
 CREATE UNIQUE INDEX index_catalogs_on_account_id_and_title ON public.catalogs USING btree (account_id, title);
+
+
+--
+-- Name: index_channel_threads_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_channel_threads_on_account_id ON public.channel_threads USING btree (account_id);
+
+
+--
+-- Name: index_channel_threads_on_channel_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_channel_threads_on_channel_id ON public.channel_threads USING btree (channel_id);
+
+
+--
+-- Name: index_channel_threads_on_conversation_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_channel_threads_on_conversation_id ON public.channel_threads USING btree (conversation_id);
+
+
+--
+-- Name: index_channels_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_channels_on_account_id ON public.channels USING btree (account_id);
+
+
+--
+-- Name: index_channels_on_account_id_and_name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_channels_on_account_id_and_name ON public.channels USING btree (account_id, name);
+
+
+--
+-- Name: index_channels_on_inbound_token; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_channels_on_inbound_token ON public.channels USING btree (inbound_token);
 
 
 --
@@ -1685,6 +1912,34 @@ CREATE INDEX index_memberships_on_user_id ON public.memberships USING btree (use
 
 
 --
+-- Name: index_message_deliveries_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_message_deliveries_on_account_id ON public.message_deliveries USING btree (account_id);
+
+
+--
+-- Name: index_message_deliveries_on_channel_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_message_deliveries_on_channel_id ON public.message_deliveries USING btree (channel_id);
+
+
+--
+-- Name: index_message_deliveries_on_message_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_message_deliveries_on_message_id ON public.message_deliveries USING btree (message_id);
+
+
+--
+-- Name: index_message_deliveries_on_operation_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_message_deliveries_on_operation_key ON public.message_deliveries USING btree (operation_key);
+
+
+--
 -- Name: index_messages_on_agent_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1939,6 +2194,14 @@ ALTER TABLE ONLY public.items
 
 
 --
+-- Name: message_deliveries fk_rails_2e5e6e1d74; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.message_deliveries
+    ADD CONSTRAINT fk_rails_2e5e6e1d74 FOREIGN KEY (channel_id) REFERENCES public.channels(id);
+
+
+--
 -- Name: stage_transitions fk_rails_31d1222ff4; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2035,6 +2298,14 @@ ALTER TABLE ONLY public.messages
 
 
 --
+-- Name: channel_threads fk_rails_87f7c72206; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.channel_threads
+    ADD CONSTRAINT fk_rails_87f7c72206 FOREIGN KEY (conversation_id) REFERENCES public.conversations(id);
+
+
+--
 -- Name: item_selections fk_rails_8b89aa738d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2115,6 +2386,14 @@ ALTER TABLE ONLY public.teams
 
 
 --
+-- Name: message_deliveries fk_rails_b53ffa9000; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.message_deliveries
+    ADD CONSTRAINT fk_rails_b53ffa9000 FOREIGN KEY (message_id) REFERENCES public.messages(id);
+
+
+--
 -- Name: conversation_reads fk_rails_bc926ff432; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2128,6 +2407,14 @@ ALTER TABLE ONLY public.conversation_reads
 
 ALTER TABLE ONLY public.item_selections
     ADD CONSTRAINT fk_rails_bd05ae966c FOREIGN KEY (catalog_id) REFERENCES public.catalogs(id);
+
+
+--
+-- Name: channel_threads fk_rails_bfe9ed6493; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.channel_threads
+    ADD CONSTRAINT fk_rails_bfe9ed6493 FOREIGN KEY (channel_id) REFERENCES public.channels(id);
 
 
 --
@@ -2171,6 +2458,14 @@ ALTER TABLE ONLY public.flows
 
 
 --
+-- Name: channels fk_rails_db928aa85e; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.channels
+    ADD CONSTRAINT fk_rails_db928aa85e FOREIGN KEY (account_id) REFERENCES public.accounts(id);
+
+
+--
 -- Name: customers fk_rails_ed7ccfecee; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2184,6 +2479,22 @@ ALTER TABLE ONLY public.customers
 
 ALTER TABLE ONLY public.memberships
     ADD CONSTRAINT fk_rails_edbc202c67 FOREIGN KEY (account_id) REFERENCES public.accounts(id);
+
+
+--
+-- Name: message_deliveries fk_rails_f07bfd3176; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.message_deliveries
+    ADD CONSTRAINT fk_rails_f07bfd3176 FOREIGN KEY (account_id) REFERENCES public.accounts(id);
+
+
+--
+-- Name: channel_threads fk_rails_f68eee7b9d; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.channel_threads
+    ADD CONSTRAINT fk_rails_f68eee7b9d FOREIGN KEY (account_id) REFERENCES public.accounts(id);
 
 
 --
@@ -2233,6 +2544,8 @@ ALTER TABLE ONLY public.team_memberships
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260913223429'),
+('20260913222919'),
 ('20260913211038'),
 ('20260913210939'),
 ('20260913203056'),

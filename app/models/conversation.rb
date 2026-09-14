@@ -3,8 +3,8 @@ class Conversation < ApplicationRecord
 
   belongs_to :account
   belongs_to :customer
-  belongs_to :flow_version
-  belongs_to :current_stage, class_name: "Stage"
+  belongs_to :flow_version, optional: true
+  belongs_to :current_stage, class_name: "Stage", optional: true
   belongs_to :owner, class_name: "Agent", optional: true
   belongs_to :team, optional: true
 
@@ -15,6 +15,7 @@ class Conversation < ApplicationRecord
   has_many :item_selections, dependent: :destroy
   has_many :rule_executions, dependent: :destroy
   has_many :appointments, dependent: :destroy
+  has_many :channel_threads, dependent: :destroy
 
   validates :process_status, inclusion: { in: PROCESS_STATUSES }
 

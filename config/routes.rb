@@ -61,6 +61,10 @@ Rails.application.routes.draw do
     post "flows/:flow_id/versions/:id/publish", to: "flow_versions#publish", as: :publish_account_flow_version
   end
 
+  # Webhook endpoints — authenticated by inbound_token, not by session
+  post "webhooks/dev/:token", to: "webhooks#dev_inbound", as: :dev_webhook_inbound
+  post "webhooks/dev/:token/status", to: "webhooks#dev_status", as: :dev_webhook_status
+
   get "up" => "rails/health#show", as: :rails_health_check
 
   # Signed-in users land on their Account switcher; guests are redirected to

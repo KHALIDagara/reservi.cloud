@@ -1,6 +1,6 @@
 class Message < ApplicationRecord
   DIRECTIONS = %w[inbound outbound].freeze
-  DELIVERY_STATUSES = %w[local sent delivered failed unknown].freeze
+  DELIVERY_STATUSES = %w[local received sent delivered failed unknown].freeze
 
   belongs_to :conversation, touch: true
   belongs_to :agent, optional: true

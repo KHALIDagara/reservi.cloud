@@ -38,7 +38,14 @@
           <div class="rounded-lg <%= message.direction == "inbound" ? "bg-stone-100" : "bg-stone-900 text-white" %> px-3 py-2">
             <p class="text-xs <%= message.direction == "inbound" ? "text-stone-500" : "text-stone-300" %>"><%= message.author_name %></p>
             <p class="mt-0.5 text-sm whitespace-pre-wrap"><%= message.content %></p>
-            <p class="mt-0.5 text-xs <%= message.direction == "inbound" ? "text-stone-400" : "text-stone-400" %>"><%= time_ago_in_words(message.created_at) %> ago</p>
+            <div class="mt-0.5 flex items-center gap-1">
+              <span class="text-xs <%= message.direction == "inbound" ? "text-stone-400" : "text-stone-400" %>"><%= time_ago_in_words(message.created_at) %> ago</span>
+              <% if message.direction == "outbound" && message.delivery_status != "local" %>
+                <span class="text-xs <%= delivery_status_color(message.delivery_status) %>" title="<%= message.delivery_status %>">
+                  <%= delivery_status_icon(message.delivery_status) %>
+                </span>
+              <% end %>
+            </div>
           </div>
         </div>
       <% end %>
