@@ -48,9 +48,9 @@ CREATE TABLE public.account_invitations (
     accepted_at timestamp(6) without time zone,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    CONSTRAINT account_invitations_delivery_status_check CHECK (((delivery_status)::text = ANY (ARRAY[('pending'::character varying)::text, ('delivered'::character varying)::text, ('failed'::character varying)::text, ('unknown'::character varying)::text]))),
-    CONSTRAINT account_invitations_role_check CHECK (((role)::text = ANY (ARRAY[('admin'::character varying)::text, ('manager'::character varying)::text, ('operator'::character varying)::text]))),
-    CONSTRAINT account_invitations_status_check CHECK (((status)::text = ANY (ARRAY[('pending'::character varying)::text, ('accepted'::character varying)::text, ('revoked'::character varying)::text])))
+    CONSTRAINT account_invitations_delivery_status_check CHECK (((delivery_status)::text = ANY ((ARRAY['pending'::character varying, 'delivered'::character varying, 'failed'::character varying, 'unknown'::character varying])::text[]))),
+    CONSTRAINT account_invitations_role_check CHECK (((role)::text = ANY ((ARRAY['admin'::character varying, 'manager'::character varying, 'operator'::character varying])::text[]))),
+    CONSTRAINT account_invitations_status_check CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'accepted'::character varying, 'revoked'::character varying])::text[])))
 );
 
 
@@ -86,7 +86,11 @@ CREATE TABLE public.accounts (
     active boolean DEFAULT true NOT NULL,
     creation_operation_key character varying,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    guidance_generation integer DEFAULT 0 NOT NULL,
+    knowledge_generation integer DEFAULT 0 NOT NULL,
+    access_generation integer DEFAULT 0 NOT NULL,
+    admission_counter integer DEFAULT 0 NOT NULL
 );
 
 
@@ -110,6 +114,49 @@ ALTER SEQUENCE public.accounts_id_seq OWNED BY public.accounts.id;
 
 
 --
+-- Name: agent_configurations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.agent_configurations (
+    id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    agent_id bigint NOT NULL,
+    version_number integer NOT NULL,
+    status character varying DEFAULT 'draft'::character varying NOT NULL,
+    role text,
+    guidance_config jsonb DEFAULT '{}'::jsonb NOT NULL,
+    capability_config jsonb DEFAULT '{}'::jsonb NOT NULL,
+    provider_type character varying,
+    model_identifier character varying,
+    budget_limit_cents integer,
+    max_concurrent_runs integer DEFAULT 1 NOT NULL,
+    published_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    CONSTRAINT agent_configurations_status_check CHECK (((status)::text = ANY ((ARRAY['draft'::character varying, 'published'::character varying])::text[])))
+);
+
+
+--
+-- Name: agent_configurations_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.agent_configurations_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: agent_configurations_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.agent_configurations_id_seq OWNED BY public.agent_configurations.id;
+
+
+--
 -- Name: agents; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -123,8 +170,11 @@ CREATE TABLE public.agents (
     capabilities jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    CONSTRAINT agents_kind_check CHECK (((kind)::text = ANY (ARRAY[('human'::character varying)::text, ('ai'::character varying)::text]))),
-    CONSTRAINT agents_kind_membership_check CHECK (((((kind)::text = 'human'::text) AND (membership_id IS NOT NULL)) OR (((kind)::text = 'ai'::text) AND (membership_id IS NULL))))
+    operational_status character varying DEFAULT 'draft'::character varying NOT NULL,
+    agent_configuration_id bigint,
+    CONSTRAINT agents_kind_check CHECK (((kind)::text = ANY ((ARRAY['human'::character varying, 'ai'::character varying])::text[]))),
+    CONSTRAINT agents_kind_membership_check CHECK (((((kind)::text = 'human'::text) AND (membership_id IS NOT NULL)) OR (((kind)::text = 'ai'::text) AND (membership_id IS NULL)))),
+    CONSTRAINT agents_operational_status_check CHECK (((operational_status)::text = ANY ((ARRAY['draft'::character varying, 'active'::character varying, 'paused'::character varying, 'archived'::character varying])::text[])))
 );
 
 
@@ -145,6 +195,51 @@ CREATE SEQUENCE public.agents_id_seq
 --
 
 ALTER SEQUENCE public.agents_id_seq OWNED BY public.agents.id;
+
+
+--
+-- Name: ai_runs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ai_runs (
+    id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    conversation_id bigint NOT NULL,
+    agent_id bigint NOT NULL,
+    agent_configuration_id bigint NOT NULL,
+    status character varying DEFAULT 'admitted'::character varying NOT NULL,
+    trigger character varying NOT NULL,
+    admission_token character varying NOT NULL,
+    budget_reservation_cents integer,
+    conversation_revision integer DEFAULT 0 NOT NULL,
+    usage_json jsonb DEFAULT '{}'::jsonb NOT NULL,
+    started_at timestamp(6) without time zone,
+    completed_at timestamp(6) without time zone,
+    failed_at timestamp(6) without time zone,
+    failure_reason text,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    CONSTRAINT ai_runs_status_check CHECK (((status)::text = ANY ((ARRAY['admitted'::character varying, 'evaluating'::character varying, 'completed'::character varying, 'failed'::character varying, 'cancelled'::character varying])::text[])))
+);
+
+
+--
+-- Name: ai_runs_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ai_runs_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ai_runs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ai_runs_id_seq OWNED BY public.ai_runs.id;
 
 
 --
@@ -361,7 +456,8 @@ CREATE TABLE public.conversations (
     last_activity_at timestamp(6) without time zone,
     custom_values jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    revision integer DEFAULT 0 NOT NULL
 );
 
 
@@ -439,8 +535,8 @@ CREATE TABLE public.field_definitions (
     archived boolean DEFAULT false NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    CONSTRAINT field_definitions_scope_check CHECK (((scope)::text = ANY (ARRAY[('customer'::character varying)::text, ('conversation'::character varying)::text]))),
-    CONSTRAINT field_definitions_type_check CHECK (((field_type)::text = ANY (ARRAY[('text'::character varying)::text, ('number'::character varying)::text, ('boolean'::character varying)::text, ('single_choice'::character varying)::text, ('multi_choice'::character varying)::text, ('date'::character varying)::text])))
+    CONSTRAINT field_definitions_scope_check CHECK (((scope)::text = ANY ((ARRAY['customer'::character varying, 'conversation'::character varying])::text[]))),
+    CONSTRAINT field_definitions_type_check CHECK (((field_type)::text = ANY ((ARRAY['text'::character varying, 'number'::character varying, 'boolean'::character varying, 'single_choice'::character varying, 'multi_choice'::character varying, 'date'::character varying])::text[])))
 );
 
 
@@ -618,7 +714,7 @@ CREATE TABLE public.memberships (
     active boolean DEFAULT true NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    CONSTRAINT memberships_role_check CHECK (((role)::text = ANY (ARRAY[('admin'::character varying)::text, ('manager'::character varying)::text, ('operator'::character varying)::text])))
+    CONSTRAINT memberships_role_check CHECK (((role)::text = ANY ((ARRAY['admin'::character varying, 'manager'::character varying, 'operator'::character varying])::text[])))
 );
 
 
@@ -1022,10 +1118,24 @@ ALTER TABLE ONLY public.accounts ALTER COLUMN id SET DEFAULT nextval('public.acc
 
 
 --
+-- Name: agent_configurations id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_configurations ALTER COLUMN id SET DEFAULT nextval('public.agent_configurations_id_seq'::regclass);
+
+
+--
 -- Name: agents id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.agents ALTER COLUMN id SET DEFAULT nextval('public.agents_id_seq'::regclass);
+
+
+--
+-- Name: ai_runs id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ai_runs ALTER COLUMN id SET DEFAULT nextval('public.ai_runs_id_seq'::regclass);
 
 
 --
@@ -1206,11 +1316,27 @@ ALTER TABLE ONLY public.accounts
 
 
 --
+-- Name: agent_configurations agent_configurations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_configurations
+    ADD CONSTRAINT agent_configurations_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: agents agents_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.agents
     ADD CONSTRAINT agents_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ai_runs ai_runs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ai_runs
+    ADD CONSTRAINT ai_runs_pkey PRIMARY KEY (id);
 
 
 --
@@ -1422,6 +1548,48 @@ ALTER TABLE ONLY public.users
 
 
 --
+-- Name: idx_agent_configurations_agent_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_agent_configurations_agent_status ON public.agent_configurations USING btree (agent_id, status);
+
+
+--
+-- Name: idx_agent_configurations_agent_version; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_agent_configurations_agent_version ON public.agent_configurations USING btree (agent_id, version_number);
+
+
+--
+-- Name: idx_agents_on_account_and_agent_config; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_agents_on_account_and_agent_config ON public.agents USING btree (account_id, agent_configuration_id);
+
+
+--
+-- Name: idx_ai_runs_admission_token; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_ai_runs_admission_token ON public.ai_runs USING btree (admission_token);
+
+
+--
+-- Name: idx_ai_runs_agent_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_ai_runs_agent_status ON public.ai_runs USING btree (agent_id, status);
+
+
+--
+-- Name: idx_ai_runs_conversation_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_ai_runs_conversation_status ON public.ai_runs USING btree (conversation_id, status);
+
+
+--
 -- Name: idx_appointments_account_scheduled_agent; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1527,6 +1695,20 @@ CREATE UNIQUE INDEX index_accounts_on_creation_operation_key ON public.accounts 
 
 
 --
+-- Name: index_agent_configurations_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_configurations_on_account_id ON public.agent_configurations USING btree (account_id);
+
+
+--
+-- Name: index_agent_configurations_on_agent_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_configurations_on_agent_id ON public.agent_configurations USING btree (agent_id);
+
+
+--
 -- Name: index_agents_on_account_and_membership_unique; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1552,6 +1734,34 @@ CREATE UNIQUE INDEX index_agents_on_account_id_and_id ON public.agents USING btr
 --
 
 CREATE INDEX index_agents_on_membership_id ON public.agents USING btree (membership_id);
+
+
+--
+-- Name: index_ai_runs_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ai_runs_on_account_id ON public.ai_runs USING btree (account_id);
+
+
+--
+-- Name: index_ai_runs_on_agent_configuration_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ai_runs_on_agent_configuration_id ON public.ai_runs USING btree (agent_configuration_id);
+
+
+--
+-- Name: index_ai_runs_on_agent_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ai_runs_on_agent_id ON public.ai_runs USING btree (agent_id);
+
+
+--
+-- Name: index_ai_runs_on_conversation_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ai_runs_on_conversation_id ON public.ai_runs USING btree (conversation_id);
 
 
 --
@@ -2194,6 +2404,14 @@ ALTER TABLE ONLY public.items
 
 
 --
+-- Name: ai_runs fk_rails_1368d01df0; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ai_runs
+    ADD CONSTRAINT fk_rails_1368d01df0 FOREIGN KEY (conversation_id) REFERENCES public.conversations(id);
+
+
+--
 -- Name: message_deliveries fk_rails_2e5e6e1d74; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2218,6 +2436,14 @@ ALTER TABLE ONLY public.messages
 
 
 --
+-- Name: ai_runs fk_rails_3580866131; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ai_runs
+    ADD CONSTRAINT fk_rails_3580866131 FOREIGN KEY (account_id) REFERENCES public.accounts(id);
+
+
+--
 -- Name: stage_transitions fk_rails_3c3ceeec32; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2234,11 +2460,27 @@ ALTER TABLE ONLY public.catalogs
 
 
 --
+-- Name: ai_runs fk_rails_4435c92755; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ai_runs
+    ADD CONSTRAINT fk_rails_4435c92755 FOREIGN KEY (agent_id) REFERENCES public.agents(id);
+
+
+--
 -- Name: conversation_reads fk_rails_446634b7c3; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.conversation_reads
     ADD CONSTRAINT fk_rails_446634b7c3 FOREIGN KEY (agent_id) REFERENCES public.agents(id);
+
+
+--
+-- Name: agent_configurations fk_rails_4a3085eb6c; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_configurations
+    ADD CONSTRAINT fk_rails_4a3085eb6c FOREIGN KEY (account_id) REFERENCES public.accounts(id);
 
 
 --
@@ -2314,6 +2556,14 @@ ALTER TABLE ONLY public.item_selections
 
 
 --
+-- Name: agent_configurations fk_rails_9033d6f4ee; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_configurations
+    ADD CONSTRAINT fk_rails_9033d6f4ee FOREIGN KEY (agent_id) REFERENCES public.agents(id);
+
+
+--
 -- Name: appointments fk_rails_920ecef82c; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2327,6 +2577,14 @@ ALTER TABLE ONLY public.appointments
 
 ALTER TABLE ONLY public.notes
     ADD CONSTRAINT fk_rails_9259470eb1 FOREIGN KEY (conversation_id) REFERENCES public.conversations(id);
+
+
+--
+-- Name: ai_runs fk_rails_9605939217; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ai_runs
+    ADD CONSTRAINT fk_rails_9605939217 FOREIGN KEY (agent_configuration_id) REFERENCES public.agent_configurations(id);
 
 
 --
@@ -2407,6 +2665,14 @@ ALTER TABLE ONLY public.conversation_reads
 
 ALTER TABLE ONLY public.item_selections
     ADD CONSTRAINT fk_rails_bd05ae966c FOREIGN KEY (catalog_id) REFERENCES public.catalogs(id);
+
+
+--
+-- Name: agents fk_rails_be203b109b; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agents
+    ADD CONSTRAINT fk_rails_be203b109b FOREIGN KEY (agent_configuration_id) REFERENCES public.agent_configurations(id);
 
 
 --
@@ -2544,6 +2810,7 @@ ALTER TABLE ONLY public.team_memberships
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260915200000'),
 ('20260913223429'),
 ('20260913222919'),
 ('20260913211038'),

@@ -16,6 +16,8 @@ class Account < ApplicationRecord
   has_many :channels, dependent: :destroy
   has_many :channel_threads, dependent: :destroy
   has_many :message_deliveries, dependent: :destroy
+  has_many :agent_configurations
+  has_many :ai_runs
 
   validates :name, presence: true
   validates :locale, presence: true

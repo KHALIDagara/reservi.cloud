@@ -16,6 +16,7 @@ class Conversation < ApplicationRecord
   has_many :rule_executions, dependent: :destroy
   has_many :appointments, dependent: :destroy
   has_many :channel_threads, dependent: :destroy
+  has_many :ai_runs, dependent: :destroy
 
   validates :process_status, inclusion: { in: PROCESS_STATUSES }
 
@@ -25,6 +26,14 @@ class Conversation < ApplicationRecord
   scope :owned_by, ->(agent_id) { where(owner_id: agent_id) }
   scope :unowned, -> { where(owner_id: nil) }
   scope :for_team, ->(team_id) { where(team_id: team_id) }
+
+  # ── Revision counter ────────────────────────────────────────
+  # Every meaningful state mutation bumps revision so AiRun can
+  # detect concurrent changes.  Timestamp-only updates (e.g.
+  # last_activity_at touch) skip the increment.
+  attr_accessor :skip_revision_increment
+
+  before_update :increment_revision
 
   def active?
     process_status == "active"
@@ -36,5 +45,15 @@ class Conversation < ApplicationRecord
 
   def unowned?
     owner_id.nil?
+  end
+
+  private
+
+  def increment_revision
+    if skip_revision_increment
+      self.skip_revision_increment = nil
+      return
+    end
+    self.revision += 1
   end
 end

@@ -1,20 +1,30 @@
 class Agent < ApplicationRecord
-  KINDS = %w[human ai].freeze
+  KINDS              = %w[human ai].freeze
+  OPERATIONAL_STATUSES = %w[draft active paused archived].freeze
 
   belongs_to :account
   # Present only for human Agents (enforced by agents_kind_membership_check).
   belongs_to :membership, optional: true
+  belongs_to :agent_configuration, optional: true
 
   has_many :team_memberships
   has_many :teams, through: :team_memberships
   has_many :owned_conversations, class_name: "Conversation", foreign_key: :owner_id, inverse_of: :owner
   has_many :appointments, foreign_key: :scheduled_agent_id, inverse_of: :scheduled_agent
+  has_many :ai_runs
+  has_many :agent_configurations
 
   validates :name, presence: true
   validates :kind, inclusion: { in: KINDS }
+  validates :operational_status, inclusion: { in: OPERATIONAL_STATUSES }
   validates :membership_id, uniqueness: { scope: :account_id }, if: -> { membership_id.present? }
 
-  scope :active, -> { where(active: true) }
-  scope :human, -> { where(kind: "human") }
-  scope :ai, -> { where(kind: "ai") }
+  scope :active,        -> { where(active: true) }
+  scope :human,         -> { where(kind: "human") }
+  scope :ai,            -> { where(kind: "ai") }
+  scope :operational,   -> { where(operational_status: %w[active paused]) }
+
+  def operational?
+    %w[active paused].include?(operational_status)
+  end
 end
