@@ -40,9 +40,9 @@ module Reservi
         account = @conversation.account
 
         if @action_config["agent_id"]
-          account.agents.active.human.find_by(id: @action_config["agent_id"])
+          account.agents.active.find_by(id: @action_config["agent_id"])
         elsif @action_config["agent_name"]
-          account.agents.active.human.find_by(name: @action_config["agent_name"])
+          account.agents.active.find_by(name: @action_config["agent_name"])
         elsif @action_config["team_name"]
           team = account.teams.active.find_by(name: @action_config["team_name"])
           return nil unless team
@@ -56,7 +56,7 @@ module Reservi
 
       def pick_agent_from_team(team)
         # Prefer agents with fewer active conversations (simple round-robin)
-        team.agents.active.human
+        team.agents.active
           .left_joins(:owned_conversations)
           .where(conversations: { process_status: [nil, "active"] })
           .group(:id)
