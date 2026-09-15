@@ -2,7 +2,7 @@ class AiRun < ApplicationRecord
   STATUSES       = %w[admitted evaluating completed failed cancelled].freeze
   ACTIVE_STATUSES = %w[admitted evaluating].freeze
   VALID_TRANSITIONS = {
-    "admitted"   => %w[evaluating failed cancelled],
+    "admitted"   => %w[evaluating completed failed cancelled],
     "evaluating" => %w[completed failed cancelled],
     "completed"  => %w[],
     "failed"     => %w[],

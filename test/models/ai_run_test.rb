@@ -124,12 +124,12 @@ class AiRunTest < ActiveSupport::TestCase
 
   # ── Transition rules ───────────────────────────
 
-  test "admitted can transition to evaluating or failed or cancelled" do
+  test "admitted can transition to evaluating or completed or failed or cancelled" do
     run = create_run("admitted")
     assert run.can_transition_to?("evaluating")
+    assert run.can_transition_to?("completed")
     assert run.can_transition_to?("failed")
     assert run.can_transition_to?("cancelled")
-    assert_not run.can_transition_to?("completed")
     assert_not run.can_transition_to?("admitted")
   end
 
