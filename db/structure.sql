@@ -157,6 +157,40 @@ ALTER SEQUENCE public.agent_configurations_id_seq OWNED BY public.agent_configur
 
 
 --
+-- Name: agent_knowledge_grants; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.agent_knowledge_grants (
+    id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    agent_id bigint NOT NULL,
+    knowledge_source_id bigint NOT NULL,
+    active boolean DEFAULT true NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: agent_knowledge_grants_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.agent_knowledge_grants_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: agent_knowledge_grants_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.agent_knowledge_grants_id_seq OWNED BY public.agent_knowledge_grants.id;
+
+
+--
 -- Name: agents; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -703,6 +737,80 @@ ALTER SEQUENCE public.items_id_seq OWNED BY public.items.id;
 
 
 --
+-- Name: knowledge_revisions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.knowledge_revisions (
+    id bigint NOT NULL,
+    knowledge_source_id bigint NOT NULL,
+    version_number integer NOT NULL,
+    status character varying DEFAULT 'draft'::character varying NOT NULL,
+    content_json jsonb DEFAULT '{}'::jsonb NOT NULL,
+    raw_text text,
+    published_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    CONSTRAINT knowledge_revisions_status_check CHECK (((status)::text = ANY ((ARRAY['draft'::character varying, 'published'::character varying])::text[])))
+);
+
+
+--
+-- Name: knowledge_revisions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.knowledge_revisions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: knowledge_revisions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.knowledge_revisions_id_seq OWNED BY public.knowledge_revisions.id;
+
+
+--
+-- Name: knowledge_sources; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.knowledge_sources (
+    id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    title character varying NOT NULL,
+    kind character varying NOT NULL,
+    shared boolean DEFAULT true NOT NULL,
+    current_revision_id bigint,
+    archived boolean DEFAULT false NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    CONSTRAINT knowledge_sources_kind_check CHECK (((kind)::text = ANY ((ARRAY['qa'::character varying, 'document'::character varying, 'scenario'::character varying])::text[])))
+);
+
+
+--
+-- Name: knowledge_sources_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.knowledge_sources_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: knowledge_sources_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.knowledge_sources_id_seq OWNED BY public.knowledge_sources.id;
+
+
+--
 -- Name: memberships; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1125,6 +1233,13 @@ ALTER TABLE ONLY public.agent_configurations ALTER COLUMN id SET DEFAULT nextval
 
 
 --
+-- Name: agent_knowledge_grants id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_knowledge_grants ALTER COLUMN id SET DEFAULT nextval('public.agent_knowledge_grants_id_seq'::regclass);
+
+
+--
 -- Name: agents id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -1220,6 +1335,20 @@ ALTER TABLE ONLY public.item_selections ALTER COLUMN id SET DEFAULT nextval('pub
 --
 
 ALTER TABLE ONLY public.items ALTER COLUMN id SET DEFAULT nextval('public.items_id_seq'::regclass);
+
+
+--
+-- Name: knowledge_revisions id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.knowledge_revisions ALTER COLUMN id SET DEFAULT nextval('public.knowledge_revisions_id_seq'::regclass);
+
+
+--
+-- Name: knowledge_sources id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.knowledge_sources ALTER COLUMN id SET DEFAULT nextval('public.knowledge_sources_id_seq'::regclass);
 
 
 --
@@ -1321,6 +1450,14 @@ ALTER TABLE ONLY public.accounts
 
 ALTER TABLE ONLY public.agent_configurations
     ADD CONSTRAINT agent_configurations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: agent_knowledge_grants agent_knowledge_grants_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_knowledge_grants
+    ADD CONSTRAINT agent_knowledge_grants_pkey PRIMARY KEY (id);
 
 
 --
@@ -1444,6 +1581,22 @@ ALTER TABLE ONLY public.items
 
 
 --
+-- Name: knowledge_revisions knowledge_revisions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.knowledge_revisions
+    ADD CONSTRAINT knowledge_revisions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: knowledge_sources knowledge_sources_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.knowledge_sources
+    ADD CONSTRAINT knowledge_sources_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: memberships memberships_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1562,6 +1715,13 @@ CREATE UNIQUE INDEX idx_agent_configurations_agent_version ON public.agent_confi
 
 
 --
+-- Name: idx_agent_knowledge_grants_agent_source; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_agent_knowledge_grants_agent_source ON public.agent_knowledge_grants USING btree (agent_id, knowledge_source_id);
+
+
+--
 -- Name: idx_agents_on_account_and_agent_config; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1646,6 +1806,27 @@ CREATE UNIQUE INDEX idx_item_selections_on_conversation_role_item ON public.item
 
 
 --
+-- Name: idx_knowledge_revisions_source_version; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_knowledge_revisions_source_version ON public.knowledge_revisions USING btree (knowledge_source_id, version_number);
+
+
+--
+-- Name: idx_knowledge_sources_account_title_active; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_knowledge_sources_account_title_active ON public.knowledge_sources USING btree (account_id, title) WHERE (archived = false);
+
+
+--
+-- Name: idx_knowledge_sources_current_revision; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_knowledge_sources_current_revision ON public.knowledge_sources USING btree (current_revision_id);
+
+
+--
 -- Name: idx_rule_execs_on_conversation_stage_rule; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1706,6 +1887,27 @@ CREATE INDEX index_agent_configurations_on_account_id ON public.agent_configurat
 --
 
 CREATE INDEX index_agent_configurations_on_agent_id ON public.agent_configurations USING btree (agent_id);
+
+
+--
+-- Name: index_agent_knowledge_grants_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_knowledge_grants_on_account_id ON public.agent_knowledge_grants USING btree (account_id);
+
+
+--
+-- Name: index_agent_knowledge_grants_on_agent_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_knowledge_grants_on_agent_id ON public.agent_knowledge_grants USING btree (agent_id);
+
+
+--
+-- Name: index_agent_knowledge_grants_on_knowledge_source_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_knowledge_grants_on_knowledge_source_id ON public.agent_knowledge_grants USING btree (knowledge_source_id);
 
 
 --
@@ -2094,6 +2296,20 @@ CREATE UNIQUE INDEX index_items_on_catalog_id_and_id ON public.items USING btree
 
 
 --
+-- Name: index_knowledge_revisions_on_knowledge_source_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_knowledge_revisions_on_knowledge_source_id ON public.knowledge_revisions USING btree (knowledge_source_id);
+
+
+--
+-- Name: index_knowledge_sources_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_knowledge_sources_on_account_id ON public.knowledge_sources USING btree (account_id);
+
+
+--
 -- Name: index_memberships_on_account_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2380,6 +2596,14 @@ ALTER TABLE ONLY public.flows
 
 
 --
+-- Name: knowledge_sources fk_rails_0510c01079; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.knowledge_sources
+    ADD CONSTRAINT fk_rails_0510c01079 FOREIGN KEY (account_id) REFERENCES public.accounts(id);
+
+
+--
 -- Name: item_selections fk_rails_0aabf16132; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2393,6 +2617,14 @@ ALTER TABLE ONLY public.item_selections
 
 ALTER TABLE ONLY public.conversations
     ADD CONSTRAINT fk_rails_0b87b55aff FOREIGN KEY (account_id, team_id) REFERENCES public.teams(account_id, id);
+
+
+--
+-- Name: knowledge_sources fk_rails_0ca2454149; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.knowledge_sources
+    ADD CONSTRAINT fk_rails_0ca2454149 FOREIGN KEY (current_revision_id) REFERENCES public.knowledge_revisions(id);
 
 
 --
@@ -2500,6 +2732,14 @@ ALTER TABLE ONLY public.stages
 
 
 --
+-- Name: knowledge_revisions fk_rails_5999627a81; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.knowledge_revisions
+    ADD CONSTRAINT fk_rails_5999627a81 FOREIGN KEY (knowledge_source_id) REFERENCES public.knowledge_sources(id);
+
+
+--
 -- Name: sessions fk_rails_758836b4f0; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2529,6 +2769,14 @@ ALTER TABLE ONLY public.account_invitations
 
 ALTER TABLE ONLY public.rule_executions
     ADD CONSTRAINT fk_rails_7be42fd232 FOREIGN KEY (conversation_id) REFERENCES public.conversations(id);
+
+
+--
+-- Name: agent_knowledge_grants fk_rails_7c3d991474; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_knowledge_grants
+    ADD CONSTRAINT fk_rails_7c3d991474 FOREIGN KEY (knowledge_source_id) REFERENCES public.knowledge_sources(id);
 
 
 --
@@ -2700,6 +2948,14 @@ ALTER TABLE ONLY public.item_selections
 
 
 --
+-- Name: agent_knowledge_grants fk_rails_cc06be44c1; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_knowledge_grants
+    ADD CONSTRAINT fk_rails_cc06be44c1 FOREIGN KEY (agent_id) REFERENCES public.agents(id);
+
+
+--
 -- Name: conversations fk_rails_d057651dc2; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2729,6 +2985,14 @@ ALTER TABLE ONLY public.flows
 
 ALTER TABLE ONLY public.channels
     ADD CONSTRAINT fk_rails_db928aa85e FOREIGN KEY (account_id) REFERENCES public.accounts(id);
+
+
+--
+-- Name: agent_knowledge_grants fk_rails_dcd80b2d1d; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_knowledge_grants
+    ADD CONSTRAINT fk_rails_dcd80b2d1d FOREIGN KEY (account_id) REFERENCES public.accounts(id);
 
 
 --
@@ -2810,6 +3074,7 @@ ALTER TABLE ONLY public.team_memberships
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260915235000'),
 ('20260915200000'),
 ('20260913223429'),
 ('20260913222919'),

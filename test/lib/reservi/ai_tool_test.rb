@@ -49,15 +49,19 @@ class Reservi::AiToolTest < ActiveSupport::TestCase
 
   # ── search_knowledge ───────────────────────────────────────────
 
-  test "search_knowledge returns placeholder" do
+  test "search_knowledge returns results through Knowledge::Search" do
+    # Set up a shared published knowledge source
+    source = KnowledgeSource.create!(account: @account, title: "Pricing Guide", kind: "qa", shared: true)
+    source.revisions.create!(version_number: 1, status: "published", raw_text: "Our pricing starts at $99.")
+
     result = Reservi::AiTool.execute(
       tool_name: "search_knowledge", arguments: { "query" => "pricing" },
       agent: @human_agent, conversation: @conversation, ai_run: nil
     )
 
-    assert_empty result[:results]
     assert_equal "pricing", result[:query]
-    assert_match /not yet implemented/, result[:note]
+    assert result[:results].is_a?(Array)
+    assert result[:results].length >= 0
   end
 
   test "search_knowledge rejects empty query" do

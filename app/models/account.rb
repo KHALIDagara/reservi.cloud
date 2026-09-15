@@ -18,6 +18,8 @@ class Account < ApplicationRecord
   has_many :message_deliveries, dependent: :destroy
   has_many :agent_configurations
   has_many :ai_runs
+  has_many :knowledge_sources
+  has_many :knowledge_revisions, through: :knowledge_sources, source: :revisions
 
   validates :name, presence: true
   validates :locale, presence: true

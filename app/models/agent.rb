@@ -13,6 +13,8 @@ class Agent < ApplicationRecord
   has_many :appointments, foreign_key: :scheduled_agent_id, inverse_of: :scheduled_agent
   has_many :ai_runs
   has_many :agent_configurations
+  has_many :knowledge_grants, class_name: "AgentKnowledgeGrant"
+  has_many :knowledge_sources, through: :knowledge_grants
 
   validates :name, presence: true
   validates :kind, inclusion: { in: KINDS }

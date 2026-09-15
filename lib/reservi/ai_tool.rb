@@ -46,8 +46,11 @@ module Reservi
       query = @arguments["query"].to_s.strip
       return { results: [], query: query } if query.blank?
 
-      # Placeholder — knowledge system not built yet (T11+)
-      { results: [], query: query, note: "Knowledge search not yet implemented" }
+      Knowledge::Search.call(
+        account: @conversation.account,
+        agent:   @agent,
+        query:   query
+      )
     end
 
     # ── mutating tools ────────────────────────────────────────────
