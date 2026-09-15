@@ -1,0 +1,17 @@
+<h1 class="text-2xl font-semibold tracking-tight">New flow</h1>
+
+<%= form_with model: @flow, url: flows_path(current_account), local: true, class: "mt-6 space-y-4" do |f| %>
+  <div>
+    <%= f.label :name, class: "block text-sm font-medium text-stone-700" %>
+    <%= f.text_field :name, required: true, class: "mt-1 block w-full rounded-md border border-stone-300 px-3 py-2 text-sm shadow-sm focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500" %>
+  </div>
+
+  <div class="text-sm text-stone-500">
+    A default draft version with one stage will be created automatically.
+  </div>
+
+  <div class="flex items-center gap-3">
+    <%= f.submit "Create flow", class: "rounded-md bg-stone-900 px-4 py-2 text-sm font-medium text-white hover:bg-stone-700" %>
+    <%= link_to "Cancel", flows_path(current_account), class: "text-sm text-stone-600 hover:text-stone-900" %>
+  </div>
+<% end %>

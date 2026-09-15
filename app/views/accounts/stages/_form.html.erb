@@ -1,0 +1,494 @@
+<%= form_with model: [@flow, @version, @stage], url: @stage.new_record? ? flow_flow_version_stages_path(current_account, @flow, @version) : flow_flow_version_stage_path(current_account, @flow, @version, @stage), method: @stage.new_record? ? :post : :patch, local: true, class: "mt-6 space-y-6" do |f| %>
+  <!-- Basic stage info -->
+  <div class="rounded-lg border border-stone-200 bg-white p-4">
+    <h2 class="mb-3 text-sm font-semibold text-stone-700">Stage Info</h2>
+    <div class="grid grid-cols-3 gap-4">
+      <div>
+        <%= f.label :key, class: "block text-sm font-medium text-stone-700" %>
+        <%= f.text_field :key, required: true, pattern: "[a-z][a-z0-9_]*", title: "Lowercase letter, digits, underscores", class: "mt-1 block w-full rounded-md border border-stone-300 px-3 py-2 text-sm shadow-sm focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500" %>
+        <p class="mt-1 text-xs text-stone-400">Lowercase, no spaces</p>
+      </div>
+      <div>
+        <%= f.label :label, class: "block text-sm font-medium text-stone-700" %>
+        <%= f.text_field :label, required: true, class: "mt-1 block w-full rounded-md border border-stone-300 px-3 py-2 text-sm shadow-sm focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500" %>
+      </div>
+      <div>
+        <%= f.label :position, class: "block text-sm font-medium text-stone-700" %>
+        <%= f.number_field :position, class: "mt-1 block w-20 rounded-md border border-stone-300 px-3 py-2 text-sm shadow-sm focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500" %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Blocks section -->
+  <div class="rounded-lg border border-stone-200 bg-white p-4">
+    <h2 class="mb-3 text-sm font-semibold text-stone-700">Blocks</h2>
+    <p class="mb-3 text-xs text-stone-500">Blocks define what the user can see and interact with at this stage.</p>
+
+    <div id="blocks-container" class="space-y-3" data-target="blocks">
+      <% existing_blocks = @stage.blocks.presence || [{}] %>
+      <% existing_blocks.each_with_index do |block, index| %>
+        <div class="block-entry rounded-md border border-stone-200 bg-stone-50 p-3" data-index="<%= index %>">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-medium text-stone-500">Block #<%= index + 1 %></span>
+            </div>
+            <% if existing_blocks.size > 1 || index > 0 %>
+              <button type="button" class="remove-block text-xs text-red-600 hover:text-red-700">Remove</button>
+            <% end %>
+          </div>
+
+          <div class="mt-2 grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-stone-600">Type</label>
+              <select name="blocks[<%= index %>][type]" class="block-type-select mt-1 block w-full rounded-md border border-stone-300 px-2 py-1.5 text-xs shadow-sm focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500">
+                <option value="">Select type</option>
+                <option value="field" <%= "selected" if block["type"] == "field" %>>Field</option>
+                <option value="catalog" <%= "selected" if block["type"] == "catalog" %>>Catalog selector</option>
+                <option value="appointment" <%= "selected" if block["type"] == "appointment" %>>Appointment</option>
+              </select>
+            </div>
+
+            <!-- Field-specific options -->
+            <div class="block-options-field" style="<%= block["type"] == "field" ? "" : "display:none" %>">
+              <label class="block text-xs font-medium text-stone-600">Field key</label>
+              <input type="text" name="blocks[<%= index %>][key]" value="<%= block["key"] %>" class="mt-1 block w-full rounded-md border border-stone-300 px-2 py-1.5 text-xs shadow-sm focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500" placeholder="e.g. budget">
+              <label class="mt-1 flex items-center gap-1 text-xs text-stone-600">
+                <input type="checkbox" name="blocks[<%= index %>][required]" value="1" <%= "checked" if block["required"] %>>
+                Required
+              </label>
+            </div>
+
+            <!-- Catalog-specific options -->
+            <div class="block-options-catalog" style="<%= block["type"] == "catalog" ? "" : "display:none" %>">
+              <label class="block text-xs font-medium text-stone-600">Catalog key</label>
+              <input type="text" name="blocks[<%= index %>][catalog_key]" value="<%= block["catalog_key"] %>" class="mt-1 block w-full rounded-md border border-stone-300 px-2 py-1.5 text-xs shadow-sm focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500" placeholder="e.g. services">
+              <label class="block text-xs font-medium text-stone-600">Role key</label>
+              <input type="text" name="blocks[<%= index %>][role_key]" value="<%= block["role_key"] %>" class="mt-1 block w-full rounded-md border border-stone-300 px-2 py-1.5 text-xs shadow-sm focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500" placeholder="e.g. vehicle">
+            </div>
+
+            <!-- Appointment-specific options -->
+            <div class="block-options-appointment" style="<%= block["type"] == "appointment" ? "" : "display:none" %>">
+              <label class="block text-xs font-medium text-stone-600">Role key</label>
+              <input type="text" name="blocks[<%= index %>][role_key]" value="<%= block["role_key"] %>" class="mt-1 block w-full rounded-md border border-stone-300 px-2 py-1.5 text-xs shadow-sm focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500" placeholder="e.g. consultation">
+              <label class="block text-xs font-medium text-stone-600">Duration (min)</label>
+              <input type="number" name="blocks[<%= index %>][duration_minutes]" value="<%= block["duration_minutes"] %>" class="mt-1 block w-24 rounded-md border border-stone-300 px-2 py-1.5 text-xs shadow-sm focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500" placeholder="60">
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <button type="button" id="add-block" class="mt-2 text-sm text-stone-600 hover:text-stone-900">+ Add block</button>
+  </div>
+
+  <!-- Rules section -->
+  <div class="rounded-lg border border-stone-200 bg-white p-4">
+    <h2 class="mb-3 text-sm font-semibold text-stone-700">Rules</h2>
+    <p class="mb-3 text-xs text-stone-500">Rules execute when this stage is entered. Each rule has an optional predicate and a list of actions.</p>
+
+    <div id="rules-container" class="space-y-4">
+      <% existing_rules = @stage.rules.presence || [{}] %>
+      <% existing_rules.each_with_index do |rule, r_index| %>
+        <div class="rule-entry rounded-md border border-stone-200 bg-stone-50 p-3" data-index="<%= r_index %>">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-medium text-stone-500">Rule #<%= r_index + 1 %></span>
+            </div>
+            <% if existing_rules.size > 1 || r_index > 0 %>
+              <button type="button" class="remove-rule text-xs text-red-600 hover:text-red-700">Remove</button>
+            <% end %>
+          </div>
+
+          <div class="mt-2 grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-stone-600">Rule key</label>
+              <input type="text" name="rules[<%= r_index %>][key]" value="<%= rule["key"] %>" class="rule-key mt-1 block w-full rounded-md border border-stone-300 px-2 py-1.5 text-xs shadow-sm focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500" placeholder="e.g. marrakech_routing">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-stone-600">Predicate type</label>
+              <select name="rules[<%= r_index %>][predicate_type]" class="predicate-type-select mt-1 block w-full rounded-md border border-stone-300 px-2 py-1.5 text-xs shadow-sm focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500">
+                <option value="">Always (no predicate)</option>
+                <option value="literal" <%= "selected" if rule.dig("predicate", "literal") != nil %>>Literal true/false</option>
+                <option value="exists" <%= "selected" if rule.dig("predicate", "exists") %>>Field exists</option>
+                <option value="eq" <%= "selected" if rule.dig("predicate", "eq") %>>Field equals</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Predicate details -->
+          <div class="predicate-details mt-2 grid grid-cols-3 gap-3" style="<%= rule["predicate"] ? "" : "display:none" %>">
+            <div>
+              <label class="block text-xs font-medium text-stone-600">Scope</label>
+              <select name="rules[<%= r_index %>][predicate_scope]" class="mt-1 block w-full rounded-md border border-stone-300 px-2 py-1.5 text-xs shadow-sm focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500">
+                <option value="conversation" <%= "selected" if rule.dig("predicate", "exists", "scope") == "conversation" || rule.dig("predicate", "eq", "ref", "scope") == "conversation" %>>Conversation</option>
+                <option value="customer" <%= "selected" if rule.dig("predicate", "exists", "scope") == "customer" || rule.dig("predicate", "eq", "ref", "scope") == "customer" %>>Customer</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-stone-600">Field key</label>
+              <input type="text" name="rules[<%= r_index %>][predicate_key]" value="<%= rule.dig("predicate", "exists", "key") || rule.dig("predicate", "eq", "ref", "key") || "" %>" class="mt-1 block w-full rounded-md border border-stone-300 px-2 py-1.5 text-xs shadow-sm focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500" placeholder="e.g. city">
+            </div>
+            <div class="predicate-value-field" style="<%= rule.dig("predicate", "eq") ? "" : "display:none" %>">
+              <label class="block text-xs font-medium text-stone-600">Value</label>
+              <input type="text" name="rules[<%= r_index %>][predicate_value]" value="<%= rule.dig("predicate", "eq", "value") || rule.dig("predicate", "literal") || "" %>" class="mt-1 block w-full rounded-md border border-stone-300 px-2 py-1.5 text-xs shadow-sm focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500" placeholder="e.g. Marrakech">
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="mt-3">
+            <label class="block text-xs font-medium text-stone-600">Actions</label>
+            <div class="actions-container mt-1 space-y-2">
+              <% actions = rule["actions"].presence || [{}] %>
+              <% actions.each_with_index do |action, a_index| %>
+                <div class="action-entry flex items-start gap-2 rounded bg-white p-2 text-xs" data-action-index="<%= a_index %>">
+                  <div class="flex-1">
+                    <select name="rules[<%= r_index %>][actions][<%= a_index %>][type]" class="action-type-select mt-1 block w-full rounded-md border border-stone-300 px-2 py-1.5 text-xs shadow-sm focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500">
+                      <option value="">Select action</option>
+                      <option value="assign" <%= "selected" if action["type"] == "assign" %>>Assign agent/team</option>
+                      <option value="send_message" <%= "selected" if action["type"] == "send_message" %>>Send message</option>
+                      <option value="create_appointment" <%= "selected" if action["type"] == "create_appointment" %>>Create appointment</option>
+                      <option value="confirm_appointment" <%= "selected" if action["type"] == "confirm_appointment" %>>Confirm appointment</option>
+                      <option value="cancel_appointment" <%= "selected" if action["type"] == "cancel_appointment" %>>Cancel appointment</option>
+                    </select>
+                  </div>
+
+                  <div class="flex-1 action-config-assign" style="<%= action["type"] == "assign" ? "" : "display:none" %>">
+                    <input type="text" name="rules[<%= r_index %>][actions][<%= a_index %>][agent_name]" value="<%= action["agent_name"] %>" class="mt-1 block w-full rounded-md border border-stone-300 px-2 py-1.5 text-xs shadow-sm focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500" placeholder="Agent name">
+                    <input type="text" name="rules[<%= r_index %>][actions][<%= a_index %>][team_name]" value="<%= action["team_name"] %>" class="mt-1 block w-full rounded-md border border-stone-300 px-2 py-1.5 text-xs shadow-sm focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500" placeholder="Or team name">
+                  </div>
+
+                  <div class="flex-1 action-config-appointment" style="<%= %w[create_appointment confirm_appointment cancel_appointment].include?(action["type"]) ? "" : "display:none" %>">
+                    <input type="text" name="rules[<%= r_index %>][actions][<%= a_index %>][role_key]" value="<%= action["role_key"] %>" class="mt-1 block w-full rounded-md border border-stone-300 px-2 py-1.5 text-xs shadow-sm focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500" placeholder="Role key">
+                    <input type="number" name="rules[<%= r_index %>][actions][<%= a_index %>][duration_minutes]" value="<%= action["duration_minutes"] %>" class="mt-1 block w-20 rounded-md border border-stone-300 px-2 py-1.5 text-xs shadow-sm focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500" placeholder="60" style="<%= action["type"] == "create_appointment" ? "" : "display:none" %>">
+                  </div>
+
+                  <button type="button" class="remove-action shrink-0 text-red-600 hover:text-red-700" <%= "style=display:none" if actions.size <= 1 %>>✕</button>
+                </div>
+              <% end %>
+            </div>
+            <button type="button" class="add-action mt-1 text-xs text-stone-600 hover:text-stone-900">+ Add action</button>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <button type="button" id="add-rule" class="mt-2 text-sm text-stone-600 hover:text-stone-900">+ Add rule</button>
+  </div>
+
+  <!-- Completion section -->
+  <div class="rounded-lg border border-stone-200 bg-white p-4">
+    <h2 class="mb-3 text-sm font-semibold text-stone-700">Completion Condition</h2>
+    <p class="mb-3 text-xs text-stone-500">When this condition is met, the stage is complete and the conversation advances.</p>
+
+    <%
+      existing_completion = @stage.completion || { "literal" => false }
+      comp_type = if existing_completion["literal"] == true
+        "literal_true"
+      elsif existing_completion["literal"] == false
+        "literal_false"
+      elsif existing_completion["exists"]
+        "exists"
+      elsif existing_completion["eq"]
+        "eq"
+      elsif existing_completion["all"]
+        "all"
+      elsif existing_completion["any"]
+        "any"
+      else
+        "literal_false"
+      end
+    %>
+
+    <div>
+      <label class="block text-sm font-medium text-stone-700">Type</label>
+      <select name="completion[type]" id="completion-type" class="mt-1 block w-full max-w-xs rounded-md border border-stone-300 px-3 py-2 text-sm shadow-sm focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500">
+        <option value="literal" <%= "selected" if comp_type.start_with?("literal") %>>Literal (true/false)</option>
+        <option value="exists" <%= "selected" if comp_type == "exists" %>>Field exists</option>
+        <option value="eq" <%= "selected" if comp_type == "eq" %>>Field equals value</option>
+        <option value="all" <%= "selected" if comp_type == "all" %>>All conditions (AND)</option>
+        <option value="any" <%= "selected" if comp_type == "any" %>>Any condition (OR)</option>
+      </select>
+    </div>
+
+    <!-- Literal -->
+    <div class="completion-detail completion-literal mt-3" style="<%= comp_type.start_with?("literal") ? "" : "display:none" %>">
+      <label class="block text-sm font-medium text-stone-700">Value</label>
+      <select name="completion[value]" class="mt-1 block w-32 rounded-md border border-stone-300 px-3 py-2 text-sm shadow-sm focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500">
+        <option value="false" <%= "selected" if existing_completion["literal"] == false %>>False</option>
+        <option value="true" <%= "selected" if existing_completion["literal"] == true %>>True</option>
+      </select>
+    </div>
+
+    <!-- Exists -->
+    <div class="completion-detail completion-exists mt-3 grid grid-cols-2 gap-3" style="<%= comp_type == "exists" ? "" : "display:none" %>">
+      <div>
+        <label class="block text-sm font-medium text-stone-700">Scope</label>
+        <select name="completion[scope]" class="mt-1 block w-full rounded-md border border-stone-300 px-3 py-2 text-sm shadow-sm focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500">
+          <option value="conversation" <%= "selected" if existing_completion.dig("exists", "scope") == "conversation" %>>Conversation</option>
+          <option value="customer" <%= "selected" if existing_completion.dig("exists", "scope") == "customer" %>>Customer</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-stone-700">Field key</label>
+        <input type="text" name="completion[key]" value="<%= existing_completion.dig("exists", "key") || "" %>" class="mt-1 block w-full rounded-md border border-stone-300 px-3 py-2 text-sm shadow-sm focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500" placeholder="e.g. budget">
+      </div>
+    </div>
+
+    <!-- Equals -->
+    <div class="completion-detail completion-eq mt-3 grid grid-cols-3 gap-3" style="<%= comp_type == "eq" ? "" : "display:none" %>">
+      <div>
+        <label class="block text-sm font-medium text-stone-700">Scope</label>
+        <select name="completion[scope]" class="mt-1 block w-full rounded-md border border-stone-300 px-3 py-2 text-sm shadow-sm focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500">
+          <option value="conversation" <%= "selected" if existing_completion.dig("eq", "ref", "scope") == "conversation" %>>Conversation</option>
+          <option value="customer" <%= "selected" if existing_completion.dig("eq", "ref", "scope") == "customer" %>>Customer</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-stone-700">Field key</label>
+        <input type="text" name="completion[key]" value="<%= existing_completion.dig("eq", "ref", "key") || "" %>" class="mt-1 block w-full rounded-md border border-stone-300 px-3 py-2 text-sm shadow-sm focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500" placeholder="e.g. city">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-stone-700">Value</label>
+        <input type="text" name="completion[value]" value="<%= existing_completion.dig("eq", "value") || "" %>" class="mt-1 block w-full rounded-md border border-stone-300 px-3 py-2 text-sm shadow-sm focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500" placeholder="e.g. Marrakech">
+      </div>
+    </div>
+
+    <!-- All / Any conditions -->
+    <div class="completion-detail completion-all completion-any mt-3" style="<%= %w[all any].include?(comp_type) ? "" : "display:none" %>">
+      <div id="completion-conditions" class="space-y-2">
+        <% conditions = existing_completion[comp_type].presence || [] %>
+        <% conditions.each_with_index do |cond, c_index| %>
+          <div class="condition-entry flex items-start gap-2 rounded-md border border-stone-200 bg-stone-50 p-2 text-sm">
+            <select name="completion[conditions][<%= c_index %>][type]" class="rounded-md border border-stone-300 px-2 py-1 text-xs">
+              <option value="exists" <%= "selected" if cond["exists"] %>>exists</option>
+              <option value="missing" <%= "selected" if cond["missing"] %>>missing</option>
+              <option value="eq" <%= "selected" if cond["eq"] %>>equals</option>
+            </select>
+            <select name="completion[conditions][<%= c_index %>][kind]" class="rounded-md border border-stone-300 px-2 py-1 text-xs">
+              <option value="field" <%= "selected" if (cond["exists"] && cond["exists"]["kind"] == "field") || (cond["eq"] && cond["eq"]["ref"]["kind"] == "field") %>>field</option>
+            </select>
+            <select name="completion[conditions][<%= c_index %>][scope]" class="rounded-md border border-stone-300 px-2 py-1 text-xs">
+              <option value="conversation" <%= "selected" if (cond.dig("exists", "scope") == "conversation") || (cond.dig("eq", "ref", "scope") == "conversation") %>>conversation</option>
+              <option value="customer" <%= "selected" if (cond.dig("exists", "scope") == "customer") || (cond.dig("eq", "ref", "scope") == "customer") %>>customer</option>
+            </select>
+            <input type="text" name="completion[conditions][<%= c_index %>][key]" value="<%= cond.dig("exists", "key") || cond.dig("eq", "ref", "key") || "" %>" class="rounded-md border border-stone-300 px-2 py-1 text-xs" placeholder="key">
+            <input type="text" name="completion[conditions][<%= c_index %>][value]" value="<%= cond.dig("eq", "value") || "" %>" class="rounded-md border border-stone-300 px-2 py-1 text-xs" placeholder="value" style="<%= cond["eq"] ? "" : "display:none" %>">
+            <button type="button" class="remove-condition shrink-0 text-red-600 hover:text-red-700">✕</button>
+          </div>
+        <% end %>
+      </div>
+      <button type="button" id="add-condition" class="mt-2 text-xs text-stone-600 hover:text-stone-900">+ Add condition</button>
+    </div>
+  </div>
+
+  <div class="flex items-center gap-3">
+    <%= f.submit (@stage.new_record? ? "Add stage" : "Update stage"), class: "rounded-md bg-stone-900 px-4 py-2 text-sm font-medium text-white hover:bg-stone-700" %>
+    <%= link_to "Cancel", edit_flow_flow_version_path(current_account, @flow, @version), class: "text-sm text-stone-600 hover:text-stone-900" %>
+  </div>
+<% end %>
+
+<script>
+  // Add block
+  document.getElementById("add-block")?.addEventListener("click", function() {
+    const container = document.getElementById("blocks-container");
+    const entries = container.querySelectorAll(".block-entry");
+    const index = entries.length;
+    const template = entries[0].cloneNode(true);
+    template.dataset.index = index;
+    template.querySelectorAll("input, select").forEach(el => {
+      const name = el.getAttribute("name");
+      if (name) el.setAttribute("name", name.replace(/\d+/, index));
+      if (el.type === "text" || el.type === "number") el.value = "";
+      if (el.tagName === "SELECT") el.selectedIndex = 0;
+      if (el.type === "checkbox") el.checked = false;
+    });
+    // Show remove button
+    const removeBtn = template.querySelector(".remove-block");
+    if (removeBtn) removeBtn.style.display = "";
+    // Hide options divs
+    template.querySelectorAll('[class*="block-options-"]').forEach(el => el.style.display = "none");
+    container.appendChild(template);
+    wireBlockTypeSelect(template);
+    wireRemoveButton(template.querySelector(".remove-block"), ".block-entry");
+  });
+
+  // Wire block type select
+  function wireBlockTypeSelect(entry) {
+    entry.querySelector(".block-type-select")?.addEventListener("change", function() {
+      const type = this.value;
+      entry.querySelectorAll('[class*="block-options-"]').forEach(el => el.style.display = "none");
+      if (type) entry.querySelector(".block-options-" + type).style.display = "";
+    });
+  }
+  document.querySelectorAll(".block-entry").forEach(wireBlockTypeSelect);
+
+  // Remove block
+  function wireRemoveButton(btn, selector) {
+    if (!btn) return;
+    btn.addEventListener("click", function() {
+      const entry = this.closest(selector);
+      if (entry && entry.parentNode.children.length > 1) {
+        entry.remove();
+      }
+    });
+  }
+  document.querySelectorAll(".remove-block").forEach(btn => wireRemoveButton(btn, ".block-entry"));
+
+  // Add rule
+  document.getElementById("add-rule")?.addEventListener("click", function() {
+    const container = document.getElementById("rules-container");
+    const entries = container.querySelectorAll(".rule-entry");
+    const index = entries.length;
+    const template = entries[0].cloneNode(true);
+    template.dataset.index = index;
+    // Reset all names: change rule index (first number) to new index,
+    // then reset action indices back to 0.
+    template.querySelectorAll("input, select").forEach(el => {
+      let name = el.getAttribute("name");
+      if (name) {
+        name = name.replace(/\d+/, String(index));
+        name = name.replace(/actions\[\d+\]/g, "actions[0]");
+        el.setAttribute("name", name);
+      }
+      if (el.type === "text" || el.type === "number") el.value = "";
+      if (el.tagName === "SELECT") el.selectedIndex = 0;
+    });
+    // Reset actions container — keep only first action entry, reset its index
+    const actionsContainer = template.querySelector(".actions-container");
+    if (actionsContainer) {
+      const actionEntries = actionsContainer.querySelectorAll(".action-entry");
+      actionEntries.forEach((ae, ai) => {
+        if (ai > 0) ae.remove();
+        else {
+          ae.dataset.actionIndex = "0";
+          ae.querySelectorAll("input, select").forEach(el => {
+            let name = el.getAttribute("name");
+            if (name) {
+              name = name.replace(/actions\[\d+\]/g, "actions[0]");
+              el.setAttribute("name", name);
+            }
+            if (el.type === "text" || el.type === "number") el.value = "";
+            if (el.tagName === "SELECT") el.selectedIndex = 0;
+          });
+        }
+        ae.querySelector(".remove-action").style.display = "none";
+      });
+    }
+    // Show remove button
+    const removeBtn = template.querySelector(".remove-rule");
+    if (removeBtn) removeBtn.style.display = "";
+    // Hide predicate details
+    template.querySelector(".predicate-details").style.display = "none";
+    container.appendChild(template);
+    wireRuleEvents(template);
+  });
+
+  function wireRuleEvents(entry) {
+    // Predicate type changes
+    entry.querySelector(".predicate-type-select")?.addEventListener("change", function() {
+      const details = entry.querySelector(".predicate-details");
+      const valueField = entry.querySelector(".predicate-value-field");
+      if (this.value === "literal" || this.value === "exists" || this.value === "eq") {
+        details.style.display = "";
+        valueField.style.display = (this.value === "eq" || this.value === "literal") ? "" : "none";
+      } else {
+        details.style.display = "none";
+      }
+    });
+
+    // Action type changes
+    entry.querySelectorAll(".action-type-select").forEach(sel => {
+      sel.addEventListener("change", function() {
+        const entry_div = this.closest(".action-entry");
+        entry_div.querySelectorAll('[class*="action-config-"]').forEach(el => el.style.display = "none");
+        const type = this.value;
+        if (type === "assign") entry_div.querySelector(".action-config-assign").style.display = "";
+        if (["create_appointment", "confirm_appointment", "cancel_appointment"].includes(type)) {
+          entry_div.querySelector(".action-config-appointment").style.display = "";
+        }
+      });
+    });
+
+    // Add action
+    entry.querySelector(".add-action")?.addEventListener("click", function() {
+      const container = this.closest(".rule-entry").querySelector(".actions-container");
+      const entries = container.querySelectorAll(".action-entry");
+      const aIndex = entries.length;
+      const rIndex = this.closest(".rule-entry").dataset.index;
+      const template = entries[0].cloneNode(true);
+      template.dataset.actionIndex = aIndex;
+      template.querySelectorAll("input, select").forEach(el => {
+        let name = el.getAttribute("name");
+        if (name) {
+          name = name.replace(/actions\]\[\d+\]/g, `actions][${aIndex}]`);
+          el.setAttribute("name", name);
+        }
+        if (el.type === "text" || el.type === "number") el.value = "";
+        if (el.tagName === "SELECT") el.selectedIndex = 0;
+      });
+      template.querySelector('[class*="action-config-"]').style.display = "none";
+      template.querySelector(".remove-action").style.display = "";
+      container.appendChild(template);
+      wireActionEvents(template);
+    });
+
+    // Remove action
+    entry.querySelectorAll(".remove-action").forEach(btn => {
+      btn.addEventListener("click", function() {
+        const container = this.closest(".actions-container");
+        if (container.querySelectorAll(".action-entry").length > 1) {
+          this.closest(".action-entry").remove();
+        }
+      });
+    });
+  }
+  document.querySelectorAll(".rule-entry").forEach(wireRuleEvents);
+
+  // Add/remove completion condition (for all/any)
+  document.getElementById("add-condition")?.addEventListener("click", function() {
+    const container = document.getElementById("completion-conditions");
+    const index = container.children.length;
+    const div = document.createElement("div");
+    div.className = "condition-entry flex items-start gap-2 rounded-md border border-stone-200 bg-stone-50 p-2 text-sm";
+    div.innerHTML = `
+      <select name="completion[conditions][${index}][type]" class="rounded-md border border-stone-300 px-2 py-1 text-xs">
+        <option value="exists">exists</option>
+        <option value="missing">missing</option>
+        <option value="eq">equals</option>
+      </select>
+      <select name="completion[conditions][${index}][kind]" class="rounded-md border border-stone-300 px-2 py-1 text-xs">
+        <option value="field">field</option>
+      </select>
+      <select name="completion[conditions][${index}][scope]" class="rounded-md border border-stone-300 px-2 py-1 text-xs">
+        <option value="conversation">conversation</option>
+        <option value="customer">customer</option>
+      </select>
+      <input type="text" name="completion[conditions][${index}][key]" class="rounded-md border border-stone-300 px-2 py-1 text-xs" placeholder="key">
+      <input type="text" name="completion[conditions][${index}][value]" class="rounded-md border border-stone-300 px-2 py-1 text-xs" placeholder="value" style="display:none">
+      <button type="button" class="remove-condition shrink-0 text-red-600 hover:text-red-700">✕</button>
+    `;
+    container.appendChild(div);
+    wireCompletionCondition(div);
+  });
+
+  function wireCompletionCondition(row) {
+    row.querySelector("select[name$='[type]']")?.addEventListener("change", function() {
+      const valueInput = row.querySelector("input[name$='[value]']");
+      valueInput.style.display = (this.value === "eq") ? "" : "none";
+    });
+    row.querySelector(".remove-condition")?.addEventListener("click", function() {
+      const container = document.getElementById("completion-conditions");
+      if (container.children.length > 1) {
+        row.remove();
+      }
+    });
+  }
+  document.querySelectorAll(".condition-entry").forEach(wireCompletionCondition);
+
+  // Completion type changes
+  document.getElementById("completion-type")?.addEventListener("change", function() {
+    document.querySelectorAll(".completion-detail").forEach(el => el.style.display = "none");
+    const cls = ".completion-" + (this.value === "literal" ? "literal" : this.value);
+    document.querySelectorAll(cls).forEach(el => el.style.display = "");
+  });
+</script>

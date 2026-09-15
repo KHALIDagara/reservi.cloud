@@ -36,6 +36,7 @@
           <div class="flex items-center gap-2 text-sm">
             <% if current_account %>
               <%= link_to "People", account_people_path(current_account), class: "rounded-md px-2 py-1 text-stone-600 hover:bg-stone-100" %>
+              <%= link_to "Flows", flows_path(current_account), class: "rounded-md px-2 py-1 text-stone-600 hover:bg-stone-100" %>
             <% end %>
             <%= link_to "Accounts", accounts_path, class: "rounded-md px-2 py-1 text-stone-600 hover:bg-stone-100" %>
             <%= button_to "Sign out", session_path, method: :delete, class: "rounded-md px-2 py-1 text-stone-600 hover:bg-stone-100" %>

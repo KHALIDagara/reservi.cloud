@@ -1,0 +1,103 @@
+<div class="flex items-center justify-between">
+  <h1 class="text-2xl font-semibold tracking-tight">
+    <%= @flow.name %> · v<%= @version.version_number %>
+  </h1>
+  <div class="flex items-center gap-2">
+    <% if @version.draft? %>
+      <%= button_to "Preview", preview_flow_flow_version_path(current_account, @flow, @version), method: :post, class: "rounded-md border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-100" %>
+      <%= button_to "Publish", publish_flow_flow_version_path(current_account, @flow, @version), method: :post, class: "rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700", data: { confirm: "Publish this version? In-flight conversations will not be affected." } %>
+    <% end %>
+    <%= link_to "Back", flows_path(current_account), class: "text-sm text-stone-600 hover:text-stone-900" %>
+  </div>
+</div>
+
+<p class="mt-1 text-sm text-stone-500">
+  Status: <span class="font-medium <%= @version.published? ? 'text-emerald-700' : 'text-amber-600' %>"><%= @version.status.titleize %></span>
+  <% if @version.published? %>
+    · Published <%= time_ago_in_words(@version.published_at) %> ago
+  <% end %>
+</p>
+
+<% if @version.published? %>
+  <div class="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
+    This version is published and immutable. Stages are shown for reference. Create a new draft version to make changes.
+  </div>
+<% end %>
+
+<div class="mt-6 space-y-6">
+  <% @stages.each do |stage| %>
+    <div class="rounded-lg border border-stone-200 bg-white">
+      <div class="flex items-center justify-between border-b border-stone-100 px-4 py-3">
+        <div>
+          <span class="inline-flex items-center justify-center rounded-full bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-600">Stage <%= stage.position %></span>
+          <span class="ml-2 font-medium"><%= stage.label %></span>
+          <span class="ml-2 text-sm text-stone-500"><code class="rounded bg-stone-100 px-1 py-0.5 text-xs"><%= stage.key %></code></span>
+        </div>
+        <% if @version.draft? %>
+          <div class="flex gap-2">
+            <%= link_to "Edit", edit_flow_flow_version_stage_path(current_account, @flow, @version, stage), class: "rounded-md border border-stone-300 px-3 py-1 text-sm text-stone-700 hover:bg-stone-100" %>
+            <%= button_to "Remove", flow_flow_version_stage_path(current_account, @flow, @version, stage), method: :delete, class: "rounded-md px-3 py-1 text-sm text-red-600 hover:bg-red-50", data: { confirm: "Remove stage '#{stage.label}'?" } %>
+          </div>
+        <% end %>
+      </div>
+
+      <div class="px-4 py-3 text-sm">
+        <div class="grid grid-cols-3 gap-4">
+          <div>
+            <h4 class="mb-1 text-xs font-semibold uppercase tracking-wide text-stone-500">Blocks</h4>
+            <% if stage.blocks.any? %>
+              <ul class="space-y-1">
+                <% stage.blocks.each do |block| %>
+                  <li class="rounded bg-stone-50 px-2 py-1 text-xs">
+                    <span class="font-medium"><%= block["type"] %></span>
+                    <% if block["key"] %>
+                      · <code><%= block["key"] %></code>
+                    <% end %>
+                    <% if block["catalog_key"] %>
+                      · catalog: <code><%= block["catalog_key"] %></code>
+                    <% end %>
+                    <% if block["role_key"] %>
+                      · role: <code><%= block["role_key"] %></code>
+                    <% end %>
+                  </li>
+                <% end %>
+              </ul>
+            <% else %>
+              <p class="text-xs text-stone-400 italic">None</p>
+            <% end %>
+          </div>
+
+          <div>
+            <h4 class="mb-1 text-xs font-semibold uppercase tracking-wide text-stone-500">Rules</h4>
+            <% if stage.rules.any? %>
+              <ul class="space-y-1">
+                <% stage.rules.each do |rule| %>
+                  <li class="rounded bg-stone-50 px-2 py-1 text-xs">
+                    <span class="font-medium"><%= rule["key"] %></span>
+                    <% actions = (rule["actions"] || []).map { |a| a["type"] } %>
+                    <% if actions.any? %>
+                      → <%= actions.join(", ") %>
+                    <% end %>
+                  </li>
+                <% end %>
+              </ul>
+            <% else %>
+              <p class="text-xs text-stone-400 italic">None</p>
+            <% end %>
+          </div>
+
+          <div>
+            <h4 class="mb-1 text-xs font-semibold uppercase tracking-wide text-stone-500">Completion</h4>
+            <div class="rounded bg-stone-50 px-2 py-1 text-xs">
+              <code class="break-all"><%= stage.completion&.to_json&.truncate(80) %></code>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<% if @version.draft? %>
+  <%= link_to "Add stage", new_flow_flow_version_stage_path(current_account, @flow, @version), class: "mt-4 inline-flex items-center gap-1 rounded-md border border-dashed border-stone-300 px-4 py-2 text-sm font-medium text-stone-600 hover:border-stone-400 hover:bg-stone-50" %>
+<% end %>

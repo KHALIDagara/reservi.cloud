@@ -57,8 +57,16 @@ Rails.application.routes.draw do
     resources :item_selections, only: [:create, :destroy]
 
     # Flow management (admin)
-    get "flows", to: "flow_versions#index", as: :account_flow_versions
-    post "flows/:flow_id/versions/:id/publish", to: "flow_versions#publish", as: :publish_account_flow_version
+    resources :flows, only: [:index, :new, :create, :edit, :update], controller: "flows" do
+      resources :versions, only: [:new, :create, :show, :edit, :update], controller: "flow_versions", as: :flow_version do
+        member do
+          post :publish
+          post :preview
+        end
+        # Stages are edited inline within the version
+        resources :stages, only: [:new, :create, :edit, :update, :destroy], controller: "stages"
+      end
+    end
   end
 
   # Webhook endpoints — authenticated by inbound_token, not by session

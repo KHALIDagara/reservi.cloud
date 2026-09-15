@@ -1,0 +1,101 @@
+<div class="flex items-center justify-between">
+  <h1 class="text-2xl font-semibold tracking-tight">Preview</h1>
+  <%= link_to "Back to editor", edit_flow_flow_version_path(current_account, @flow, @version), class: "rounded-md border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-100" %>
+</div>
+
+<p class="mt-1 text-sm text-stone-500">
+  <%= @flow.name %> · v<%= @version.version_number %> · Draft preview
+</p>
+
+<div class="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
+  This is a read-only preview. No state is changed, no messages are sent, and no jobs are scheduled.
+</div>
+
+<!-- Synthetic state form -->
+<%= form_with url: preview_flow_flow_version_path(current_account, @flow, @version), method: :post, local: true, class: "mt-6 rounded-lg border border-stone-200 bg-white p-4" do |f| %>
+  <h2 class="mb-3 text-sm font-semibold text-stone-700">Sample Data</h2>
+  <div class="grid grid-cols-2 gap-3">
+    <div>
+      <label class="block text-xs font-medium text-stone-600">Customer name</label>
+      <input type="text" name="preview[customer_name]" value="<%= @synthetic_state["customer_name"] %>" class="mt-1 block w-full rounded-md border border-stone-300 px-2 py-1.5 text-xs shadow-sm">
+    </div>
+    <div>
+      <label class="block text-xs font-medium text-stone-600">Customer phone</label>
+      <input type="text" name="preview[phone]" value="<%= @synthetic_state["customer_phone"] %>" class="mt-1 block w-full rounded-md border border-stone-300 px-2 py-1.5 text-xs shadow-sm">
+    </div>
+    <div>
+      <label class="block text-xs font-medium text-stone-600">Customer email</label>
+      <input type="text" name="preview[email]" value="<%= @synthetic_state["customer_email"] %>" class="mt-1 block w-full rounded-md border border-stone-300 px-2 py-1.5 text-xs shadow-sm">
+    </div>
+    <div>
+      <label class="block text-xs font-medium text-stone-600">Customer city</label>
+      <input type="text" name="preview[city]" value="<%= @synthetic_state["customer_city"] %>" class="mt-1 block w-full rounded-md border border-stone-300 px-2 py-1.5 text-xs shadow-sm">
+    </div>
+    <div>
+      <label class="block text-xs font-medium text-stone-600">Conversation budget</label>
+      <input type="text" name="preview[budget]" value="<%= @synthetic_state["conversation_budget"] %>" class="mt-1 block w-full rounded-md border border-stone-300 px-2 py-1.5 text-xs shadow-sm">
+    </div>
+  </div>
+  <%= f.submit "Refresh preview", class: "mt-3 rounded-md bg-stone-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-stone-700" %>
+<% end %>
+
+<!-- Evaluation results -->
+<div class="mt-6 space-y-4">
+  <h2 class="text-sm font-semibold text-stone-700">Stage Evaluation</h2>
+
+  <% @evaluations.each do |eval_result| %>
+    <div class="rounded-lg border <%= eval_result[:complete] ? 'border-emerald-200 bg-emerald-50' : 'border-stone-200 bg-white' %> p-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <span class="inline-flex items-center justify-center rounded-full bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-600">Stage <%= eval_result[:index] + 1 %></span>
+          <span class="ml-2 font-medium"><%= eval_result[:stage].label %></span>
+        </div>
+        <span class="rounded-full px-2 py-0.5 text-xs font-medium <%= eval_result[:complete] ? 'bg-emerald-200 text-emerald-800' : 'bg-stone-200 text-stone-600' %>">
+          <%= eval_result[:complete] ? "COMPLETE" : "INCOMPLETE" %>
+        </span>
+      </div>
+
+      <div class="mt-3 grid grid-cols-3 gap-4 text-sm">
+        <div>
+          <h4 class="text-xs font-semibold uppercase tracking-wide text-stone-500">Blocks</h4>
+          <% if eval_result[:blocks].any? %>
+            <ul class="mt-1 space-y-1">
+              <% eval_result[:blocks].each do |b| %>
+                <li class="text-xs text-stone-600">• <%= h(b) %></li>
+              <% end %>
+            </ul>
+          <% else %>
+            <p class="mt-1 text-xs text-stone-400 italic">None</p>
+          <% end %>
+        </div>
+        <div>
+          <h4 class="text-xs font-semibold uppercase tracking-wide text-stone-500">Rules</h4>
+          <% if eval_result[:rules].any? %>
+            <ul class="mt-1 space-y-1">
+              <% eval_result[:rules].each do |r| %>
+                <li class="text-xs text-stone-600">• <%= h(r) %></li>
+              <% end %>
+            </ul>
+          <% else %>
+            <p class="mt-1 text-xs text-stone-400 italic">None</p>
+          <% end %>
+        </div>
+        <div>
+          <h4 class="text-xs font-semibold uppercase tracking-wide text-stone-500">Completion</h4>
+          <div class="mt-1 rounded bg-stone-50 px-2 py-1 text-xs">
+            <p><%= h(eval_result[:completion][:reason]) %></p>
+            <% if eval_result[:completion][:children] %>
+              <ul class="ml-2 mt-1 space-y-1">
+                <% eval_result[:completion][:children].each do |child| %>
+                  <li class="<%= child[:result] ? 'text-emerald-600' : 'text-stone-500' %>">
+                    <%= child[:result] ? "✓" : "○" %> <%= h(child[:reason]) %>
+                  </li>
+                <% end %>
+              </ul>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>

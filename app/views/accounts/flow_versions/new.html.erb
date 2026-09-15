@@ -1,0 +1,25 @@
+<h1 class="text-2xl font-semibold tracking-tight">New version</h1>
+
+<p class="mt-2 text-sm text-stone-500">
+  Flow: <%= @flow.name %>
+</p>
+
+<%= form_with model: [@flow, @version], url: flow_flow_version_index_path(current_account, @flow), local: true, class: "mt-6 space-y-4" do |f| %>
+  <div>
+    <%= f.label :version_number, "Version number", class: "block text-sm font-medium text-stone-700" %>
+    <%= f.number_field :version_number, class: "mt-1 block w-32 rounded-md border border-stone-300 px-3 py-2 text-sm shadow-sm focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500" %>
+  </div>
+
+  <div class="text-sm text-stone-500">
+    <% if @flow.current_version %>
+      The new draft will start as a copy of the current published version (v<%= @flow.current_version.version_number %>).
+    <% else %>
+      A single default stage will be created.
+    <% end %>
+  </div>
+
+  <div class="flex items-center gap-3">
+    <%= f.submit "Create draft", class: "rounded-md bg-stone-900 px-4 py-2 text-sm font-medium text-white hover:bg-stone-700" %>
+    <%= link_to "Cancel", edit_flow_path(current_account, @flow), class: "text-sm text-stone-600 hover:text-stone-900" %>
+  </div>
+<% end %>
