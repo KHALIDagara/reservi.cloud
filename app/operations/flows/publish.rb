@@ -27,6 +27,8 @@ module Flows
     SUPPORTED_ACTION_TYPES = %w[assign send_message create_appointment confirm_appointment cancel_appointment].freeze
     SUPPORTED_PREDICATE_OPS = %w[literal exists missing eq neq gt gte lt lte all any not].freeze
 
+    attr_reader :warnings
+
     def self.call(flow_version:, actor_membership:)
       new(flow_version:, actor_membership:).call
     end
@@ -34,6 +36,7 @@ module Flows
     def initialize(flow_version:, actor_membership:)
       @flow_version = flow_version
       @actor_membership = actor_membership
+      @warnings = []
     end
 
     def call
@@ -45,6 +48,7 @@ module Flows
       validate_keys_and_positions!
       validate_stage_structure!
       validate_role_consistency!
+      collect_warnings!
 
       @flow_version.transaction do
         @flow_version.update!(status: "published", published_at: Time.current)
@@ -266,9 +270,77 @@ module Flows
           raise Reservi::Errors::OperationError,
             "Stage '#{stage_key}', #{context}: field reference must specify a key"
         end
+      end
+    end
 
-        # Note: field definition may not exist yet; the account admin may create
-        # it before activating the flow. A future iteration may emit a soft warning.
+    # ── Soft warnings ──────────────────────────────────────────────────
+    # These checks do not block publish, but inform the actor about
+    # configurations that may produce dead ends or incorrect behaviour.
+
+    def collect_warnings!
+      account = @flow_version.flow.account
+
+      # Collect known field definition keys for this account
+      known_fields = account.field_definitions.active.pluck(:scope, :key)
+        .group_by(&:first).transform_values { |pairs| pairs.map(&:last).to_set }
+      known_catalog_keys = account.catalogs.active.pluck(:title).to_set
+      known_agent_ids = account.agents.active.pluck(:id).to_set
+
+      @flow_version.stages.each do |stage|
+        # 1. Catalog blocks referencing a catalog that doesn't exist yet
+        stage.blocks.each do |block|
+          if block["type"] == "catalog" && block["catalog_key"].present?
+            unless known_catalog_keys.include?(block["catalog_key"])
+              @warnings << "Stage '#{stage.key}': catalog '#{block['catalog_key']}' not found in account"
+            end
+          end
+        end
+
+        # 2. Predicate references to field definitions that don't exist yet
+        collect_predicate_warnings!(stage.completion, account, known_fields) if stage.completion.is_a?(Hash)
+        stage.rules.each do |rule|
+          predicate = rule["predicate"]
+          collect_predicate_warnings!(predicate, account, known_fields) if predicate.is_a?(Hash)
+        end
+
+        # 3. Assign actions referencing unknown agents
+        stage.rules.each do |rule|
+          (rule["actions"] || []).each do |action|
+            if action["type"] == "assign" && action["agent_id"].present?
+              unless known_agent_ids.include?(action["agent_id"])
+                @warnings << "Stage '#{stage.key}', rule '#{rule['key']}': assign action references unknown agent #{action['agent_id']}"
+              end
+            end
+          end
+        end
+      end
+    end
+
+    def collect_predicate_warnings!(predicate, account, known_fields)
+      walk_predicate_nodes(predicate) do |ref|
+        next unless ref.is_a?(Hash) && ref["kind"] == "field"
+        scope = ref["scope"]
+        key = ref["key"]
+        next if scope.blank? || key.blank?
+        next if known_fields[scope]&.include?(key)
+        @warnings << "Predicate references #{scope}.#{key} but no active field definition exists"
+      end
+    end
+
+    def walk_predicate_nodes(node, &block)
+      return unless node.is_a?(Hash)
+      op = node.keys.first
+      args = node[op]
+
+      case op
+      when "exists", "missing"
+        yield(args) if args.is_a?(Hash)
+      when "eq", "neq", "gt", "gte", "lt", "lte"
+        yield(args["ref"]) if args.is_a?(Hash) && args["ref"].is_a?(Hash)
+      when "all", "any"
+        args.each { |sub| walk_predicate_nodes(sub, &block) } if args.is_a?(Array)
+      when "not"
+        walk_predicate_nodes(args, &block)
       end
     end
   end
