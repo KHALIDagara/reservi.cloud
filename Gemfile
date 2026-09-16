@@ -68,4 +68,4 @@ group :test do
   gem "minitest", "~> 5.0"
 end
 
-gem "json", "~> 2.9"
+gem "json", "~> 3.0"
