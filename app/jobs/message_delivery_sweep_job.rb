@@ -30,7 +30,7 @@ class MessageDeliverySweepJob < ApplicationJob
 
     # Atomic claim: only update rows that are still pending
     updated = MessageDelivery.where(id: ids, status: "pending")
-      .update_all(["status = 'sending', last_attempt_at = ?", Time.current])
+      .update_all([ "status = 'sending', last_attempt_at = ?", Time.current ])
 
     # Re-fetch only the rows we successfully claimed
     MessageDelivery.where(id: ids, status: "sending").find_each do |delivery|
@@ -49,8 +49,8 @@ class MessageDeliverySweepJob < ApplicationJob
     return if ids.empty?
 
     updated = MessageDelivery.where(id: ids, status: "sending")
-      .update_all(["status = 'unknown', error_message = ?, updated_at = ?",
-        "Delivery stuck in sending state — recovered by sweep", Time.current])
+      .update_all([ "status = 'unknown', error_message = ?, updated_at = ?",
+        "Delivery stuck in sending state — recovered by sweep", Time.current ])
 
     # Re-fetch only claimed rows and update their messages
     MessageDelivery.where(id: ids, status: "unknown").find_each do |delivery|

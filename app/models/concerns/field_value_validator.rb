@@ -32,7 +32,7 @@ module FieldValueValidator
         errors << "Must be at most #{definition.constraints['max']}"
       end
     when "boolean"
-      errors << "Must be true or false" unless [true, false].include?(value)
+      errors << "Must be true or false" unless [ true, false ].include?(value)
     when "single_choice"
       allowed = definition.options.map { |o| o.is_a?(Hash) ? o["key"] : o.to_s }
       errors << "Must be one of: #{allowed.join(', ')}" unless allowed.include?(value.to_s)

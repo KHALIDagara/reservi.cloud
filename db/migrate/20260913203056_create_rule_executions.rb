@@ -14,7 +14,7 @@ class CreateRuleExecutions < ActiveRecord::Migration[8.1]
     end
 
     add_index :rule_executions, :execution_key, unique: true
-    add_index :rule_executions, [:conversation_id, :stage_id, :rule_key],
+    add_index :rule_executions, [ :conversation_id, :stage_id, :rule_key ],
       name: "idx_rule_execs_on_conversation_stage_rule"
   end
 end

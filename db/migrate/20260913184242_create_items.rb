@@ -13,8 +13,8 @@ class CreateItems < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :items, [:account_id, :catalog_id, :title], unique: true
-    add_index :items, [:account_id, :id], unique: true
-    add_index :items, [:catalog_id, :id], unique: true
+    add_index :items, [ :account_id, :catalog_id, :title ], unique: true
+    add_index :items, [ :account_id, :id ], unique: true
+    add_index :items, [ :catalog_id, :id ], unique: true
   end
 end

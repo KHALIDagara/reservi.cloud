@@ -53,7 +53,9 @@ module Accounts
     end
 
     def invitation_params
-      params.require(:invitation).permit(:emails, :role, team_ids: [])
+      params.require(:invitation).permit(:emails, :role).tap do |permitted|
+        permitted[:team_ids] = params[:invitation][:team_ids] if params[:invitation][:team_ids].is_a?(Array)
+      end
     end
   end
 end

@@ -18,10 +18,10 @@ class Memberships::RemoveTest < ActiveSupport::TestCase
     carol = users(:carol)
     puts "DEBUG: Carol user ID: #{carol.id}"
     puts "DEBUG: Alpha account ID: #{@account.id}"
-    
+
     extra_admin = @account.memberships.create!(user: carol, role: "admin", active: true)
     puts "DEBUG: Created extra_admin: #{extra_admin.id}"
-    
+
     # Verify it's visible
     other_admins = @account.memberships.active.admins.where.not(id: @admin.id)
     puts "DEBUG: Other active admins before remove: #{other_admins.count}"
@@ -61,7 +61,7 @@ class Memberships::RemoveTest < ActiveSupport::TestCase
     invitation = @account.account_invitations.create!(
       email: @bob.user.email_address,
       role: "admin",
-      team_ids: [teams(:alpha_general).id],
+      team_ids: [ teams(:alpha_general).id ],
       inviter_membership: @admin,
       token_digest: Digest::SHA256.hexdigest("new-token"),
       expires_at: 7.days.from_now,

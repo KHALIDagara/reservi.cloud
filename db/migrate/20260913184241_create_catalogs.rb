@@ -8,7 +8,7 @@ class CreateCatalogs < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :catalogs, [:account_id, :id], unique: true
-    add_index :catalogs, [:account_id, :title], unique: true
+    add_index :catalogs, [ :account_id, :id ], unique: true
+    add_index :catalogs, [ :account_id, :title ], unique: true
   end
 end

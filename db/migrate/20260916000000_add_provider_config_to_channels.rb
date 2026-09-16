@@ -12,9 +12,9 @@ class AddProviderConfigToChannels < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :webhook_receipts, [:channel_id, :provider_event_id], unique: true,
+    add_index :webhook_receipts, [ :channel_id, :provider_event_id ], unique: true,
       name: "idx_webhook_receipts_on_channel_and_event"
-    add_index :webhook_receipts, [:account_id, :created_at],
+    add_index :webhook_receipts, [ :account_id, :created_at ],
       name: "idx_webhook_receipts_on_account_created_at"
   end
 end

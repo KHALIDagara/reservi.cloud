@@ -37,7 +37,7 @@ class Reservi::Ai::FakeAdapterTest < ActiveSupport::TestCase
   test "returns configured response when prompt key matches" do
     custom = {
       "content" => "Prompt match",
-      "tool_calls" => [{ "name" => "read_workspace", "arguments" => {} }],
+      "tool_calls" => [ { "name" => "read_workspace", "arguments" => {} } ],
       "usage" => { "prompt_tokens" => 5, "completion_tokens" => 3, "total_tokens" => 8 }
     }
 
@@ -73,8 +73,8 @@ class Reservi::Ai::FakeAdapterTest < ActiveSupport::TestCase
     adapter = Reservi::Ai::FakeAdapter.new
 
     adapter.generate(prompt: "First", system_message: "msg1", tools: nil)
-    adapter.generate(prompt: "Second", system_message: "msg2", tools: ["tool_a"])
-    adapter.generate(prompt: "Third", system_message: "msg3", tools: ["tool_b"])
+    adapter.generate(prompt: "Second", system_message: "msg2", tools: [ "tool_a" ])
+    adapter.generate(prompt: "Third", system_message: "msg3", tools: [ "tool_b" ])
 
     assert_equal 3, adapter.calls.size
     assert_equal "First", adapter.calls[0][:prompt]
@@ -82,18 +82,18 @@ class Reservi::Ai::FakeAdapterTest < ActiveSupport::TestCase
     assert_nil adapter.calls[0][:tools]
 
     assert_equal "Second", adapter.calls[1][:prompt]
-    assert_equal ["tool_a"], adapter.calls[1][:tools]
+    assert_equal [ "tool_a" ], adapter.calls[1][:tools]
 
     assert_equal "Third", adapter.calls[2][:prompt]
-    assert_equal ["tool_b"], adapter.calls[2][:tools]
+    assert_equal [ "tool_b" ], adapter.calls[2][:tools]
   end
 
   test "each call records tools even when nil" do
     adapter = Reservi::Ai::FakeAdapter.new
     adapter.generate(prompt: "x", system_message: "y", tools: nil)
-    adapter.generate(prompt: "x2", system_message: "y2", tools: ["some_tool"])
+    adapter.generate(prompt: "x2", system_message: "y2", tools: [ "some_tool" ])
 
     assert_nil adapter.calls[0][:tools]
-    assert_equal ["some_tool"], adapter.calls[1][:tools]
+    assert_equal [ "some_tool" ], adapter.calls[1][:tools]
   end
 end

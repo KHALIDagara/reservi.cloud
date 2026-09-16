@@ -7,6 +7,6 @@ class CreateNotes < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :notes, [:conversation_id, :id], unique: true
+    add_index :notes, [ :conversation_id, :id ], unique: true
   end
 end

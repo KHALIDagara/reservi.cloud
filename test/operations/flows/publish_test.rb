@@ -66,7 +66,7 @@ class Flows::PublishTest < ActiveSupport::TestCase
       key: "bad_block",
       label: "Bad Block",
       position: 1,
-      blocks: [{ "type" => "unsupported_widget" }],
+      blocks: [ { "type" => "unsupported_widget" } ],
       rules: [],
       completion: { "literal" => true }
     )
@@ -85,7 +85,7 @@ class Flows::PublishTest < ActiveSupport::TestCase
       label: "Bad Rule",
       position: 1,
       blocks: [],
-      rules: [{ "key" => "rule1", "actions" => [{ "type" => "delete_everything" }] }],
+      rules: [ { "key" => "rule1", "actions" => [ { "type" => "delete_everything" } ] } ],
       completion: { "literal" => true }
     )
 
@@ -102,7 +102,7 @@ class Flows::PublishTest < ActiveSupport::TestCase
       key: "field_stage",
       label: "Field Stage",
       position: 1,
-      blocks: [{ "type" => "field", "key" => "budget" }],
+      blocks: [ { "type" => "field", "key" => "budget" } ],
       rules: [],
       completion: { "literal" => true }
     )
@@ -117,7 +117,7 @@ class Flows::PublishTest < ActiveSupport::TestCase
       key: "catalog_stage",
       label: "Catalog Stage",
       position: 1,
-      blocks: [{ "type" => "catalog", "catalog_key" => "services", "role_key" => "requested_service" }],
+      blocks: [ { "type" => "catalog", "catalog_key" => "services", "role_key" => "requested_service" } ],
       rules: [],
       completion: { "literal" => true }
     )
@@ -132,7 +132,7 @@ class Flows::PublishTest < ActiveSupport::TestCase
       key: "appt_stage",
       label: "Appointment Stage",
       position: 1,
-      blocks: [{ "type" => "appointment", "role_key" => "consultation" }],
+      blocks: [ { "type" => "appointment", "role_key" => "consultation" } ],
       rules: [],
       completion: { "literal" => true }
     )
@@ -148,7 +148,7 @@ class Flows::PublishTest < ActiveSupport::TestCase
       label: "Assign Stage",
       position: 1,
       blocks: [],
-      rules: [{ "key" => "assign_rule", "actions" => [{ "type" => "assign" }] }],
+      rules: [ { "key" => "assign_rule", "actions" => [ { "type" => "assign" } ] } ],
       completion: { "literal" => true }
     )
 
@@ -163,7 +163,7 @@ class Flows::PublishTest < ActiveSupport::TestCase
       label: "Msg Stage",
       position: 1,
       blocks: [],
-      rules: [{ "key" => "msg_rule", "actions" => [{ "type" => "send_message" }] }],
+      rules: [ { "key" => "msg_rule", "actions" => [ { "type" => "send_message" } ] } ],
       completion: { "literal" => true }
     )
 
@@ -264,7 +264,7 @@ class Flows::PublishTest < ActiveSupport::TestCase
       key: "field_no_key",
       label: "Field No Key",
       position: 1,
-      blocks: [{ "type" => "field" }],
+      blocks: [ { "type" => "field" } ],
       rules: [],
       completion: { "literal" => true }
     )
@@ -282,7 +282,7 @@ class Flows::PublishTest < ActiveSupport::TestCase
       key: "catalog_no_key",
       label: "Catalog No Key",
       position: 1,
-      blocks: [{ "type" => "catalog" }],
+      blocks: [ { "type" => "catalog" } ],
       rules: [],
       completion: { "literal" => true }
     )
@@ -300,7 +300,7 @@ class Flows::PublishTest < ActiveSupport::TestCase
       key: "appt_no_role",
       label: "Appt No Role",
       position: 1,
-      blocks: [{ "type" => "appointment" }],
+      blocks: [ { "type" => "appointment" } ],
       rules: [],
       completion: { "literal" => true }
     )
@@ -319,7 +319,7 @@ class Flows::PublishTest < ActiveSupport::TestCase
       label: "No Key Rule",
       position: 1,
       blocks: [],
-      rules: [{ "actions" => [{ "type" => "assign" }] }],
+      rules: [ { "actions" => [ { "type" => "assign" } ] } ],
       completion: { "literal" => true }
     )
 
@@ -337,7 +337,7 @@ class Flows::PublishTest < ActiveSupport::TestCase
       label: "Bad Operator",
       position: 1,
       blocks: [],
-      rules: [{ "key" => "r1", "predicate" => { "custom_op" => {} } }],
+      rules: [ { "key" => "r1", "predicate" => { "custom_op" => {} } } ],
       completion: { "literal" => true }
     )
 
@@ -368,7 +368,7 @@ class Flows::PublishTest < ActiveSupport::TestCase
 
   test "rejects excessive rules per stage" do
     version = @flow.versions.create!(version_number: 29, status: "draft")
-    rules = (1..51).map { |i| { "key" => "rule_#{i}", "actions" => [{ "type" => "assign" }] } }
+    rules = (1..51).map { |i| { "key" => "rule_#{i}", "actions" => [ { "type" => "assign" } ] } }
     version.stages.create!(
       key: "too_many_rules",
       label: "Too Many Rules",
@@ -393,7 +393,7 @@ class Flows::PublishTest < ActiveSupport::TestCase
       label: "Too Many Actions",
       position: 1,
       blocks: [],
-      rules: [{ "key" => "rule1", "actions" => actions }],
+      rules: [ { "key" => "rule1", "actions" => actions } ],
       completion: { "literal" => true }
     )
 
@@ -433,12 +433,12 @@ class Flows::PublishTest < ActiveSupport::TestCase
       label: "Bad Ref",
       position: 1,
       blocks: [],
-      rules: [{
+      rules: [ {
         "key" => "r1",
         "predicate" => {
           "exists" => { "kind" => "widget", "key" => "city" }
         }
-      }],
+      } ],
       completion: { "literal" => true }
     )
 
@@ -456,12 +456,12 @@ class Flows::PublishTest < ActiveSupport::TestCase
       label: "Bad Scope",
       position: 1,
       blocks: [],
-      rules: [{
+      rules: [ {
         "key" => "r1",
         "predicate" => {
           "exists" => { "kind" => "field", "scope" => "organization", "key" => "city" }
         }
-      }],
+      } ],
       completion: { "literal" => true }
     )
 
@@ -501,7 +501,7 @@ class Flows::PublishTest < ActiveSupport::TestCase
       key: "stage_a",
       label: "Stage A",
       position: 1,
-      blocks: [{ "type" => "catalog", "catalog_key" => "services", "role_key" => "selection" }],
+      blocks: [ { "type" => "catalog", "catalog_key" => "services", "role_key" => "selection" } ],
       rules: [],
       completion: { "literal" => true }
     )
@@ -509,7 +509,7 @@ class Flows::PublishTest < ActiveSupport::TestCase
       key: "stage_b",
       label: "Stage B",
       position: 2,
-      blocks: [{ "type" => "appointment", "role_key" => "selection" }],
+      blocks: [ { "type" => "appointment", "role_key" => "selection" } ],
       rules: [],
       completion: { "literal" => true }
     )
@@ -527,7 +527,7 @@ class Flows::PublishTest < ActiveSupport::TestCase
       key: "stage_a",
       label: "Stage A",
       position: 1,
-      blocks: [{ "type" => "catalog", "catalog_key" => "services", "role_key" => "my_role" }],
+      blocks: [ { "type" => "catalog", "catalog_key" => "services", "role_key" => "my_role" } ],
       rules: [],
       completion: { "literal" => true }
     )
@@ -535,7 +535,7 @@ class Flows::PublishTest < ActiveSupport::TestCase
       key: "stage_b",
       label: "Stage B",
       position: 2,
-      blocks: [{ "type" => "catalog", "catalog_key" => "vehicles", "role_key" => "my_role" }],
+      blocks: [ { "type" => "catalog", "catalog_key" => "vehicles", "role_key" => "my_role" } ],
       rules: [],
       completion: { "literal" => true }
     )
@@ -705,7 +705,7 @@ class Flows::PublishTest < ActiveSupport::TestCase
         {
           "key" => "assign_after_field",
           "predicate" => { "exists" => { "kind" => "field", "scope" => "customer", "key" => "city" } },
-          "actions" => [{ "type" => "assign" }]
+          "actions" => [ { "type" => "assign" } ]
         }
       ],
       completion: {
@@ -772,7 +772,7 @@ class Flows::PublishTest < ActiveSupport::TestCase
       key: "new_stage_a",
       label: "New Stage A",
       position: 1,
-      blocks: [{ "type" => "field", "key" => "budget" }],
+      blocks: [ { "type" => "field", "key" => "budget" } ],
       rules: [],
       completion: { "literal" => false }
     )
@@ -780,7 +780,7 @@ class Flows::PublishTest < ActiveSupport::TestCase
       key: "new_stage_b",
       label: "New Stage B",
       position: 2,
-      blocks: [{ "type" => "catalog", "catalog_key" => "services", "role_key" => "service" }],
+      blocks: [ { "type" => "catalog", "catalog_key" => "services", "role_key" => "service" } ],
       rules: [],
       completion: { "literal" => true }
     )
@@ -808,7 +808,7 @@ class Flows::PublishTest < ActiveSupport::TestCase
       key: "missing_field_stage",
       label: "Missing Field Stage",
       position: 1,
-      blocks: [{ "type" => "field", "key" => "non_existent_field" }],
+      blocks: [ { "type" => "field", "key" => "non_existent_field" } ],
       rules: [],
       completion: { "exists" => { "kind" => "field", "scope" => "customer", "key" => "non_existent_field" } }
     )
@@ -827,7 +827,7 @@ class Flows::PublishTest < ActiveSupport::TestCase
       key: "missing_catalog_stage",
       label: "Missing Catalog Stage",
       position: 1,
-      blocks: [{ "type" => "catalog", "catalog_key" => "non_existent_catalog", "role_key" => "my_role" }],
+      blocks: [ { "type" => "catalog", "catalog_key" => "non_existent_catalog", "role_key" => "my_role" } ],
       rules: [],
       completion: { "literal" => true }
     )
@@ -851,7 +851,7 @@ class Flows::PublishTest < ActiveSupport::TestCase
         {
           "key" => "assign_to_unknown",
           "predicate" => { "literal" => true },
-          "actions" => [{ "type" => "assign", "agent_id" => 99999 }]
+          "actions" => [ { "type" => "assign", "agent_id" => 99999 } ]
         }
       ],
       completion: { "literal" => true }
@@ -879,7 +879,7 @@ class Flows::PublishTest < ActiveSupport::TestCase
         {
           "key" => "rule_with_missing",
           "predicate" => { "exists" => { "kind" => "field", "scope" => "customer", "key" => "missing_field" } },
-          "actions" => [{ "type" => "assign", "agent_id" => 88888 }]
+          "actions" => [ { "type" => "assign", "agent_id" => 88888 } ]
         }
       ],
       completion: { "exists" => { "kind" => "field", "scope" => "conversation", "key" => "missing_key" } }
@@ -911,13 +911,13 @@ class Flows::PublishTest < ActiveSupport::TestCase
     # Create a catalog, then archive it
     catalog = @account.catalogs.create!(title: "soon_archived")
     catalog.update!(archived: true)
-    
+
     version = @flow.versions.create!(version_number: 70, status: "draft")
     version.stages.create!(
       key: "s1",
       label: "S1",
       position: 1,
-      blocks: [{ "type" => "catalog", "catalog_key" => "soon_archived", "role_key" => "r1" }],
+      blocks: [ { "type" => "catalog", "catalog_key" => "soon_archived", "role_key" => "r1" } ],
       rules: [],
       completion: { "literal" => true }
     )
@@ -932,14 +932,14 @@ class Flows::PublishTest < ActiveSupport::TestCase
     # Deactivate the agent directly (not just the membership)
     bob_agent = agents(:alpha_bob_human)
     bob_agent.update!(active: false)
-    
+
     version = @flow.versions.create!(version_number: 71, status: "draft")
     version.stages.create!(
       key: "s1",
       label: "S1",
       position: 1,
       blocks: [],
-      rules: [{ "key" => "assign_bob", "actions" => [{ "type" => "assign", "agent_id" => bob_agent.id }] }],
+      rules: [ { "key" => "assign_bob", "actions" => [ { "type" => "assign", "agent_id" => bob_agent.id } ] } ],
       completion: { "literal" => true }
     )
 
@@ -959,7 +959,7 @@ class Flows::PublishTest < ActiveSupport::TestCase
       label: "Temporary Field"
     )
     fd.update!(archived: true)
-    
+
     version = @flow.versions.create!(version_number: 72, status: "draft")
     version.stages.create!(
       key: "s1",

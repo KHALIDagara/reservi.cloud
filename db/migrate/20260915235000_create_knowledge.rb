@@ -15,7 +15,7 @@ class CreateKnowledge < ActiveRecord::Migration[8.1]
       "kind IN ('qa', 'document', 'scenario')",
       name: "knowledge_sources_kind_check"
 
-    add_index :knowledge_sources, [:account_id, :title],
+    add_index :knowledge_sources, [ :account_id, :title ],
       unique: true,
       where: "archived = false",
       name: "idx_knowledge_sources_account_title_active"
@@ -35,7 +35,7 @@ class CreateKnowledge < ActiveRecord::Migration[8.1]
       "status IN ('draft', 'published')",
       name: "knowledge_revisions_status_check"
 
-    add_index :knowledge_revisions, [:knowledge_source_id, :version_number],
+    add_index :knowledge_revisions, [ :knowledge_source_id, :version_number ],
       unique: true,
       name: "idx_knowledge_revisions_source_version"
 
@@ -54,7 +54,7 @@ class CreateKnowledge < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :agent_knowledge_grants, [:agent_id, :knowledge_source_id],
+    add_index :agent_knowledge_grants, [ :agent_id, :knowledge_source_id ],
       unique: true,
       name: "idx_agent_knowledge_grants_agent_source"
   end

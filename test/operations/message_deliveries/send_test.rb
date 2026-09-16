@@ -42,7 +42,7 @@ class MessageDeliveries::SendTest < ActiveSupport::TestCase
       operation_key: key
     )
 
-    assert_no_difference [-> { @conversation.messages.count }, -> { @account.message_deliveries.count }] do
+    assert_no_difference [ -> { @conversation.messages.count }, -> { @account.message_deliveries.count } ] do
       second = MessageDeliveries::Send.call(
         conversation: @conversation,
         channel: @channel,

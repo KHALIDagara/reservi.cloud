@@ -58,7 +58,7 @@ module Reservi
         # Prefer agents with fewer active conversations (simple round-robin)
         team.agents.active
           .left_joins(:owned_conversations)
-          .where(conversations: { process_status: [nil, "active"] })
+          .where(conversations: { process_status: [ nil, "active" ] })
           .group(:id)
           .order(Arel.sql("COUNT(conversations.id) ASC"))
           .first

@@ -54,8 +54,8 @@ class Reservi::Channels::InstagramAdapterTest < ActiveSupport::TestCase
   # ---- normalize_payload tests ----
 
   test "normalizes Instagram message payload" do
-    payload = [{
-      "messaging" => [{
+    payload = [ {
+      "messaging" => [ {
         "sender" => { "id" => "17841400000000001" },
         "recipient" => { "id" => "17841400000000000" },
         "timestamp" => 1700000000000,
@@ -63,8 +63,8 @@ class Reservi::Channels::InstagramAdapterTest < ActiveSupport::TestCase
           "mid" => "aWdfZAG1hZ...",
           "text" => "Do you have garden services?"
         }
-      }]
-    }]
+      } ]
+    } ]
 
     result = Reservi::Channels::InstagramAdapter.normalize_payload(payload)
     assert_equal "message", result[:type]
@@ -74,16 +74,16 @@ class Reservi::Channels::InstagramAdapterTest < ActiveSupport::TestCase
   end
 
   test "normalizes Instagram read receipt" do
-    payload = [{
-      "messaging" => [{
+    payload = [ {
+      "messaging" => [ {
         "sender" => { "id" => "17841400000000001" },
         "recipient" => { "id" => "17841400000000000" },
         "timestamp" => 1700000001000,
         "read" => {
           "mid" => "aWdfZAG1hZ..."
         }
-      }]
-    }]
+      } ]
+    } ]
 
     result = Reservi::Channels::InstagramAdapter.normalize_payload(payload)
     assert_equal "message_status", result[:type]
@@ -93,16 +93,16 @@ class Reservi::Channels::InstagramAdapterTest < ActiveSupport::TestCase
 
   test "normalize_payload returns nil for empty payload" do
     assert_nil Reservi::Channels::InstagramAdapter.normalize_payload([])
-    assert_nil Reservi::Channels::InstagramAdapter.normalize_payload([{}])
+    assert_nil Reservi::Channels::InstagramAdapter.normalize_payload([ {} ])
   end
 
   test "normalize_payload handles non-array input" do
     payload = {
-      "messaging" => [{
+      "messaging" => [ {
         "sender" => { "id" => "17841400000000001" },
         "message" => { "mid" => "test_mid", "text" => "Hello" },
         "timestamp" => 1700000000000
-      }]
+      } ]
     }
 
     result = Reservi::Channels::InstagramAdapter.normalize_payload(payload)
@@ -114,16 +114,16 @@ class Reservi::Channels::InstagramAdapterTest < ActiveSupport::TestCase
 
   test "send_message returns sent status" do
     mock_http = Minitest::Mock.new
-    mock_http.expect(:use_ssl=, nil, [true])
-    mock_http.expect(:open_timeout=, nil, [10])
-    mock_http.expect(:read_timeout=, nil, [30])
+    mock_http.expect(:use_ssl=, nil, [ true ])
+    mock_http.expect(:open_timeout=, nil, [ 10 ])
+    mock_http.expect(:read_timeout=, nil, [ 30 ])
     mock_http.expect(:request, Net::HTTPOK.new("1.1", "200", "OK").tap { |r|
       r.instance_variable_set(:@body, {
         "recipient_id" => "17841400000000001",
         "message_id" => "aWdfZAG1hZ..."
       }.to_json)
       r.instance_variable_set(:@read, true)
-    }, [Net::HTTP::Post])
+    }, [ Net::HTTP::Post ])
 
     Net::HTTP.stub(:new, mock_http) do
       result = Reservi::Channels::InstagramAdapter.new.send_message(delivery: @delivery)
@@ -134,15 +134,15 @@ class Reservi::Channels::InstagramAdapterTest < ActiveSupport::TestCase
 
   test "send_message returns failed on HTTP error" do
     mock_http = Minitest::Mock.new
-    mock_http.expect(:use_ssl=, nil, [true])
-    mock_http.expect(:open_timeout=, nil, [10])
-    mock_http.expect(:read_timeout=, nil, [30])
+    mock_http.expect(:use_ssl=, nil, [ true ])
+    mock_http.expect(:open_timeout=, nil, [ 10 ])
+    mock_http.expect(:read_timeout=, nil, [ 30 ])
     mock_http.expect(:request, Net::HTTPBadRequest.new("1.1", "400", "Bad Request").tap { |r|
       r.instance_variable_set(:@body, {
         "error" => { "message" => "Invalid parameter", "type" => "OAuthException", "code" => 100 }
       }.to_json)
       r.instance_variable_set(:@read, true)
-    }, [Net::HTTP::Post])
+    }, [ Net::HTTP::Post ])
 
     Net::HTTP.stub(:new, mock_http) do
       result = Reservi::Channels::InstagramAdapter.new.send_message(delivery: @delivery)

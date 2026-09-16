@@ -39,7 +39,7 @@ module Reservi
       # Normalize an inbound Instagram webhook payload into our domain format.
       def self.normalize_payload(webhook_body)
         # Instagram webhooks come as an array of entries
-        entries = webhook_body.is_a?(Array) ? webhook_body : [webhook_body]
+        entries = webhook_body.is_a?(Array) ? webhook_body : [ webhook_body ]
         messaging = entries.first&.dig("messaging", 0)
         return nil unless messaging
 

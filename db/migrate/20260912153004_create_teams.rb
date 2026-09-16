@@ -8,8 +8,8 @@ class CreateTeams < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :teams, [:account_id, :name], unique: true
-    add_index :teams, [:account_id, :id], unique: true, name: "index_teams_on_account_id_and_id"
+    add_index :teams, [ :account_id, :name ], unique: true
+    add_index :teams, [ :account_id, :id ], unique: true, name: "index_teams_on_account_id_and_id"
   end
 
   def down

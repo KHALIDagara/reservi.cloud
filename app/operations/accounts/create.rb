@@ -32,7 +32,7 @@ module Accounts
         locale: @locale,
         timezone: @timezone,
         creation_operation_key: @operation_key,
-        settings: { "onboarding" => { "setup_steps_completed" => ["account"], "dismissed" => false } }
+        settings: { "onboarding" => { "setup_steps_completed" => [ "account" ], "dismissed" => false } }
       )
       return account unless account.valid?
 

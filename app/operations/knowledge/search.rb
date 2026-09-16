@@ -51,8 +51,8 @@ module Knowledge
       idx  = text.downcase.index(@query.downcase)
       return text.truncate(200) unless idx
 
-      start  = [idx - 60, 0].max
-      finish = [idx + @query.length + 60, text.length].min
+      start  = [ idx - 60, 0 ].max
+      finish = [ idx + @query.length + 60, text.length ].min
       text[start...finish]
     end
 

@@ -14,7 +14,7 @@ class AgentConfigurationTest < ActiveSupport::TestCase
       status: "draft",
       role: "Test role",
       guidance_config: { tone: "professional" },
-      capability_config: { allowed_actions: ["send_message"] },
+      capability_config: { allowed_actions: [ "send_message" ] },
       provider_type: "openai",
       model_identifier: "gpt-4",
       budget_limit_cents: 5000,

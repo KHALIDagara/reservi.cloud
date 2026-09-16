@@ -55,29 +55,29 @@ class Reservi::Channels::WhatsappCloudAdapterTest < ActiveSupport::TestCase
 
   test "normalizes inbound message payload" do
     payload = {
-      "entry" => [{
+      "entry" => [ {
         "id" => "WHATSAPP_BUSINESS_ACCOUNT_ID",
-        "changes" => [{
+        "changes" => [ {
           "value" => {
             "messaging_product" => "whatsapp",
             "metadata" => {
               "display_phone_number" => "5511999999999",
               "phone_number_id" => "123456789"
             },
-            "contacts" => [{
+            "contacts" => [ {
               "profile" => { "name" => "Ahmed Salem" },
               "wa_id" => "5511988888888"
-            }],
-            "messages" => [{
+            } ],
+            "messages" => [ {
               "from" => "5511988888888",
               "id" => "wamid.HBgM...",
               "timestamp" => "1700000000",
               "text" => { "body" => "I need help with my garden" },
               "type" => "text"
-            }]
+            } ]
           }
-        }]
-      }]
+        } ]
+      } ]
     }
 
     result = Reservi::Channels::WhatsappCloudAdapter.normalize_payload(payload)
@@ -90,24 +90,24 @@ class Reservi::Channels::WhatsappCloudAdapterTest < ActiveSupport::TestCase
 
   test "normalizes delivery status payload" do
     payload = {
-      "entry" => [{
+      "entry" => [ {
         "id" => "WHATSAPP_BUSINESS_ACCOUNT_ID",
-        "changes" => [{
+        "changes" => [ {
           "value" => {
             "messaging_product" => "whatsapp",
             "metadata" => {
               "display_phone_number" => "5511999999999",
               "phone_number_id" => "123456789"
             },
-            "statuses" => [{
+            "statuses" => [ {
               "id" => "wamid.HBgM...",
               "status" => "delivered",
               "timestamp" => "1700000100",
               "recipient_id" => "5511988888888"
-            }]
+            } ]
           }
-        }]
-      }]
+        } ]
+      } ]
     }
 
     result = Reservi::Channels::WhatsappCloudAdapter.normalize_payload(payload)
@@ -126,17 +126,17 @@ class Reservi::Channels::WhatsappCloudAdapterTest < ActiveSupport::TestCase
 
   test "send_message returns sent status" do
     mock_http = Minitest::Mock.new
-    mock_http.expect(:use_ssl=, nil, [true])
-    mock_http.expect(:open_timeout=, nil, [10])
-    mock_http.expect(:read_timeout=, nil, [30])
+    mock_http.expect(:use_ssl=, nil, [ true ])
+    mock_http.expect(:open_timeout=, nil, [ 10 ])
+    mock_http.expect(:read_timeout=, nil, [ 30 ])
     mock_http.expect(:request, Net::HTTPOK.new("1.1", "200", "OK").tap { |r|
       r.instance_variable_set(:@body, {
         "messaging_product" => "whatsapp",
-        "contacts" => [{ "input" => "5511988888888", "wa_id" => "5511988888888" }],
-        "messages" => [{ "id" => "wamid.HBgM..." }]
+        "contacts" => [ { "input" => "5511988888888", "wa_id" => "5511988888888" } ],
+        "messages" => [ { "id" => "wamid.HBgM..." } ]
       }.to_json)
       r.instance_variable_set(:@read, true)
-    }, [Net::HTTP::Post])
+    }, [ Net::HTTP::Post ])
 
     Net::HTTP.stub(:new, mock_http) do
       result = Reservi::Channels::WhatsappCloudAdapter.new.send_message(delivery: @delivery)
@@ -147,15 +147,15 @@ class Reservi::Channels::WhatsappCloudAdapterTest < ActiveSupport::TestCase
 
   test "send_message returns failed on HTTP error" do
     mock_http = Minitest::Mock.new
-    mock_http.expect(:use_ssl=, nil, [true])
-    mock_http.expect(:open_timeout=, nil, [10])
-    mock_http.expect(:read_timeout=, nil, [30])
+    mock_http.expect(:use_ssl=, nil, [ true ])
+    mock_http.expect(:open_timeout=, nil, [ 10 ])
+    mock_http.expect(:read_timeout=, nil, [ 30 ])
     mock_http.expect(:request, Net::HTTPBadRequest.new("1.1", "400", "Bad Request").tap { |r|
       r.instance_variable_set(:@body, {
         "error" => { "message" => "Invalid OAuth access token", "type" => "OAuthException", "code" => 190 }
       }.to_json)
       r.instance_variable_set(:@read, true)
-    }, [Net::HTTP::Post])
+    }, [ Net::HTTP::Post ])
 
     Net::HTTP.stub(:new, mock_http) do
       result = Reservi::Channels::WhatsappCloudAdapter.new.send_message(delivery: @delivery)

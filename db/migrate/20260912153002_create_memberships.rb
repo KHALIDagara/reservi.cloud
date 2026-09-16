@@ -9,9 +9,9 @@ class CreateMemberships < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :memberships, [:account_id, :user_id], unique: true
+    add_index :memberships, [ :account_id, :user_id ], unique: true
     # Composite tenant key so children can FK (account_id, parent_id) safely.
-    add_index :memberships, [:account_id, :id], unique: true
+    add_index :memberships, [ :account_id, :id ], unique: true
     add_check_constraint :memberships, "role IN ('admin', 'manager', 'operator')", name: "memberships_role_check"
   end
 

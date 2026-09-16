@@ -128,7 +128,7 @@ class Flows::AdvanceTest < ActiveSupport::TestCase
       rules: [
         { "key" => "auto_assign",
           "predicate" => { "literal" => true },
-          "actions" => [{ "type" => "assign", "agent_name" => "Alice Admin" }] }
+          "actions" => [ { "type" => "assign", "agent_name" => "Alice Admin" } ] }
       ],
       completion: { "literal" => false }
     )
@@ -155,7 +155,7 @@ class Flows::AdvanceTest < ActiveSupport::TestCase
       rules: [
         { "key" => "final_rule",
           "predicate" => { "literal" => true },
-          "actions" => [{ "type" => "assign", "agent_name" => "Alice Admin" }] }
+          "actions" => [ { "type" => "assign", "agent_name" => "Alice Admin" } ] }
       ]
     )
 

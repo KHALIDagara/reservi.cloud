@@ -28,7 +28,7 @@ if Rails.env.development?
       { scope: "customer", key: "city", label: "City", field_type: "text", position: 1 },
       { scope: "customer", key: "phone", label: "Phone", field_type: "text", built_in_binding: "phone", position: 2 },
       { scope: "conversation", key: "budget", label: "Budget", field_type: "number", position: 1, constraints: { "min" => 0 } },
-      { scope: "conversation", key: "urgency", label: "Urgency", field_type: "single_choice", position: 2, options: [{ "key" => "low", "label" => "Low" }, { "key" => "medium", "label" => "Medium" }, { "key" => "high", "label" => "High" }] },
+      { scope: "conversation", key: "urgency", label: "Urgency", field_type: "single_choice", position: 2, options: [ { "key" => "low", "label" => "Low" }, { "key" => "medium", "label" => "Medium" }, { "key" => "high", "label" => "High" } ] }
     ])
   end
 
@@ -56,7 +56,7 @@ if Rails.env.development?
       key: "intake",
       label: "Intake",
       position: 1,
-      blocks: [{ "type" => "field", "key" => "budget", "required" => true }],
+      blocks: [ { "type" => "field", "key" => "budget", "required" => true } ],
       rules: [],
       completion: { "exists" => { "kind" => "field", "scope" => "conversation", "key" => "budget" } }
     )

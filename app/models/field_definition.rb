@@ -6,7 +6,7 @@ class FieldDefinition < ApplicationRecord
   belongs_to :account
 
   validates :scope, inclusion: { in: SCOPES }
-  validates :key, presence: true, uniqueness: { scope: [:account_id, :scope] }
+  validates :key, presence: true, uniqueness: { scope: [ :account_id, :scope ] }
   validates :field_type, inclusion: { in: TYPES }
   validates :built_in_binding, inclusion: { in: BUILT_IN_BINDINGS }, allow_nil: true
 

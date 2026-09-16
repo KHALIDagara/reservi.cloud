@@ -62,5 +62,4 @@ class Conversations::CreateTest < ActiveSupport::TestCase
     end
     assert_match /no published version/, e.message
   end
-
-  end
+end

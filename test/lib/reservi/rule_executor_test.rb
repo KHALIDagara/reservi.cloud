@@ -17,7 +17,7 @@ class Reservi::RuleExecutorTest < ActiveSupport::TestCase
     @stage.update!(rules: [
       { "key" => "assign_alice",
         "predicate" => { "literal" => true },
-        "actions" => [{ "type" => "assign", "agent_name" => "Alice Admin" }] }
+        "actions" => [ { "type" => "assign", "agent_name" => "Alice Admin" } ] }
     ])
 
     results = Reservi::RuleExecutor.evaluate(conversation: @conversation)
@@ -37,7 +37,7 @@ class Reservi::RuleExecutorTest < ActiveSupport::TestCase
     @stage.update!(rules: [
       { "key" => "assign_if_budget_high",
         "predicate" => { "eq" => { "ref" => { "kind" => "field", "scope" => "conversation", "key" => "budget" }, "value" => 999999 } },
-        "actions" => [{ "type" => "assign", "agent_name" => "Bob Operator" }] }
+        "actions" => [ { "type" => "assign", "agent_name" => "Bob Operator" } ] }
     ])
 
     results = Reservi::RuleExecutor.evaluate(conversation: @conversation)
@@ -56,7 +56,7 @@ class Reservi::RuleExecutorTest < ActiveSupport::TestCase
     @stage.update!(rules: [
       { "key" => "assign_alice",
         "predicate" => { "literal" => true },
-        "actions" => [{ "type" => "assign", "agent_name" => "Alice Admin" }] }
+        "actions" => [ { "type" => "assign", "agent_name" => "Alice Admin" } ] }
     ])
 
     first_results = Reservi::RuleExecutor.evaluate(conversation: @conversation)
@@ -83,13 +83,13 @@ class Reservi::RuleExecutorTest < ActiveSupport::TestCase
     @stage.update!(rules: [
       { "key" => "first_rule",
         "predicate" => { "literal" => true },
-        "actions" => [{ "type" => "assign", "agent_name" => "Alice Admin" }] },
+        "actions" => [ { "type" => "assign", "agent_name" => "Alice Admin" } ] },
       { "key" => "failing_rule",
         "predicate" => { "literal" => true },
-        "actions" => [{ "type" => "unknown_action_xyz" }] },
+        "actions" => [ { "type" => "unknown_action_xyz" } ] },
       { "key" => "third_rule",
         "predicate" => { "literal" => true },
-        "actions" => [{ "type" => "assign", "agent_name" => "Bob Operator" }] }
+        "actions" => [ { "type" => "assign", "agent_name" => "Bob Operator" } ] }
     ])
 
     results = Reservi::RuleExecutor.evaluate(conversation: @conversation)
@@ -110,7 +110,7 @@ class Reservi::RuleExecutorTest < ActiveSupport::TestCase
     @stage.update!(rules: [
       { "key" => "city_rule",
         "predicate" => { "exists" => { "kind" => "field", "scope" => "customer", "key" => "phone" } },
-        "actions" => [{ "type" => "assign", "agent_name" => "Alice Admin" }] }
+        "actions" => [ { "type" => "assign", "agent_name" => "Alice Admin" } ] }
     ])
 
     results = Reservi::RuleExecutor.evaluate(conversation: @conversation)
@@ -126,7 +126,7 @@ class Reservi::RuleExecutorTest < ActiveSupport::TestCase
     @stage.update!(rules: [
       { "key" => "never_match",
         "predicate" => { "eq" => { "ref" => { "kind" => "field", "scope" => "conversation", "key" => "nonexistent" }, "value" => "anything" } },
-        "actions" => [{ "type" => "assign", "agent_name" => "Alice Admin" }] }
+        "actions" => [ { "type" => "assign", "agent_name" => "Alice Admin" } ] }
     ])
 
     results = Reservi::RuleExecutor.evaluate(conversation: @conversation)
@@ -153,7 +153,7 @@ class Reservi::RuleExecutorTest < ActiveSupport::TestCase
     @stage.update!(rules: [
       { "key" => "assign_alice",
         "predicate" => { "literal" => true },
-        "actions" => [{ "type" => "assign", "agent_name" => "Alice Admin" }] }
+        "actions" => [ { "type" => "assign", "agent_name" => "Alice Admin" } ] }
     ])
 
     results = Reservi::RuleExecutor.evaluate(conversation: @conversation)

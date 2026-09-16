@@ -14,9 +14,9 @@ class CreateFieldDefinitions < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :field_definitions, [:account_id, :scope, :key], unique: true
-    add_index :field_definitions, [:account_id, :scope, :position]
-    add_index :field_definitions, [:account_id, :id], unique: true
+    add_index :field_definitions, [ :account_id, :scope, :key ], unique: true
+    add_index :field_definitions, [ :account_id, :scope, :position ]
+    add_index :field_definitions, [ :account_id, :id ], unique: true
 
     add_check_constraint :field_definitions,
       "scope IN ('customer', 'conversation')",

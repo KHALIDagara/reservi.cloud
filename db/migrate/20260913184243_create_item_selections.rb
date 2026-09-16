@@ -11,13 +11,13 @@ class CreateItemSelections < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :item_selections, [:conversation_id, :role_key, :item_id], unique: true, name: "idx_item_selections_on_conversation_role_item"
-    add_index :item_selections, [:conversation_id, :role_key], name: "idx_item_selections_on_conversation_role"
-    add_index :item_selections, [:account_id, :id], unique: true
+    add_index :item_selections, [ :conversation_id, :role_key, :item_id ], unique: true, name: "idx_item_selections_on_conversation_role_item"
+    add_index :item_selections, [ :conversation_id, :role_key ], name: "idx_item_selections_on_conversation_role"
+    add_index :item_selections, [ :account_id, :id ], unique: true
 
     add_foreign_key :item_selections, :conversations,
-      column: [:account_id, :conversation_id],
-      primary_key: [:account_id, :id],
+      column: [ :account_id, :conversation_id ],
+      primary_key: [ :account_id, :id ],
       name: "fk_item_selections_conversation_account_scoped"
   end
 end

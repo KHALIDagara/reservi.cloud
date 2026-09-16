@@ -19,17 +19,17 @@ class CreateAccountInvitations < ActiveRecord::Migration[8.1]
     end
 
     # At most one live (pending) invite per Account and normalized email.
-    add_index :account_invitations, [:account_id, :email], unique: true, where: "status = 'pending'", name: "index_account_invitations_one_pending_per_account_email"
+    add_index :account_invitations, [ :account_id, :email ], unique: true, where: "status = 'pending'", name: "index_account_invitations_one_pending_per_account_email"
     add_index :account_invitations, :email
-    add_index :account_invitations, [:status, :delivery_status], name: "index_account_invitations_delivery"
-    add_index :account_invitations, [:account_id, :id], unique: true, name: "index_account_invitations_on_account_id_and_id"
+    add_index :account_invitations, [ :status, :delivery_status ], name: "index_account_invitations_delivery"
+    add_index :account_invitations, [ :account_id, :id ], unique: true, name: "index_account_invitations_on_account_id_and_id"
 
     add_check_constraint :account_invitations, "role IN ('admin', 'manager', 'operator')", name: "account_invitations_role_check"
     add_check_constraint :account_invitations, "status IN ('pending', 'accepted', 'revoked')", name: "account_invitations_status_check"
     add_check_constraint :account_invitations, "delivery_status IN ('pending', 'delivered', 'failed', 'unknown')", name: "account_invitations_delivery_status_check"
 
-    add_foreign_key :account_invitations, :memberships, column: [:account_id, :inviter_membership_id], primary_key: [:account_id, :id], name: "fk_account_invitations_inviter_account_scoped"
-    add_foreign_key :account_invitations, :memberships, column: [:account_id, :accepted_by_membership_id], primary_key: [:account_id, :id], name: "fk_account_invitations_accepted_by_account_scoped"
+    add_foreign_key :account_invitations, :memberships, column: [ :account_id, :inviter_membership_id ], primary_key: [ :account_id, :id ], name: "fk_account_invitations_inviter_account_scoped"
+    add_foreign_key :account_invitations, :memberships, column: [ :account_id, :accepted_by_membership_id ], primary_key: [ :account_id, :id ], name: "fk_account_invitations_accepted_by_account_scoped"
   end
 
   def down

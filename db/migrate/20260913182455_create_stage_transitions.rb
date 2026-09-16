@@ -10,8 +10,8 @@ class CreateStageTransitions < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :stage_transitions, [:conversation_id, :entry_identity], unique: true
-    add_index :stage_transitions, [:conversation_id, :id], unique: true
+    add_index :stage_transitions, [ :conversation_id, :entry_identity ], unique: true
+    add_index :stage_transitions, [ :conversation_id, :id ], unique: true
     add_foreign_key :stage_transitions, :stages, column: :from_stage_id
     add_foreign_key :stage_transitions, :stages, column: :to_stage_id
   end

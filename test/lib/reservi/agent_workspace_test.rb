@@ -17,7 +17,7 @@ class Reservi::AgentWorkspaceTest < ActiveSupport::TestCase
     assert_equal "Alpha Garden",    workspace.dig(:system, :account_name)
     assert_equal "en",              workspace.dig(:system, :locale)
     assert_equal "UTC",             workspace.dig(:system, :timezone)
-    assert_empty_or_blank          workspace.dig(:system, :capabilities)
+    assert_empty_or_blank workspace.dig(:system, :capabilities)
   end
 
   test "system context returns nil role for human agent" do
@@ -88,7 +88,7 @@ class Reservi::AgentWorkspaceTest < ActiveSupport::TestCase
       {
         "key" => "assign_if_cold",
         "predicate" => { "literal" => true },
-        "actions" => [{ "type" => "assign", "agent_name" => "Alice Admin" }]
+        "actions" => [ { "type" => "assign", "agent_name" => "Alice Admin" } ]
       }
     ])
 
@@ -100,7 +100,7 @@ class Reservi::AgentWorkspaceTest < ActiveSupport::TestCase
     assert_equal 1, rules.length
     assert_equal "assign_if_cold", rules.first.dig(:key)
     assert_equal true,             rules.first.dig(:predicate, "literal")
-    assert_equal ["assign"],       rules.first.dig(:actions)
+    assert_equal [ "assign" ],       rules.first.dig(:actions)
   end
 
   test "process context includes stage details" do

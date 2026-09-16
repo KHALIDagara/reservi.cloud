@@ -5,7 +5,7 @@ class MembershipsControllerTest < ActionDispatch::IntegrationTest
     sign_in_as(users(:alice))
     @account = accounts(:alpha)
     @bob = memberships(:alpha_bob)
-    
+
     # Debug output
     puts "DEBUG: account.id = #{@account.id}"
     puts "DEBUG: bob.id = #{@bob.id}"

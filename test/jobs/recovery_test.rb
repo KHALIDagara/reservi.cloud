@@ -116,7 +116,7 @@ class RecoveryTest < ActiveJob::TestCase
 
     # The sweep must atomically claim the delivery (pending → sending)
     # and then enqueue a MessageDeliveryJob for it.
-    assert_enqueued_with(job: MessageDeliveryJob, args: [delivery.id]) do
+    assert_enqueued_with(job: MessageDeliveryJob, args: [ delivery.id ]) do
       MessageDeliverySweepJob.perform_now
     end
 
@@ -250,7 +250,7 @@ class RecoveryTest < ActiveJob::TestCase
     )
 
     # First sweep: claims pending → sending, enqueues job
-    assert_enqueued_with(job: MessageDeliveryJob, args: [delivery.id]) do
+    assert_enqueued_with(job: MessageDeliveryJob, args: [ delivery.id ]) do
       MessageDeliverySweepJob.perform_now
     end
 

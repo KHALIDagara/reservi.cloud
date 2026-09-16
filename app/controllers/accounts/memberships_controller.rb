@@ -21,7 +21,7 @@ module Accounts
         render status: :not_found, plain: "Not found"
         return
       end
-      
+
       Memberships::Remove.call(membership:, actor_membership: current_membership)
       redirect_to account_people_path(current_account), notice: "Member removed."
     rescue Reservi::Errors::AuthorizationError, Reservi::Errors::OperationError => e

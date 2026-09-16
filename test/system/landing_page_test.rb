@@ -9,7 +9,7 @@ class LandingPageTest < ApplicationSystemTestCase
     visit root_url
 
     # Hero section
-    assert_selector "h1", text: /conversation.*completed/i
+    assert_selector "h1", text: /conversation.*completed/mi
     assert_link "Start free"
     assert_link "Sign in"
 
@@ -59,7 +59,7 @@ class LandingPageTest < ApplicationSystemTestCase
   test "landing page renders correctly at phone size" do
     resize_phone
     visit root_url
-    assert_selector "h1", text: /conversation.*completed/i
+    assert_selector "h1", text: /conversation.*completed/mi
     assert_link "Start free"
     assert_link "Sign in"
   end

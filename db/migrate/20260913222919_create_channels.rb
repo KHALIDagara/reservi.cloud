@@ -11,7 +11,7 @@ class CreateChannels < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :channels, [:account_id, :name], unique: true
+    add_index :channels, [ :account_id, :name ], unique: true
     add_index :channels, :inbound_token, unique: true
 
     create_table :channel_threads do |t|
@@ -24,9 +24,9 @@ class CreateChannels < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :channel_threads, [:channel_id, :external_thread_id], unique: true,
+    add_index :channel_threads, [ :channel_id, :external_thread_id ], unique: true,
       name: "idx_channel_threads_on_channel_and_thread"
-    add_index :channel_threads, [:account_id, :conversation_id],
+    add_index :channel_threads, [ :account_id, :conversation_id ],
       name: "idx_channel_threads_on_account_conversation"
   end
 end

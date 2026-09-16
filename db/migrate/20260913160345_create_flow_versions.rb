@@ -8,7 +8,7 @@ class CreateFlowVersions < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :flow_versions, [:flow_id, :version_number], unique: true
-    add_index :flow_versions, [:flow_id, :id], unique: true
+    add_index :flow_versions, [ :flow_id, :version_number ], unique: true
+    add_index :flow_versions, [ :flow_id, :id ], unique: true
   end
 end

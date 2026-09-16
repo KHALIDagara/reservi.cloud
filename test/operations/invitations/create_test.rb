@@ -11,9 +11,9 @@ class Invitations::CreateTest < ActiveSupport::TestCase
     invitations = Invitations::Create.call(
       account: @account,
       actor_membership: @actor,
-      emails: ["new@example.com"],
+      emails: [ "new@example.com" ],
       role: "operator",
-      team_ids: [@team.id]
+      team_ids: [ @team.id ]
     )
 
     assert_equal 1, invitations.length
@@ -23,16 +23,16 @@ class Invitations::CreateTest < ActiveSupport::TestCase
     assert_equal "pending", invitation.status
     assert invitation.token_digest.present?
     assert invitation.expires_at > Time.current
-    assert_enqueued_with(job: Invitations::DeliverJob, args: [invitation])
+    assert_enqueued_with(job: Invitations::DeliverJob, args: [ invitation ])
   end
 
   test "multiple emails create multiple invitations" do
     invitations = Invitations::Create.call(
       account: @account,
       actor_membership: @actor,
-      emails: ["a@example.com, b@example.com", "c@example.com"],
+      emails: [ "a@example.com, b@example.com", "c@example.com" ],
       role: "manager",
-      team_ids: [@team.id]
+      team_ids: [ @team.id ]
     )
 
     assert_equal 3, invitations.length
@@ -44,9 +44,9 @@ class Invitations::CreateTest < ActiveSupport::TestCase
       Invitations::Create.call(
         account: @account,
         actor_membership: @actor,
-        emails: [users(:bob).email_address],
+        emails: [ users(:bob).email_address ],
         role: "operator",
-        team_ids: [@team.id]
+        team_ids: [ @team.id ]
       )
     end
     assert_match /already an active member/, e.message
@@ -56,18 +56,18 @@ class Invitations::CreateTest < ActiveSupport::TestCase
     Invitations::Create.call(
       account: @account,
       actor_membership: @actor,
-      emails: ["pending@example.com"],
+      emails: [ "pending@example.com" ],
       role: "operator",
-      team_ids: [@team.id]
+      team_ids: [ @team.id ]
     )
 
     e = assert_raises(Reservi::Errors::OperationError) do
       Invitations::Create.call(
         account: @account,
         actor_membership: @actor,
-        emails: ["pending@example.com"],
+        emails: [ "pending@example.com" ],
         role: "operator",
-        team_ids: [@team.id]
+        team_ids: [ @team.id ]
       )
     end
     assert_match /already has a pending invitation/, e.message
@@ -79,9 +79,9 @@ class Invitations::CreateTest < ActiveSupport::TestCase
       Invitations::Create.call(
         account: @account,
         actor_membership: bob,
-        emails: ["new@example.com"],
+        emails: [ "new@example.com" ],
         role: "operator",
-        team_ids: [@team.id]
+        team_ids: [ @team.id ]
       )
     end
     assert_match /Only an Account administrator/, e.message
@@ -92,9 +92,9 @@ class Invitations::CreateTest < ActiveSupport::TestCase
       Invitations::Create.call(
         account: @account,
         actor_membership: @actor,
-        emails: ["new@example.com"],
+        emails: [ "new@example.com" ],
         role: "operator",
-        team_ids: [99999]
+        team_ids: [ 99999 ]
       )
     end
     assert_match /no longer exist/, e.message

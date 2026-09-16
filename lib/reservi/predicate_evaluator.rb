@@ -173,7 +173,7 @@ module Reservi
         { result: children.any? { |c| c[:result] }, reason: "Any condition", children: children }
       when "not"
         child = explain_node(args)
-        { result: !child[:result], reason: "Not", children: [child] }
+        { result: !child[:result], reason: "Not", children: [ child ] }
       else
         { result: false, reason: "Unknown operator: #{op}" }
       end

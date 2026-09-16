@@ -68,29 +68,29 @@ class WebhooksControllerMetaTest < ActionDispatch::IntegrationTest
     initial_msg_count = @account.conversations.sum { |c| c.messages.count }
 
     wa_payload = {
-      "entry" => [{
+      "entry" => [ {
         "id" => "WHATSAPP_BUSINESS_ACCOUNT_ID",
-        "changes" => [{
+        "changes" => [ {
           "value" => {
             "messaging_product" => "whatsapp",
             "metadata" => {
               "display_phone_number" => "5511999999999",
               "phone_number_id" => "123456789"
             },
-            "contacts" => [{
+            "contacts" => [ {
               "profile" => { "name" => "Ahmed Salem" },
               "wa_id" => "5511988888888"
-            }],
-            "messages" => [{
+            } ],
+            "messages" => [ {
               "from" => "5511988888888",
               "id" => "wamid.MetaEvent001",
               "timestamp" => "1700000000",
               "text" => { "body" => "Hello from WhatsApp!" },
               "type" => "text"
-            }]
+            } ]
           }
-        }]
-      }]
+        } ]
+      } ]
     }
 
     post whatsapp_webhook_events_url(token: @token),
@@ -118,29 +118,29 @@ class WebhooksControllerMetaTest < ActionDispatch::IntegrationTest
 
   test "whatsapp event deduplicates via WebhookReceipt" do
     wa_payload = {
-      "entry" => [{
+      "entry" => [ {
         "id" => "WHATSAPP_BUSINESS_ACCOUNT_ID",
-        "changes" => [{
+        "changes" => [ {
           "value" => {
             "messaging_product" => "whatsapp",
             "metadata" => {
               "display_phone_number" => "5511999999999",
               "phone_number_id" => "123456789"
             },
-            "contacts" => [{
+            "contacts" => [ {
               "profile" => { "name" => "Ahmed Salem" },
               "wa_id" => "5511988888888"
-            }],
-            "messages" => [{
+            } ],
+            "messages" => [ {
               "from" => "5511988888888",
               "id" => "wamid.DuplicateEvent",
               "timestamp" => "1700000000",
               "text" => { "body" => "First arrival" },
               "type" => "text"
-            }]
+            } ]
           }
-        }]
-      }]
+        } ]
+      } ]
     }
 
     # First request
@@ -185,24 +185,24 @@ class WebhooksControllerMetaTest < ActionDispatch::IntegrationTest
     )
 
     status_payload = {
-      "entry" => [{
+      "entry" => [ {
         "id" => "WHATSAPP_BUSINESS_ACCOUNT_ID",
-        "changes" => [{
+        "changes" => [ {
           "value" => {
             "messaging_product" => "whatsapp",
             "metadata" => {
               "display_phone_number" => "5511999999999",
               "phone_number_id" => "123456789"
             },
-            "statuses" => [{
+            "statuses" => [ {
               "id" => "wamid.StatusTarget",
               "status" => "delivered",
               "timestamp" => "1700000100",
               "recipient_id" => "5511988888888"
-            }]
+            } ]
           }
-        }]
-      }]
+        } ]
+      } ]
     }
 
     post whatsapp_webhook_events_url(token: @token),

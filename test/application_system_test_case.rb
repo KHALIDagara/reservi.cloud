@@ -22,7 +22,7 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
       driver
     end
 
-    driven_by :headless_chrome, screen_size: [375, 812]
+    driven_by :headless_chrome, screen_size: [ 375, 812 ]
   else
     driven_by :rack_test
   end

@@ -9,7 +9,7 @@ class ConversationFields::UpdateTest < ActiveSupport::TestCase
     @agent = agents(:alpha_alice_human)
 
     @account.field_definitions.create!(scope: "conversation", key: "budget", field_type: "number", position: 1, constraints: { "min" => 0 })
-    @account.field_definitions.create!(scope: "conversation", key: "urgency", field_type: "single_choice", position: 2, options: [{ "key" => "low", "label" => "Low" }, { "key" => "high", "label" => "High" }])
+    @account.field_definitions.create!(scope: "conversation", key: "urgency", field_type: "single_choice", position: 2, options: [ { "key" => "low", "label" => "Low" }, { "key" => "high", "label" => "High" } ])
 
     @conversation = Conversations::Create.call(
       account: @account,

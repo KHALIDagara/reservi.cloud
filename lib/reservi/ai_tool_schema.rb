@@ -71,7 +71,7 @@ module Reservi
             properties: {
               query: { type: "string", description: "Search query" }
             },
-            required: ["query"]
+            required: [ "query" ]
           }
         }
       }
@@ -88,7 +88,7 @@ module Reservi
             properties: {
               content: { type: "string", description: "Message text" }
             },
-            required: ["content"]
+            required: [ "content" ]
           }
         }
       }
@@ -105,7 +105,7 @@ module Reservi
             properties: {
               content: { type: "string", description: "Note text" }
             },
-            required: ["content"]
+            required: [ "content" ]
           }
         }
       }
@@ -178,7 +178,7 @@ module Reservi
             properties: {
               role_key: { type: "string" }
             },
-            required: ["role_key"]
+            required: [ "role_key" ]
           }
         }
       }
@@ -195,7 +195,7 @@ module Reservi
             properties: {
               role_key: { type: "string" }
             },
-            required: ["role_key"]
+            required: [ "role_key" ]
           }
         }
       }

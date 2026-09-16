@@ -21,12 +21,12 @@ class CreateAppointments < ActiveRecord::Migration[8.1]
     end
 
     # Unique index for current (non-superseded) appointments per conversation+role
-    add_index :appointments, [:conversation_id, :role_key],
+    add_index :appointments, [ :conversation_id, :role_key ],
       unique: true,
       where: "superseded_by_id IS NULL",
       name: "idx_current_appointment_per_role"
 
-    add_index :appointments, [:account_id, :scheduled_agent_id],
+    add_index :appointments, [ :account_id, :scheduled_agent_id ],
       name: "idx_appointments_account_scheduled_agent"
 
     # Exclusion constraint prevents overlapping confirmed appointments

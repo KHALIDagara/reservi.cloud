@@ -9,11 +9,11 @@ class CreateTeamMemberships < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :team_memberships, [:team_id, :agent_id], unique: true, name: "index_team_memberships_on_team_and_agent"
+    add_index :team_memberships, [ :team_id, :agent_id ], unique: true, name: "index_team_memberships_on_team_and_agent"
     add_index :team_memberships, :agent_id
 
-    add_foreign_key :team_memberships, :teams, column: [:account_id, :team_id], primary_key: [:account_id, :id], name: "fk_team_memberships_team_account_scoped"
-    add_foreign_key :team_memberships, :agents, column: [:account_id, :agent_id], primary_key: [:account_id, :id], name: "fk_team_memberships_agent_account_scoped"
+    add_foreign_key :team_memberships, :teams, column: [ :account_id, :team_id ], primary_key: [ :account_id, :id ], name: "fk_team_memberships_team_account_scoped"
+    add_foreign_key :team_memberships, :agents, column: [ :account_id, :agent_id ], primary_key: [ :account_id, :id ], name: "fk_team_memberships_agent_account_scoped"
   end
 
   def down

@@ -12,7 +12,7 @@ class RegistrationsController < ApplicationController
     @user = Users::Register.call(**registration_params)
     Rails.logger.debug "REGISTRATION: user = #{@user.inspect}, persisted = #{@user&.persisted?}"
     Rails.logger.debug "REGISTRATION: user class = #{@user&.class}, persisted? = #{@user&.persisted?}"
-    
+
     if @user&.persisted?
       start_new_session_for(@user)
       redirect_to accounts_path, notice: "Welcome! Check your email to verify your address."

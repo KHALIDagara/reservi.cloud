@@ -11,7 +11,7 @@ class CreateCustomers < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :customers, [:account_id, :id], unique: true
-    add_index :customers, [:account_id, :email_address], unique: true, where: "email_address IS NOT NULL"
+    add_index :customers, [ :account_id, :id ], unique: true
+    add_index :customers, [ :account_id, :email_address ], unique: true, where: "email_address IS NOT NULL"
   end
 end

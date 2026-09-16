@@ -9,14 +9,14 @@ class InvitationsControllerTest < ActionDispatch::IntegrationTest
   test "create sends invitations and enqueues delivery jobs" do
     assert_enqueued_jobs 2, only: Invitations::DeliverJob do
       post account_invitations_url(@account),
-           params: { invitation: { emails: "a@example.com, b@example.com", role: "operator", team_ids: [teams(:alpha_general).id] } }
+           params: { invitation: { emails: "a@example.com, b@example.com", role: "operator", team_ids: [ teams(:alpha_general).id ] } }
     end
 
     assert_response :redirect
     follow_redirect!
     assert_response :success
 
-    assert_equal 2, @account.account_invitations.pending.where(email: ["a@example.com", "b@example.com"]).count
+    assert_equal 2, @account.account_invitations.pending.where(email: [ "a@example.com", "b@example.com" ]).count
   end
 
   test "resend rotates token and re-enqueues" do
@@ -48,7 +48,7 @@ class InvitationsControllerTest < ActionDispatch::IntegrationTest
   test "operator cannot create invitations" do
     sign_in_as(users(:bob))
 
-    post account_invitations_url(@account), params: { invitation: { emails: "x@example.com", role: "operator", team_ids: [teams(:alpha_general).id] } }
+    post account_invitations_url(@account), params: { invitation: { emails: "x@example.com", role: "operator", team_ids: [ teams(:alpha_general).id ] } }
     assert_response :redirect
     assert_match "Only Account administrators can manage invitations", flash[:alert]
   end

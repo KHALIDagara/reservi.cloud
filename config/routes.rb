@@ -57,22 +57,22 @@ Rails.application.routes.draw do
     post "customers/:customer_id/fields", to: "customer_fields#update", as: :account_customer_fields
 
     # Catalogs (admin for create)
-    resources :catalogs, only: [:index, :new, :create], controller: "catalogs" do
+    resources :catalogs, only: [ :index, :new, :create ], controller: "catalogs" do
       get :items, on: :member
     end
 
     # Item selections
-    resources :item_selections, only: [:create, :destroy]
+    resources :item_selections, only: [ :create, :destroy ]
 
     # Flow management (admin)
-    resources :flows, only: [:index, :new, :create, :edit, :update], controller: "flows" do
-      resources :versions, only: [:new, :create, :show, :edit, :update], controller: "flow_versions", as: :flow_version do
+    resources :flows, only: [ :index, :new, :create, :edit, :update ], controller: "flows" do
+      resources :versions, only: [ :new, :create, :show, :edit, :update ], controller: "flow_versions", as: :flow_version do
         member do
           post :publish
           post :preview
         end
         # Stages are edited inline within the version
-        resources :stages, only: [:new, :create, :edit, :update, :destroy], controller: "stages"
+        resources :stages, only: [ :new, :create, :edit, :update, :destroy ], controller: "stages"
       end
     end
   end

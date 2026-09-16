@@ -5,7 +5,7 @@ module Accounts
     before_action :require_account_access!
     before_action :require_admin!
     before_action :set_flow
-    before_action :set_version, only: [:show, :edit, :update, :publish, :preview]
+    before_action :set_version, only: [ :show, :edit, :update, :publish, :preview ]
 
     def index
       redirect_to flows_path(current_account)
@@ -151,7 +151,7 @@ module Accounts
         customer_scope = {
           "name" => customer.name,
           "phone" => customer.phone,
-          "email_address" => customer.email_address,
+          "email_address" => customer.email_address
         }
         conversation_custom = { "budget" => @synthetic_state["conversation_budget"] }
 

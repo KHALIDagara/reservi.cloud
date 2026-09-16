@@ -17,29 +17,29 @@ class CreateConversations < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :conversations, [:account_id, :id], unique: true
-    add_index :conversations, [:account_id, :owner_id]
-    add_index :conversations, [:account_id, :team_id]
-    add_index :conversations, [:account_id, :attention]
-    add_index :conversations, [:account_id, :process_status]
-    add_index :conversations, [:flow_version_id, :current_stage_id]
+    add_index :conversations, [ :account_id, :id ], unique: true
+    add_index :conversations, [ :account_id, :owner_id ]
+    add_index :conversations, [ :account_id, :team_id ]
+    add_index :conversations, [ :account_id, :attention ]
+    add_index :conversations, [ :account_id, :process_status ]
+    add_index :conversations, [ :flow_version_id, :current_stage_id ]
 
     # Stage reference uses composite FK ensuring current_stage belongs to the
     # pinned flow_version: (flow_version_id, current_stage_id) references
     # stages(flow_version_id, id).
     add_foreign_key :conversations, :stages,
-      column: [:flow_version_id, :current_stage_id],
-      primary_key: [:flow_version_id, :id]
+      column: [ :flow_version_id, :current_stage_id ],
+      primary_key: [ :flow_version_id, :id ]
 
     # Team FK uses composite (account_id, team_id) for tenant isolation.
     add_foreign_key :conversations, :teams,
-      column: [:account_id, :team_id],
-      primary_key: [:account_id, :id]
+      column: [ :account_id, :team_id ],
+      primary_key: [ :account_id, :id ]
 
     # Owner FK to agents uses composite (account_id, owner_id).
     # Null owner means unowned; references agents(account_id, id).
     add_foreign_key :conversations, :agents,
-      column: [:account_id, :owner_id],
-      primary_key: [:account_id, :id]
+      column: [ :account_id, :owner_id ],
+      primary_key: [ :account_id, :id ]
   end
 end

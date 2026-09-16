@@ -35,7 +35,7 @@ class Reservi::FlowEvaluatorTest < ActiveSupport::TestCase
   test "returns explanation tree" do
     result = Reservi::FlowEvaluator.evaluate(@conversation)
     assert_kind_of Hash, result[:explanation]
-    assert_includes [true, false], result[:explanation][:result]
+    assert_includes [ true, false ], result[:explanation][:result]
     assert result[:explanation][:reason].present?
   end
 

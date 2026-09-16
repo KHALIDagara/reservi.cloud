@@ -14,9 +14,9 @@ class CreateMessageDeliveries < ActiveRecord::Migration[8.1]
     end
 
     add_index :message_deliveries, :operation_key, unique: true
-    add_index :message_deliveries, [:channel_id, :status],
+    add_index :message_deliveries, [ :channel_id, :status ],
       name: "idx_deliveries_on_channel_status"
-    add_index :message_deliveries, [:account_id, :message_id], unique: true,
+    add_index :message_deliveries, [ :account_id, :message_id ], unique: true,
       name: "idx_deliveries_on_account_message"
   end
 end

@@ -13,8 +13,8 @@ class WebhooksController < ApplicationController
 
   skip_before_action :verify_authenticity_token
   skip_before_action :require_authentication
-  before_action :authenticate_channel, only: [:dev_inbound, :dev_status]
-  before_action :set_channel_from_token, only: [:whatsapp_verify, :whatsapp_events, :instagram_verify, :instagram_events]
+  before_action :authenticate_channel, only: [ :dev_inbound, :dev_status ]
+  before_action :set_channel_from_token, only: [ :whatsapp_verify, :whatsapp_events, :instagram_verify, :instagram_events ]
 
   # Webhook endpoints respond with JSON, not HTML redirects
   rescue_from Reservi::Errors::OperationError, with: :json_error

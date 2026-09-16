@@ -27,16 +27,16 @@ class CreateAgentConfigurationsAndAiRuns < ActiveRecord::Migration[8.1]
       "status IN ('draft', 'published')",
       name: "agent_configurations_status_check"
 
-    add_index :agent_configurations, [:agent_id, :version_number],
+    add_index :agent_configurations, [ :agent_id, :version_number ],
       unique: true,
       name: "idx_agent_configurations_agent_version"
 
-    add_index :agent_configurations, [:agent_id, :status],
+    add_index :agent_configurations, [ :agent_id, :status ],
       name: "idx_agent_configurations_agent_status"
 
     # ── Agents: agent_configuration_id FK ───────────────────
     add_column :agents, :agent_configuration_id, :bigint
-    add_index :agents, [:account_id, :agent_configuration_id],
+    add_index :agents, [ :account_id, :agent_configuration_id ],
       name: "idx_agents_on_account_and_agent_config"
     add_foreign_key :agents, :agent_configurations,
       column: :agent_configuration_id
@@ -69,10 +69,10 @@ class CreateAgentConfigurationsAndAiRuns < ActiveRecord::Migration[8.1]
       unique: true,
       name: "idx_ai_runs_admission_token"
 
-    add_index :ai_runs, [:conversation_id, :status],
+    add_index :ai_runs, [ :conversation_id, :status ],
       name: "idx_ai_runs_conversation_status"
 
-    add_index :ai_runs, [:agent_id, :status],
+    add_index :ai_runs, [ :agent_id, :status ],
       name: "idx_ai_runs_agent_status"
 
     # ── Accounts: generation / admission counters ───────────
