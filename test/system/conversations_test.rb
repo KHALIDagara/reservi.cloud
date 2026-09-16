@@ -10,15 +10,9 @@ class ConversationsTest < ApplicationSystemTestCase
   end
 
   test "create conversation, reply, add note, and refresh" do
-    # Sign in
-    visit new_session_url
-    fill_in "Email address", with: @alice.email_address
-    fill_in "Password", with: "password123"
-    click_button "Sign in"
-
-    # We should land on the accounts page — click into the alpha account
-    assert_selector "h1", text: "Your accounts"
-    click_on "Alpha Garden"
+    # Sign in using the helper (works with both rack_test and headless_chrome)
+    sign_in_as(@alice, account: @account)
+    visit account_inbox_url(account_id: @account.id)
 
     # Should see the inbox
     assert_selector "h1", text: "Inbox"
@@ -38,16 +32,20 @@ class ConversationsTest < ApplicationSystemTestCase
     assert_selector "h1", text: "System Test Customer"
     assert_text "I need help with a garden service."
 
-    # Reply to the customer
-    fill_in "message_content", with: "Thank you for reaching out! How can I help?"
-    click_button "Send"
+    # Reply to the customer (first textarea is the message form)
+    within("form[action*='messages']") do
+      fill_in "content", with: "Thank you for reaching out! How can I help?"
+      click_button "Send"
+    end
 
     # Should see the reply
     assert_text "Thank you for reaching out!"
 
-    # Add an internal note
-    fill_in "note_content", with: "Customer seems interested in monthly maintenance."
-    click_button "Add note"
+    # Add an internal note (textarea in the notes form)
+    within("form[action*='notes']") do
+      fill_in "content", with: "Customer seems interested in monthly maintenance."
+      click_button "Add note"
+    end
 
     # Should see the note
     assert_text "Customer seems interested in monthly maintenance."

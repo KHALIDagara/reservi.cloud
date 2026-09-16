@@ -76,7 +76,7 @@ class Accounts::ConversationsControllerTest < ActionDispatch::IntegrationTest
 
     assert_difference -> { conv.messages.count } => 1 do
       post account_conversation_messages_url(@account, conv), params: {
-        message: { content: "Thanks for your inquiry!" }
+        content: "Thanks for your inquiry!"
       }
     end
 
@@ -93,7 +93,7 @@ class Accounts::ConversationsControllerTest < ActionDispatch::IntegrationTest
 
     assert_difference -> { conv.notes.count } => 1 do
       post account_conversation_notes_url(@account, conv), params: {
-        note: { content: "Internal note about this customer" }
+        content: "Internal note about this customer"
       }
     end
 

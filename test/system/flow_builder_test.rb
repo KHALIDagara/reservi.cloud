@@ -4,20 +4,14 @@ class FlowBuilderTest < ApplicationSystemTestCase
   setup do
     @account = accounts(:alpha)
     @alice = users(:alice)
+    @flow_version = flow_versions(:alpha_v1)
+    @flow_version.flow.update!(current_version: @flow_version)
   end
 
   # ── helpers ──────────────────────────────────────────────────────────
 
-  def sign_in_via_form
-    visit new_session_url
-    fill_in "email_address", with: @alice.email_address
-    fill_in "password", with: "password123"
-    click_button "Sign in"
-    assert_selector "h1", text: "Your accounts"
-  end
-
-  def enter_account
-    click_on @account.name
+  def sign_in_and_enter
+    sign_in_as(@alice, account: @account)
     assert_text @account.name
   end
 
@@ -49,8 +43,7 @@ class FlowBuilderTest < ApplicationSystemTestCase
 
   test "full builder journey at desktop (1400x900)" do
     resize_desktop
-    sign_in_via_form
-    enter_account
+    sign_in_and_enter
     navigate_to_flows
 
     # ── create flow ──────────────────────────────────────────────────
@@ -114,8 +107,7 @@ class FlowBuilderTest < ApplicationSystemTestCase
 
   test "full builder journey at phone (375x812)" do
     resize_phone
-    sign_in_via_form
-    enter_account
+    sign_in_and_enter
     navigate_to_flows
 
     # ── create flow ──────────────────────────────────────────────────

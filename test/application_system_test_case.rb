@@ -29,4 +29,29 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
 
   # Reset fixtures-driven data before each test
   fixtures :all
+
+  # Helper: sign in as a user via the actual form, then navigate to an
+  # account-scoped page. Works with both rack_test and headless_chrome.
+  def sign_in_as(user, account: nil)
+    visit new_session_url
+    fill_in "email_address", with: user.email_address
+    fill_in "password", with: "password123"
+    click_button "Sign in"
+
+    if account
+      # After sign-in we land on accounts#index — click into the account
+      if page.has_selector?("h1", text: "Your accounts")
+        click_on account.name
+      end
+    end
+  end
+
+  # Resize helpers — no-op under rack_test, functional under headless_chrome
+  def resize_phone
+    page.driver.resize(375, 812) if page.driver.respond_to?(:resize)
+  end
+
+  def resize_desktop
+    page.driver.resize(1400, 900) if page.driver.respond_to?(:resize)
+  end
 end

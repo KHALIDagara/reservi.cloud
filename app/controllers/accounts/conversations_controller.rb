@@ -37,7 +37,7 @@ module Accounts
       message = Messages::Create.call(
         conversation: @conversation,
         agent: current_membership.agent,
-        content: params[:message][:content],
+        content: params[:content],
         direction: "outbound"
       )
       redirect_to account_conversation_path(current_account, @conversation)
@@ -49,7 +49,7 @@ module Accounts
       note = Notes::Create.call(
         conversation: @conversation,
         agent: current_membership.agent,
-        content: params[:note][:content]
+        content: params[:content]
       )
       redirect_to account_conversation_path(current_account, @conversation)
     rescue ActiveRecord::RecordInvalid => e
