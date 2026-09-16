@@ -5,7 +5,7 @@
   <div class="flex items-center gap-2">
     <% if @version.draft? %>
       <%= button_to "Preview", preview_flow_flow_version_path(current_account, @flow, @version), method: :post, data: { turbo: false }, class: "rounded-md border border-stone-300 px-3 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-100" %>
-      <%= button_to "Publish", publish_flow_flow_version_path(current_account, @flow, @version), method: :post, class: "rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700", data: { confirm: "Publish this version? In-flight conversations will not be affected." } %>
+      <%= button_to "Publish", publish_flow_flow_version_path(current_account, @flow, @version), method: :post, data: { turbo: false }, class: "rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700" %>
     <% end %>
     <%= link_to "Back", flows_path(current_account), class: "text-sm text-stone-600 hover:text-stone-900" %>
   </div>

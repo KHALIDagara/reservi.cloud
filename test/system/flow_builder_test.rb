@@ -28,15 +28,10 @@ class FlowBuilderTest < ApplicationSystemTestCase
     assert_text "Flow created"
   end
 
-  # rack_test does not support JavaScript confirm dialogs. When running with
-  # a real browser (headless_chrome) the confirm must be accepted, but under
-  # rack_test the button click is sufficient.
+  # The Publish button_to is configured with data: { turbo: false } so it
+  # submits as a plain POST form without Turbo confirm dialogs.
   def click_publish
-    if Capybara.current_driver == :headless_chrome
-      accept_confirm { click_button "Publish" }
-    else
-      click_button "Publish"
-    end
+    click_button "Publish"
   end
 
   # ── desktop ──────────────────────────────────────────────────────────

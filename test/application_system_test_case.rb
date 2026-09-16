@@ -48,10 +48,12 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
 
   # Resize helpers — no-op under rack_test, functional under headless_chrome
   def resize_phone
-    page.driver.resize(375, 812) if page.driver.respond_to?(:resize)
+    return unless page.driver.respond_to?(:browser)
+    page.driver.browser.manage.window.resize_to(375, 812)
   end
 
   def resize_desktop
-    page.driver.resize(1400, 900) if page.driver.respond_to?(:resize)
+    return unless page.driver.respond_to?(:browser)
+    page.driver.browser.manage.window.resize_to(1400, 900)
   end
 end
