@@ -22,7 +22,7 @@ docker run -d \
   -e RAILS_ENV=production \
   -e RAILS_SERVE_STATIC_FILES=true \
   -e RESERVI_DATABASE_URL="postgresql://opc:reservi_prod_2026@localhost:5432/reservi_cloud_production" \
-  ${APP_NAME}:latest
+  ${APP_NAME}:latest ./bin/rails server -p 3000
 
 echo "=== Running migrations ==="
 sleep 3
