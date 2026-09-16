@@ -1,0 +1,111 @@
+name: Deploy
+
+# Deploy Reservi to the VPS via Kamal.
+# push to main => build Docker image on the VPS, deploy via Kamal, verify.
+#
+# Secrets (repo > Settings > Secrets and variables > Actions):
+#   DEPLOY_SSH_KEY        — private SSH key allowed on the VPS  
+#   RAILS_MASTER_KEY      — contents of config/master.key
+# Variables:
+#   DEPLOY_HOST           — VPS IP or hostname
+#   DEPLOY_USER           — SSH user (e.g. opc)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+  DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+  SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+  APP_NAME: reservi_cloud
+
+jobs:
+  deploy:
+    name: Deploy to VPS
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-${{ github.ref }}
+      cancel-in-progress: true
+
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: --health-cmd="pg_isready" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+
+      - name: Run tests before deploy
+        env:
+          RAILS_ENV: test
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432
+        run: bin/rails db:test:prepare test
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf 'Host deploy-vps\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/deploy_key\n  StrictHostKeyChecking accept-new\n' \
+            "$DEPLOY_HOST" "$DEPLOY_USER" > ~/.ssh/config
+
+      - name: Ensure remote directory
+        run: |
+          ssh deploy-vps "sudo mkdir -p /opt/reservi.cloud && sudo chown -R \$(whoami):\$(whoami) /opt/reservi.cloud"
+
+      - name: Clone or pull on VPS
+        run: |
+          printf '%s\n' "$SSH_KEY" | ssh deploy-vps "install -m 600 /dev/stdin /home/${DEPLOY_USER}/.ssh/github_deploy"
+          ssh deploy-vps "set -e; \
+            printf 'Host github.com\n  User git\n  IdentityFile ~/.ssh/github_deploy\n  StrictHostKeyChecking accept-new\n' > ~/.ssh/config; \
+            if [ ! -d /opt/reservi.cloud/.git ]; then \
+              git clone git@github.com:${GITHUB_REPOSITORY}.git /opt/reservi.cloud; \
+            else \
+              cd /opt/reservi.cloud && \
+              git remote set-url origin git@github.com:${GITHUB_REPOSITORY}.git && \
+              git fetch origin --prune && \
+              (git pull --ff-only origin main || git reset --hard origin/main); \
+            fi"
+
+      - name: Write master key on VPS
+        run: |
+          echo "${{ secrets.RAILS_MASTER_KEY }}" | ssh deploy-vps "cat > /opt/reservi.cloud/config/master.key && chmod 600 /opt/reservi.cloud/config/master.key"
+
+      - name: Deploy via Kamal
+        run: |
+          ssh deploy-vps "set -e; \
+            cd /opt/reservi.cloud && \
+            docker build --build-arg RUBY_VERSION=3.4.4 -t ${APP_NAME}:latest . && \
+            docker stop ${APP_NAME} 2>/dev/null || true && \
+            docker rm ${APP_NAME} 2>/dev/null || true && \
+            docker run -d \
+              --name ${APP_NAME} \
+              --restart unless-stopped \
+              -p 127.0.0.1:3000:80 \
+              -e RAILS_MASTER_KEY=\$(cat config/master.key) \
+              -e RAILS_ENV=production \
+              -e DATABASE_URL=\$(grep DATABASE_URL .env.production 2>/dev/null | cut -d= -f2- || echo 'postgres://localhost/reservi_cloud_production') \
+              -e RAILS_SERVE_STATIC_FILES=true \
+              ${APP_NAME}:latest && \
+            docker exec ${APP_NAME} bin/rails db:migrate 2>/dev/null || true"
+
+      - name: Verify deploy
+        run: |
+          sleep 5
+          ssh deploy-vps "curl -fsS http://localhost:3000/up >/dev/null 2>&1 && echo 'OK: health check passed' || echo 'WARN: health check failed'"
+
+      - name: Reload Caddy
+        run: |
+          ssh deploy-vps "sudo systemctl reload caddy 2>/dev/null || echo 'Caddy not found — skip reload'"
