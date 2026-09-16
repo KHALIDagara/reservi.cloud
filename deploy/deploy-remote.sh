@@ -26,7 +26,7 @@ docker run -d \
 
 echo "=== Running migrations ==="
 sleep 3
-docker exec ${APP_NAME} bin/rails db:migrate 2>/dev/null || echo "Migration skipped or failed — check logs"
+docker exec -e RESERVI_DATABASE_URL="postgresql://opc:reservi_prod_2026@localhost:5432/reservi_cloud_production" ${APP_NAME} bin/rails db:migrate 2>/dev/null || echo "Migration skipped or failed — check logs"
 
 echo "=== Verifying health ==="
 sleep 2

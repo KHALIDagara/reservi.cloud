@@ -99,7 +99,7 @@ jobs:
               -e RESERVI_DATABASE_URL=postgresql://opc:reservi_prod_2026@localhost:5432/reservi_cloud_production \
               -e RAILS_SERVE_STATIC_FILES=true \
               ${APP_NAME}:latest && \
-            docker exec ${APP_NAME} bin/rails db:migrate 2>/dev/null || true"
+            docker exec -e RESERVI_DATABASE_URL=postgresql://opc:reservi_prod_2026@localhost:5432/reservi_cloud_production ${APP_NAME} bin/rails db:migrate 2>/dev/null || true"
 
       - name: Verify deploy
         run: |
