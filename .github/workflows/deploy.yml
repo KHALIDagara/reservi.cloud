@@ -104,7 +104,7 @@ jobs:
       - name: Verify deploy
         run: |
           sleep 5
-          ssh deploy-vps "curl -fsS http://localhost/up >/dev/null 2>&1 && echo 'OK: health check passed' || echo 'WARN: health check failed'"
+          ssh deploy-vps "curl -fsS http://localhost:3000/up >/dev/null 2>&1 && echo 'OK: health check passed' || echo 'WARN: health check failed'"
 
       - name: Reload Caddy
         run: |

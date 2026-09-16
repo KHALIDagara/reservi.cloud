@@ -30,7 +30,7 @@ docker exec ${APP_NAME} bin/rails db:migrate 2>/dev/null || echo "Migration skip
 
 echo "=== Verifying health ==="
 sleep 2
-curl -fsS http://localhost/up >/dev/null 2>&1 && echo "OK: health check passed" || echo "WARN: health check failed"
+curl -fsS http://localhost:3000/up >/dev/null 2>&1 && echo "OK: health check passed" || echo "WARN: health check failed"
 
 echo "=== Reloading Caddy ==="
 sudo systemctl reload caddy 2>/dev/null || echo "Caddy not found — skip reload"
