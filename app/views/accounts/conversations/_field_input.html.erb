@@ -1,0 +1,18 @@
+<%# Render a form input for a field definition %>
+<% fd = local_assigns[:field_definition]; val = local_assigns[:value] %>
+<% case fd.field_type %>
+<% when "text" %>
+  <%= f.text_field :value, value: val, class: "min-w-0 flex-1 rounded-md border border-stone-300 px-2 py-1 text-xs shadow-sm focus:border-stone-500 focus:outline-none" %>
+<% when "number" %>
+  <%= f.number_field :value, value: val, class: "min-w-0 flex-1 rounded-md border border-stone-300 px-2 py-1 text-xs shadow-sm focus:border-stone-500 focus:outline-none" %>
+<% when "boolean" %>
+  <%= f.select :value, [["Yes", "true"], ["No", "false"]], { selected: val.to_s }, class: "min-w-0 flex-1 rounded-md border border-stone-300 px-2 py-1 text-xs shadow-sm focus:border-stone-500 focus:outline-none" %>
+<% when "single_choice" %>
+  <%= f.select :value, (fd.choices || []).map { |c| [c, c] }, { selected: val }, class: "min-w-0 flex-1 rounded-md border border-stone-300 px-2 py-1 text-xs shadow-sm focus:border-stone-500 focus:outline-none" %>
+<% when "multi_choice" %>
+  <%= f.select :value, (fd.choices || []).map { |c| [c, c] }, { selected: val }, class: "min-w-0 flex-1 rounded-md border border-stone-300 px-2 py-1 text-xs shadow-sm focus:border-stone-500 focus:outline-none" %>
+<% when "date" %>
+  <%= f.date_field :value, value: val, class: "min-w-0 flex-1 rounded-md border border-stone-300 px-2 py-1 text-xs shadow-sm focus:border-stone-500 focus:outline-none" %>
+<% else %>
+  <%= f.text_field :value, value: val, class: "min-w-0 flex-1 rounded-md border border-stone-300 px-2 py-1 text-xs shadow-sm focus:border-stone-500 focus:outline-none" %>
+<% end %>

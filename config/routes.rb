@@ -25,11 +25,19 @@ Rails.application.routes.draw do
     get "conversations/new", to: "conversations#new", as: :new_account_conversation
     post "conversations", to: "conversations#create", as: :account_conversations
     get "conversations/:id", to: "conversations#show", as: :account_conversation
+    get "conversations/:id/panel", to: "conversations#panel", as: :account_conversation_panel
     post "conversations/:id/messages", to: "conversations#create_message", as: :account_conversation_messages
     post "conversations/:id/notes", to: "conversations#create_note", as: :account_conversation_notes
     post "conversations/:id/claim", to: "conversations#claim", as: :account_conversation_claim
     post "conversations/:id/unclaim", to: "conversations#unclaim", as: :account_conversation_unclaim
     post "conversations/:id/cancel", to: "conversations#cancel", as: :account_conversation_cancel
+    # Magic side panel operations
+    patch "conversations/:id/field", to: "conversations#update_field", as: :account_conversation_field
+    patch "conversations/:id/customer_field", to: "conversations#update_customer_field", as: :account_conversation_customer_field
+    post "conversations/:id/reassign", to: "conversations#reassign", as: :account_conversation_reassign
+    post "conversations/:id/appointments", to: "conversations#create_appointment", as: :account_conversation_appointments
+    post "conversations/:appointment_id/confirm_appointment", to: "conversations#confirm_appointment", as: :confirm_account_conversation_appointment
+    post "conversations/:appointment_id/cancel_appointment", to: "conversations#cancel_appointment", as: :cancel_account_conversation_appointment
     get "people", to: "people#index", as: :account_people
     get "invitations/new", to: "invitations#new", as: :new_account_invitation
     post "invitations", to: "invitations#create", as: :account_invitations
