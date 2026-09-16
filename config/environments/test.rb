@@ -50,4 +50,10 @@ Rails.application.configure do
 
   # Raise error when a before_action's only/except options reference missing actions.
   config.action_controller.raise_on_missing_callback_actions = true
+
+  # Dummy encryption keys for CI/test where credentials aren't available.
+  # Real keys come from credentials in development/production.
+  config.active_record.encryption.primary_key = "0" * 32
+  config.active_record.encryption.deterministic_key = "1" * 32
+  config.active_record.encryption.key_derivation_salt = "2" * 32
 end
