@@ -20,6 +20,20 @@ class MessageDelivery < ApplicationRecord
     status == "failed"
   end
 
+  # Directed transition whitelist — prevents status regression.
+  ALLOWED_TRANSITIONS = {
+    "pending"  => %w[sending sent failed unknown],
+    "sending"  => %w[sent failed delivered unknown],
+    "sent"     => %w[delivered failed],
+    "failed"   => %w[],
+    "delivered" => %w[],
+    "unknown"  => %w[]
+  }.freeze
+
+  def can_transition_to?(new_status)
+    ALLOWED_TRANSITIONS.fetch(status, []).include?(new_status)
+  end
+
   scope :pending, -> { where(status: "pending") }
   scope :sending, -> { where(status: "sending") }
   scope :failed, -> { where(status: "failed") }

@@ -81,6 +81,12 @@ Rails.application.routes.draw do
   post "webhooks/dev/:token", to: "webhooks#dev_inbound", as: :dev_webhook_inbound
   post "webhooks/dev/:token/status", to: "webhooks#dev_status", as: :dev_webhook_status
 
+  # Meta webhook endpoints (WhatsApp + Instagram)
+  get  "webhooks/whatsapp/:token",  to: "webhooks#whatsapp_verify",  as: :whatsapp_webhook_verify
+  post "webhooks/whatsapp/:token",  to: "webhooks#whatsapp_events",  as: :whatsapp_webhook_events
+  get  "webhooks/instagram/:token", to: "webhooks#instagram_verify", as: :instagram_webhook_verify
+  post "webhooks/instagram/:token", to: "webhooks#instagram_events", as: :instagram_webhook_events
+
   get "up" => "rails/health#show", as: :rails_health_check
 
   # Root: logged-out visitors see the landing page; signed-in users see their

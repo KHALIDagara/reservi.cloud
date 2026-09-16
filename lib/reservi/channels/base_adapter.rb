@@ -12,6 +12,8 @@ module Reservi
       def self.for_provider(provider_type)
         case provider_type
         when "dev" then DevAdapter
+        when "whatsapp" then WhatsappCloudAdapter
+        when "instagram" then InstagramAdapter
         else raise ArgumentError, "Unknown provider_type: #{provider_type}"
         end
       end

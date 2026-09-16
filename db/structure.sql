@@ -416,7 +416,8 @@ CREATE TABLE public.channels (
     default_team_name character varying,
     rate_limit_per_minute integer DEFAULT 10,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    provider_config jsonb DEFAULT '{}'::jsonb NOT NULL
 );
 
 
@@ -1212,6 +1213,42 @@ ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
 
 
 --
+-- Name: webhook_receipts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.webhook_receipts (
+    id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    channel_id bigint NOT NULL,
+    provider_event_id character varying NOT NULL,
+    event_type character varying NOT NULL,
+    payload jsonb DEFAULT '{}'::jsonb,
+    processed_at timestamp without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: webhook_receipts_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.webhook_receipts_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: webhook_receipts_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.webhook_receipts_id_seq OWNED BY public.webhook_receipts.id;
+
+
+--
 -- Name: account_invitations id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -1426,6 +1463,13 @@ ALTER TABLE ONLY public.teams ALTER COLUMN id SET DEFAULT nextval('public.teams_
 --
 
 ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_id_seq'::regclass);
+
+
+--
+-- Name: webhook_receipts id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.webhook_receipts ALTER COLUMN id SET DEFAULT nextval('public.webhook_receipts_id_seq'::regclass);
 
 
 --
@@ -1701,6 +1745,14 @@ ALTER TABLE ONLY public.users
 
 
 --
+-- Name: webhook_receipts webhook_receipts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.webhook_receipts
+    ADD CONSTRAINT webhook_receipts_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: idx_agent_configurations_agent_status; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1831,6 +1883,20 @@ CREATE INDEX idx_knowledge_sources_current_revision ON public.knowledge_sources 
 --
 
 CREATE INDEX idx_rule_execs_on_conversation_stage_rule ON public.rule_executions USING btree (conversation_id, stage_id, rule_key);
+
+
+--
+-- Name: idx_webhook_receipts_on_account_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_webhook_receipts_on_account_created_at ON public.webhook_receipts USING btree (account_id, created_at);
+
+
+--
+-- Name: idx_webhook_receipts_on_channel_and_event; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_webhook_receipts_on_channel_and_event ON public.webhook_receipts USING btree (channel_id, provider_event_id);
 
 
 --
@@ -2548,6 +2614,20 @@ CREATE UNIQUE INDEX index_users_on_email_address ON public.users USING btree (em
 
 
 --
+-- Name: index_webhook_receipts_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_webhook_receipts_on_account_id ON public.webhook_receipts USING btree (account_id);
+
+
+--
+-- Name: index_webhook_receipts_on_channel_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_webhook_receipts_on_channel_id ON public.webhook_receipts USING btree (channel_id);
+
+
+--
 -- Name: account_invitations fk_account_invitations_accepted_by_account_scoped; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2705,6 +2785,14 @@ ALTER TABLE ONLY public.ai_runs
 
 ALTER TABLE ONLY public.conversation_reads
     ADD CONSTRAINT fk_rails_446634b7c3 FOREIGN KEY (agent_id) REFERENCES public.agents(id);
+
+
+--
+-- Name: webhook_receipts fk_rails_453b490dbe; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.webhook_receipts
+    ADD CONSTRAINT fk_rails_453b490dbe FOREIGN KEY (account_id) REFERENCES public.accounts(id);
 
 
 --
@@ -2932,6 +3020,14 @@ ALTER TABLE ONLY public.channel_threads
 
 
 --
+-- Name: webhook_receipts fk_rails_c4996f5f88; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.webhook_receipts
+    ADD CONSTRAINT fk_rails_c4996f5f88 FOREIGN KEY (channel_id) REFERENCES public.channels(id);
+
+
+--
 -- Name: field_definitions fk_rails_c5aa27cbc1; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3074,6 +3170,7 @@ ALTER TABLE ONLY public.team_memberships
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260916000000'),
 ('20260915235000'),
 ('20260915200000'),
 ('20260913223429'),
