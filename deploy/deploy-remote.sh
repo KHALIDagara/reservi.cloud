@@ -16,12 +16,12 @@ docker rm ${APP_NAME} 2>/dev/null || true
 echo "=== Starting new container ==="
 docker run -d \
   --name ${APP_NAME} \
+  --network host \
   --restart unless-stopped \
-  -p 127.0.0.1:3000:80 \
   -e RAILS_MASTER_KEY="$(cat config/master.key)" \
   -e RAILS_ENV=production \
   -e RAILS_SERVE_STATIC_FILES=true \
-  -e RESERVI_DATABASE_URL="postgresql://opc:reservi_prod_2026@172.17.0.1:5432/reservi_cloud_production" \
+  -e RESERVI_DATABASE_URL="postgresql://opc:reservi_prod_2026@localhost:5432/reservi_cloud_production" \
   ${APP_NAME}:latest
 
 echo "=== Running migrations ==="
@@ -30,7 +30,7 @@ docker exec ${APP_NAME} bin/rails db:migrate 2>/dev/null || echo "Migration skip
 
 echo "=== Verifying health ==="
 sleep 2
-curl -fsS http://localhost:3000/up >/dev/null 2>&1 && echo "OK: health check passed" || echo "WARN: health check failed"
+curl -fsS http://localhost/up >/dev/null 2>&1 && echo "OK: health check passed" || echo "WARN: health check failed"
 
 echo "=== Reloading Caddy ==="
 sudo systemctl reload caddy 2>/dev/null || echo "Caddy not found — skip reload"

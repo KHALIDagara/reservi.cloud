@@ -92,11 +92,11 @@ jobs:
             docker rm ${APP_NAME} 2>/dev/null || true && \
             docker run -d \
               --name ${APP_NAME} \
+              --network host \
               --restart unless-stopped \
-              -p 127.0.0.1:3000:80 \
               -e RAILS_MASTER_KEY=\$(cat config/master.key) \
               -e RAILS_ENV=production \
-              -e RESERVI_DATABASE_URL=postgresql://opc:reservi_prod_2026@172.17.0.1:5432/reservi_cloud_production \
+              -e RESERVI_DATABASE_URL=postgresql://opc:reservi_prod_2026@localhost:5432/reservi_cloud_production \
               -e RAILS_SERVE_STATIC_FILES=true \
               ${APP_NAME}:latest && \
             docker exec ${APP_NAME} bin/rails db:migrate 2>/dev/null || true"
@@ -104,7 +104,7 @@ jobs:
       - name: Verify deploy
         run: |
           sleep 5
-          ssh deploy-vps "curl -fsS http://localhost:3000/up >/dev/null 2>&1 && echo 'OK: health check passed' || echo 'WARN: health check failed'"
+          ssh deploy-vps "curl -fsS http://localhost/up >/dev/null 2>&1 && echo 'OK: health check passed' || echo 'WARN: health check failed'"
 
       - name: Reload Caddy
         run: |
