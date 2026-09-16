@@ -75,7 +75,8 @@ Rails.application.routes.draw do
 
   get "up" => "rails/health#show", as: :rails_health_check
 
-  # Signed-in users land on their Account switcher; guests are redirected to
-  # sign in by Authentication#request_authentication.
-  root "accounts#index"
+  # Root: logged-out visitors see the landing page; signed-in users see their
+  # account switcher. The landing controller allows unauthenticated access and
+  # redirects authenticated users to after_authentication_url.
+  root "landing#show"
 end
