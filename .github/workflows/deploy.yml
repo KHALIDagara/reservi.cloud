@@ -50,7 +50,7 @@ jobs:
       - name: Run tests before deploy
         env:
           RAILS_ENV: test
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432
+          RESERVI_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/reservi_cloud_test
         run: bin/rails db:test:prepare test
 
       - name: Set up SSH
@@ -96,7 +96,7 @@ jobs:
               -p 127.0.0.1:3000:80 \
               -e RAILS_MASTER_KEY=\$(cat config/master.key) \
               -e RAILS_ENV=production \
-              -e DATABASE_URL=\$(grep DATABASE_URL .env.production 2>/dev/null | cut -d= -f2- || echo 'postgres://localhost/reservi_cloud_production') \
+              -e RESERVI_DATABASE_URL=postgresql://opc:reservi_prod_2026@host.docker.internal:5432/reservi_cloud_production \
               -e RAILS_SERVE_STATIC_FILES=true \
               ${APP_NAME}:latest && \
             docker exec ${APP_NAME} bin/rails db:migrate 2>/dev/null || true"

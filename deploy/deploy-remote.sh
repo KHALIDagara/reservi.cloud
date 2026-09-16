@@ -21,7 +21,7 @@ docker run -d \
   -e RAILS_MASTER_KEY="$(cat config/master.key)" \
   -e RAILS_ENV=production \
   -e RAILS_SERVE_STATIC_FILES=true \
-  -e DATABASE_URL="${DATABASE_URL:-postgres://localhost/reservi_cloud_production}" \
+  -e RESERVI_DATABASE_URL="postgresql://opc:reservi_prod_2026@host.docker.internal:5432/reservi_cloud_production" \
   ${APP_NAME}:latest
 
 echo "=== Running migrations ==="
