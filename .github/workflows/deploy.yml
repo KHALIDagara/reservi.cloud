@@ -20,6 +20,7 @@ env:
   DEPLOY_USER: ${{ vars.DEPLOY_USER }}
   SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
   APP_NAME: reservi_cloud
+  RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
 
 jobs:
   deploy:
@@ -99,7 +100,7 @@ jobs:
               -e RESERVI_DATABASE_URL=postgresql://opc:reservi_prod_2026@localhost:5432/reservi_cloud_production \
               -e RAILS_SERVE_STATIC_FILES=true \
               -e SOLID_QUEUE_IN_PUMA=1 \
-              -e RESEND_API_KEY=\${{ secrets.RESEND_API_KEY }} \
+              -e RESEND_API_KEY="${RESEND_API_KEY}" \
               ${APP_NAME}:latest ./bin/rails server -p 3000 && \
             docker exec -e RESERVI_DATABASE_URL=postgresql://opc:reservi_prod_2026@localhost:5432/reservi_cloud_production ${APP_NAME} bin/rails db:migrate 2>/dev/null || true"
 
