@@ -106,7 +106,7 @@ jobs:
 
       - name: Verify deploy
         run: |
-          sleep 20
+          sleep 30
           ssh deploy-vps "curl -fsS http://localhost:3000/up >/dev/null 2>&1 && echo 'OK: health check passed' || (echo 'WARN: health check failed' && docker logs reservi_cloud --tail 50)"
 
       - name: Reload Caddy
