@@ -14,7 +14,7 @@
   <% [
     [ :home, "Home", account_home_path(current_account), :home ],
     [ :inbox, "Inbox", account_inbox_path(current_account), :inbox ],
-    [ :new, "New", new_account_conversation_path(current_account), :plus ],
+    [ :calendar, "Calendar", account_calendar_path(current_account), :calendar ],
     [ :people, current_membership.admin? ? "Manage" : "Account", current_membership.admin? ? account_people_path(current_account) : accounts_path, current_membership.admin? ? :users : :building ]
   ].each do |section, label, path, icon| %>
     <% active = section == :new ? false : app_nav_active?(section) %>

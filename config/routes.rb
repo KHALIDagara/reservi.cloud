@@ -22,6 +22,7 @@ Rails.application.routes.draw do
   scope "/a/:account_id", module: :accounts do
     get "/", to: "home#show", as: :account_home
     get "inbox", to: "inbox#index", as: :account_inbox
+    get "calendar", to: "calendar#index", as: :account_calendar
     get "inboxes", to: "channels#index", as: :account_channels
     get "inboxes/connect", to: "channels#new", as: :new_account_channel
     get "inboxes/connect/:provider", to: "channels#setup", as: :setup_account_channel

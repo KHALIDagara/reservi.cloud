@@ -11,6 +11,7 @@ module Accounts
     def show
       @messages = @conversation.messages.chronological.includes(:agent)
       @notes = @conversation.notes.chronological.includes(:agent)
+      @panel_open = params[:panel] == "open"
       touch_read_cursor!
     end
 
@@ -90,6 +91,12 @@ module Accounts
       load_catalogs if has_block_type?("catalog")
       load_appointments if has_block_type?("appointment")
       @account_agents = current_account.agents.active.order(:name)
+
+      # Stage history: all previous stage transitions for this conversation
+      @stage_history = @conversation.stage_transitions
+        .includes(:from_stage, :to_stage)
+        .order(created_at: :asc)
+
       render layout: false
     end
 

@@ -1,0 +1,69 @@
+<%= content_for :title, "Calendar — #{current_account.name}" %>
+
+<div class="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight text-slate-950">Calendar</h1>
+      <p class="mt-1 text-sm text-slate-500">
+        <%= @appointments.size %> appointment<%= "s" unless @appointments.size == 1 %> across <%= @grouped.keys.size %> day<%= "s" if @grouped.keys.size != 1 %>
+      </p>
+    </div>
+  </div>
+
+  <% @months.each do |month| %>
+    <div class="mt-8">
+      <h2 class="mb-4 text-lg font-bold tracking-tight text-slate-800"><%= month[:label] %></h2>
+      <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <!-- Day-of-week header -->
+        <div class="hidden border-b border-slate-100 bg-slate-50 sm:grid sm:grid-cols-7">
+          <% %w[Mon Tue Wed Thu Fri Sat Sun].each do |day| %>
+            <span class="px-2 py-2 text-center text-xs font-bold uppercase tracking-wider text-slate-500"><%= day %></span>
+          <% end %>
+        </div>
+
+        <% month[:weeks].each do |week| %>
+          <div class="border-b border-slate-100 last:border-b-0 sm:grid sm:grid-cols-7">
+            <% week.each do |day| %>
+              <%
+                day_appointments = @grouped[day[:date]] || []
+                is_today = day[:date] == @today.to_date
+                cell_class = [
+                  "min-h-[6rem] sm:min-h-[8rem] p-1.5 border-b border-slate-50 sm:border-b-0 sm:border-r sm:border-slate-100 last:border-r-0",
+                  day[:in_month] ? "bg-white" : "bg-slate-50/50",
+                  is_today ? "ring-2 ring-inset ring-indigo-400" : ""
+                ].join(" ")
+              %>
+              <div class="<%= cell_class %>">
+                <div class="flex items-center justify-between">
+                  <span class="<%= day[:in_month] ? (is_today ? 'inline-flex size-6 items-center justify-center rounded-full bg-indigo-600 text-xs font-bold text-white' : 'text-xs font-semibold text-slate-700') : 'text-xs text-slate-300' %>">
+                    <%= day[:date].day %>
+                  </span>
+                  <% if day_appointments.any? %>
+                    <span class="inline-flex size-5 items-center justify-center rounded-full bg-indigo-100 text-[0.625rem] font-bold text-indigo-600"><%= day_appointments.size %></span>
+                  <% end %>
+                </div>
+
+                <% if day_appointments.any? %>
+                  <div class="mt-1 space-y-0.5">
+                    <% day_appointments.first(3).each do |appt| %>
+                      <% conv = appt.conversation %>
+                      <%= link_to account_conversation_path(current_account, conv, panel: "open"), class: "block truncate rounded-md px-1.5 py-0.5 text-[0.68rem] font-medium leading-tight #{appt.status == 'confirmed' ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-700'} hover:brightness-95" do %>
+                        <span class="tabular-nums"><%= appt.starts_at.strftime("%H:%M") %></span>
+                        <% if conv.customer %>
+                          <span class="opacity-70"><%= conv.customer.name %></span>
+                        <% end %>
+                      <% end %>
+                    <% end %>
+                    <% if day_appointments.size > 3 %>
+                      <span class="block px-1.5 pt-0.5 text-[0.65rem] text-slate-400">+<%= day_appointments.size - 3 %> more</span>
+                    <% end %>
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+</div>

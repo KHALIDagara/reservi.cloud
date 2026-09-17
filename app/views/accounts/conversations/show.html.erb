@@ -120,7 +120,7 @@
         </div>
         <button type="button" data-slide-panel-target="closeButton" data-action="click->slide-panel#close" class="flex size-10 items-center justify-center rounded-xl bg-slate-100 text-xl text-slate-500 hover:text-slate-900" aria-label="Close work panel">×</button>
       </div>
-      <%= turbo_frame_tag "conversation_panel", src: account_conversation_panel_path(current_account, @conversation), loading: :lazy do %>
+      <%= turbo_frame_tag "conversation_panel", src: account_conversation_panel_path(current_account, @conversation), loading: (@panel_open ? :eager : :lazy) do %>
         <div class="space-y-4 p-5" aria-live="polite">
           <div class="h-20 animate-pulse rounded-2xl bg-slate-100"></div>
           <div class="h-36 animate-pulse rounded-2xl bg-slate-100"></div>

@@ -21,6 +21,11 @@ env:
   SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
   APP_NAME: reservi_cloud
   RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+  WHATSAPP_APP_ID: ${{ secrets.WHATSAPP_APP_ID }}
+  WHATSAPP_APP_SECRET: ${{ secrets.WHATSAPP_APP_SECRET }}
+  WHATSAPP_CONFIGURATION_ID: ${{ secrets.WHATSAPP_CONFIGURATION_ID }}
+  INSTAGRAM_APP_ID: ${{ secrets.INSTAGRAM_APP_ID }}
+  INSTAGRAM_APP_SECRET: ${{ secrets.INSTAGRAM_APP_SECRET }}
 
 jobs:
   deploy:
@@ -100,6 +105,11 @@ jobs:
               -e RESERVI_DATABASE_URL=postgresql://opc:reservi_prod_2026@localhost:5432/reservi_cloud_production \
               -e RAILS_SERVE_STATIC_FILES=true \
               -e RESEND_API_KEY="${RESEND_API_KEY}" \
+              -e WHATSAPP_APP_ID="${WHATSAPP_APP_ID}" \
+              -e WHATSAPP_APP_SECRET="${WHATSAPP_APP_SECRET}" \
+              -e WHATSAPP_CONFIGURATION_ID="${WHATSAPP_CONFIGURATION_ID}" \
+              -e INSTAGRAM_APP_ID="${INSTAGRAM_APP_ID}" \
+              -e INSTAGRAM_APP_SECRET="${INSTAGRAM_APP_SECRET}" \
               ${APP_NAME}:latest ./bin/rails server -p 3000 && \
             docker exec -e RESERVI_DATABASE_URL=postgresql://opc:reservi_prod_2026@localhost:5432/reservi_cloud_production ${APP_NAME} bin/rails db:migrate 2>/dev/null || true"
 
