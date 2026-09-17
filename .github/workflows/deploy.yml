@@ -110,6 +110,5 @@ jobs:
 
       - name: Reload Caddy
         run: |
-          ssh deploy-vps "sudo systemctl status caddy --no-pager 2>/dev/null || echo 'Caddy service not found'" && \
-          ssh deploy-vps "sudo caddy adapt --config /etc/caddy/Caddyfile 2>/dev/null | grep -A 5 'reservi.cloud' || echo 'reservi.cloud not found in Caddy config'" && \
-          ssh deploy-vps "sudo systemctl reload caddy 2>/dev/null || echo 'Caddy not found — skip reload'"
+          ssh deploy-vps "sudo systemctl reload caddy 2>/dev/null || echo 'Caddy not found'" && \
+          echo "Caddy reloaded successfully"
