@@ -19,6 +19,7 @@ class Conversation < ApplicationRecord
   has_many :ai_runs, dependent: :destroy
 
   validates :process_status, inclusion: { in: PROCESS_STATUSES }
+  validates :stage_entry_id, uniqueness: true, allow_nil: true
 
   scope :active, -> { where(process_status: "active") }
   scope :inbox, -> { active.order(last_activity_at: :desc, id: :desc) }

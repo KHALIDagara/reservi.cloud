@@ -39,21 +39,25 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
     click_button "Sign in"
 
     if account
-      # After sign-in we land on accounts#index — click into the account
-      if page.has_selector?("h1", text: "Your accounts")
-        click_on account.name
-      end
+      # Navigate explicitly so an Account name appearing elsewhere cannot make
+      # this helper mistake the account switcher for the selected workspace.
+      assert_current_path accounts_path, wait: 10
+      visit account_home_url(account_id: account.id)
     end
   end
 
   # Resize helpers — no-op under rack_test, functional under headless_chrome
   def resize_phone
-    return unless page.driver.respond_to?(:browser)
+    return unless page.driver.respond_to?(:browser) && page.driver.browser.respond_to?(:manage)
     page.driver.browser.manage.window.resize_to(375, 812)
   end
 
   def resize_desktop
-    return unless page.driver.respond_to?(:browser)
+    return unless page.driver.respond_to?(:browser) && page.driver.browser.respond_to?(:manage)
     page.driver.browser.manage.window.resize_to(1400, 900)
+  end
+
+  def javascript_driver?
+    page.driver.respond_to?(:browser) && page.driver.browser.respond_to?(:manage)
   end
 end

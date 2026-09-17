@@ -1,0 +1,67 @@
+<aside class="hidden w-64 shrink-0 border-r border-slate-200 bg-white lg:fixed lg:inset-y-0 lg:flex lg:flex-col">
+  <div class="flex h-16 items-center border-b border-slate-100 px-5">
+    <%= link_to account_home_path(current_account), class: "flex items-center gap-2.5" do %>
+      <span class="flex size-9 items-center justify-center rounded-xl bg-indigo-600 text-sm font-bold text-white shadow-sm shadow-indigo-200">R</span>
+      <span class="text-lg font-bold tracking-tight text-slate-950">Reservi</span>
+    <% end %>
+  </div>
+
+  <div class="px-3 pt-4">
+    <%= link_to accounts_path, class: "group flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 hover:border-slate-300 hover:bg-white" do %>
+      <span class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-white text-indigo-600 shadow-sm ring-1 ring-slate-200"><%= app_icon(:building, class_name: "size-4") %></span>
+      <span class="min-w-0 flex-1">
+        <span class="block truncate text-sm font-semibold text-slate-800"><%= current_account.name %></span>
+        <span class="block text-xs capitalize text-slate-500"><%= current_membership.role %> workspace</span>
+      </span>
+      <span class="text-slate-400">⌄</span>
+    <% end %>
+  </div>
+
+  <nav class="mt-5 flex-1 overflow-y-auto px-3" aria-label="Primary navigation">
+    <% primary_items = [
+      [ :home, "Overview", account_home_path(current_account), :home ],
+      [ :inbox, "Inbox", account_inbox_path(current_account), :inbox ]
+    ] %>
+    <div class="space-y-1">
+      <% primary_items.each do |section, label, path, icon| %>
+        <%= link_to path,
+              class: "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition #{app_nav_active?(section) ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'}",
+              aria: (app_nav_active?(section) ? { current: "page" } : {}) do %>
+          <%= app_icon(icon, class_name: "size-5") %><span><%= label %></span>
+        <% end %>
+      <% end %>
+    </div>
+
+    <% if current_membership.admin? %>
+      <p class="mb-2 mt-7 px-3 text-[0.68rem] font-bold uppercase tracking-[0.16em] text-slate-400">Manage</p>
+      <div class="space-y-1">
+        <% [
+          [ :people, "People & AI", account_people_path(current_account), :users ],
+          [ :flows, "Flows", flows_path(current_account), :flow ],
+          [ :channels, "Inboxes", account_channels_path(current_account), :inbox ],
+          [ :catalogs, "Catalogs", catalogs_path(account_id: current_account), :catalog ],
+          [ :fields, "Fields", account_field_definitions_path(current_account), :fields ]
+        ].each do |section, label, path, icon| %>
+          <%= link_to path,
+                class: "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition #{app_nav_active?(section) ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'}",
+                aria: (app_nav_active?(section) ? { current: "page" } : {}) do %>
+            <%= app_icon(icon, class_name: "size-5") %><span><%= label %></span>
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
+  </nav>
+
+  <div class="border-t border-slate-100 p-3">
+    <div class="flex items-center gap-3 rounded-xl px-3 py-2">
+      <span class="flex size-9 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-700"><%= Current.user.name.first.upcase %></span>
+      <span class="min-w-0 flex-1">
+        <span class="block truncate text-sm font-semibold text-slate-800"><%= Current.user.name %></span>
+        <span class="block truncate text-xs text-slate-500"><%= Current.user.email_address %></span>
+      </span>
+      <%= button_to session_path, method: :delete, class: "rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700", aria: { label: "Sign out" }, title: "Sign out" do %>
+        <%= app_icon(:logout, class_name: "size-4") %>
+      <% end %>
+    </div>
+  </div>
+</aside>

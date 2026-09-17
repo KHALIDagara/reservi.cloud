@@ -195,6 +195,42 @@ class Reservi::PredicateEvaluatorTest < ActiveSupport::TestCase
     )
   end
 
+  test "item selection existence and count resolve by stable role" do
+    catalog = @conversation.account.catalogs.create!(title: "Services")
+    item = catalog.items.create!(account: @conversation.account, title: "Garden care")
+    context = { conversation: @conversation }
+
+    refute Reservi::PredicateEvaluator.evaluate(
+      { "exists" => { "kind" => "item_selection", "key" => "requested_service" } }, context
+    )
+
+    @conversation.item_selections.create!(
+      account: @conversation.account, catalog:, item:,
+      role_key: "requested_service", snapshot: { "title" => item.title }
+    )
+
+    assert Reservi::PredicateEvaluator.evaluate(
+      { "exists" => { "kind" => "item_selection", "key" => "requested_service" } }, context
+    )
+    assert Reservi::PredicateEvaluator.evaluate(
+      { "eq" => { "ref" => { "kind" => "item_selection", "key" => "requested_service", "attribute" => "count" }, "value" => 1 } }, context
+    )
+  end
+
+  test "appointment status resolves by stable role" do
+    appointment = @conversation.appointments.create!(
+      account: @conversation.account, role_key: "consultation",
+      starts_at: 1.day.from_now, ends_at: 1.day.from_now + 1.hour,
+      duration_minutes: 60, timezone: "UTC", status: "confirmed"
+    )
+
+    assert Reservi::PredicateEvaluator.evaluate(
+      { "eq" => { "ref" => { "kind" => "appointment", "key" => "consultation", "attribute" => "status" }, "value" => "confirmed" } },
+      { conversation: @conversation }
+    )
+    assert appointment.persisted?
+  end
+
   test "non-hash predicate returns false" do
     refute Reservi::PredicateEvaluator.evaluate("string", {})
     refute Reservi::PredicateEvaluator.evaluate(42, {})

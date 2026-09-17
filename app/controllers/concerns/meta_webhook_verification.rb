@@ -7,8 +7,9 @@ module MetaWebhookVerification
     challenge = params["hub.challenge"]
 
     if mode == "subscribe"
-      expected_token = channel.provider_config["webhook_verify_token"]
-      if token == expected_token && challenge.present?
+      expected_token = channel.credential("webhook_verify_token")
+      if expected_token.present? && token.present? &&
+          ActiveSupport::SecurityUtils.secure_compare(token, expected_token) && challenge.present?
         render plain: challenge, status: :ok
         return
       end

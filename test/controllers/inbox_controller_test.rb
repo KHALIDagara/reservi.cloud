@@ -20,6 +20,7 @@ class Accounts::InboxControllerTest < ActionDispatch::IntegrationTest
     assert_select "a[href='#{account_inbox_path(@account)}']", text: "All"
     assert_select "a[href='#{account_inbox_path(@account, filter: 'mine')}']", text: "Mine"
     assert_select "a[href='#{account_inbox_path(@account, filter: 'unowned')}']", text: "Unowned"
+    assert_select "a[href='#{account_inbox_path(@account, filter: 'team')}']", text: "My teams"
   end
 
   test "inbox filters by mine" do
@@ -48,6 +49,40 @@ class Accounts::InboxControllerTest < ActionDispatch::IntegrationTest
     get account_inbox_url(@account, filter: "mine")
     assert_response :success
     assert_select "a[href='#{account_conversation_path(@account, bob_conv)}']"
+  end
+
+  test "cursor pagination does not skip conversations" do
+    customer = customers(:alpha_wilma)
+    27.times do |index|
+      @account.conversations.create!(
+        customer:,
+        flow_version: @flow_version,
+        current_stage: stages(:alpha_stage1),
+        process_status: "active",
+        last_activity_at: Time.current - index.minutes
+      )
+    end
+
+    get account_inbox_url(@account)
+    first_page_ids = css_select("section[aria-label='Conversations'] a[href*='/conversations/']").map { |link| link["href"] }
+    next_page_path = css_select("a").find { |link| link.text.include?("Load older conversations") }&.[]("href")
+
+    assert_equal 25, first_page_ids.size
+    assert next_page_path
+
+    get next_page_path
+    second_page_ids = css_select("section[aria-label='Conversations'] a[href*='/conversations/']").map { |link| link["href"] }
+
+    assert_equal 28, (first_page_ids + second_page_ids).uniq.size
+  end
+
+  test "malformed cursor fails closed without a database error" do
+    cursor = Base64.urlsafe_encode64({ time: "not-a-time", id: "not-an-id" }.to_json, padding: false)
+
+    get account_inbox_url(@account, before: cursor)
+
+    assert_response :success
+    assert_select "h1", text: "Inbox"
   end
 
   test "inbox does not show conversations from another account" do

@@ -13,7 +13,7 @@ module Reservi
       def send_message(delivery:)
         config = delivery.channel.provider_config
         instagram_id = config["instagram_id"]
-        access_token = config["access_token"]
+        access_token = delivery.channel.credential("access_token")
 
         payload = {
           recipient: {

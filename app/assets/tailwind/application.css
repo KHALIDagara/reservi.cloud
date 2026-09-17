@@ -1,1 +1,18 @@
 @import "tailwindcss";
+
+@layer base {
+  html { color-scheme: light; }
+  body { font-feature-settings: "cv02", "cv03", "cv04", "cv11"; }
+  button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+  :focus-visible { outline: 2px solid #4f46e5; outline-offset: 2px; }
+  textarea { resize: vertical; }
+}
+
+@layer utilities {
+  .app-safe-bottom { padding-bottom: max(0.4rem, env(safe-area-inset-bottom)); }
+  .app-scrollbar { scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
+}

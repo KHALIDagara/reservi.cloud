@@ -90,30 +90,32 @@ module Accounts
       load_catalogs if has_block_type?("catalog")
       load_appointments if has_block_type?("appointment")
       @account_agents = current_account.agents.active.order(:name)
-      render partial: "panel", layout: false
+      render layout: false
     end
 
     def update_field
+      value = typed_field_value(scope: "conversation", key: params[:key], value: params[:value])
       ConversationFields::Update.call(
         conversation: @conversation,
-        key: params[:key],
-        value: params[:value]
+        actor_membership: current_membership,
+        attributes: { params[:key] => value }
       )
-      head :ok
+      redirect_to account_conversation_path(current_account, @conversation), notice: "Field updated."
     rescue Reservi::Errors::OperationError => e
-      render json: { error: e.message }, status: :unprocessable_entity
+      redirect_to account_conversation_path(current_account, @conversation), alert: e.message
     end
 
     def update_customer_field
+      value = typed_field_value(scope: "customer", key: params[:key], value: params[:value])
       CustomerFields::Update.call(
         customer: @conversation.customer,
-        key: params[:key],
-        value: params[:value],
-        actor_membership: current_membership
+        actor_membership: current_membership,
+        attributes: { params[:key] => value }
       )
-      head :ok
+      Flows::Evaluate.call(conversation: @conversation)
+      redirect_to account_conversation_path(current_account, @conversation), notice: "Customer field updated."
     rescue Reservi::Errors::OperationError => e
-      render json: { error: e.message }, status: :unprocessable_entity
+      redirect_to account_conversation_path(current_account, @conversation), alert: e.message
     end
 
     def reassign
@@ -124,21 +126,27 @@ module Accounts
         Conversations::Unclaim.call(conversation: @conversation, agent: @conversation.owner)
       end
       Conversations::Claim.call(conversation: @conversation, agent: agent)
-      head :ok
+      redirect_to account_conversation_path(current_account, @conversation), notice: "Conversation assigned."
     rescue Reservi::Errors::OperationError => e
-      render json: { error: e.message }, status: :unprocessable_entity
+      redirect_to account_conversation_path(current_account, @conversation), alert: e.message
     end
 
     def create_appointment
+      validate_appointment_role!(params[:role_key])
+      starts_at = parse_appointment_time!(params[:starts_at])
+
       Appointments::Create.call(
         conversation: @conversation,
         role_key: params[:role_key],
-        starts_at: params[:starts_at],
+        starts_at:,
+        ends_at: starts_at + 1.hour,
+        timezone: current_account.timezone,
         scheduled_agent: current_membership.agent
       )
-      head :ok
+      Flows::Evaluate.call(conversation: @conversation)
+      redirect_to account_conversation_path(current_account, @conversation), notice: "Appointment added."
     rescue Reservi::Errors::OperationError => e
-      render json: { error: e.message }, status: :unprocessable_entity
+      redirect_to account_conversation_path(current_account, @conversation), alert: e.message
     end
 
     def confirm_appointment
@@ -148,10 +156,12 @@ module Accounts
       )
       return render json: { error: "Appointment not found" }, status: :not_found unless appointment
 
+      validate_appointment_role!(appointment.role_key)
       Appointments::Confirm.call(appointment: appointment)
-      head :ok
+      Flows::Evaluate.call(conversation: @conversation)
+      redirect_to account_conversation_path(current_account, @conversation), notice: "Appointment confirmed."
     rescue Reservi::Errors::OperationError => e
-      render json: { error: e.message }, status: :unprocessable_entity
+      redirect_to account_conversation_path(current_account, @conversation), alert: e.message
     end
 
     def cancel_appointment
@@ -161,10 +171,12 @@ module Accounts
       )
       return render json: { error: "Appointment not found" }, status: :not_found unless appointment
 
+      validate_appointment_role!(appointment.role_key)
       Appointments::Cancel.call(appointment: appointment)
-      head :ok
+      Flows::Evaluate.call(conversation: @conversation)
+      redirect_to account_conversation_path(current_account, @conversation), notice: "Appointment cancelled."
     rescue Reservi::Errors::OperationError => e
-      render json: { error: e.message }, status: :unprocessable_entity
+      redirect_to account_conversation_path(current_account, @conversation), alert: e.message
     end
 
     private
@@ -197,20 +209,74 @@ module Accounts
       @stage_blocks.any? { |b| b["type"] == type }
     end
 
+    def typed_field_value(scope:, key:, value:)
+      definition = current_account.field_definitions.active
+        .where(scope:)
+        .find_by("key = :key OR built_in_binding = :key", key: key)
+      unless definition
+        raise Reservi::Errors::OperationError, "That field is not configured."
+      end
+      unless Array(@conversation.current_stage&.blocks).any? { |block| block["type"] == "field" && block["key"] == definition.key }
+        raise Reservi::Errors::OperationError, "That field is not available in the current stage."
+      end
+      return nil if value.blank? && definition.field_type != "multi_choice"
+
+      case definition.field_type
+      when "number"
+        number = BigDecimal(value.to_s)
+        number.frac.zero? ? number.to_i : number.to_f
+      when "boolean"
+        ActiveModel::Type::Boolean.new.cast(value)
+      when "multi_choice"
+        Array(value).reject(&:blank?)
+      else
+        value
+      end
+    rescue ArgumentError
+      value
+    end
+
+    def validate_appointment_role!(role_key)
+      available = Array(@conversation.current_stage&.blocks).any? do |block|
+        block["type"] == "appointment" && block["role_key"] == role_key
+      end
+      return if available
+
+      raise Reservi::Errors::OperationError, "That appointment is not available in the current stage."
+    end
+
+    def parse_appointment_time!(raw_value)
+      raw = raw_value.to_s
+      raise Reservi::Errors::OperationError, "Choose an appointment time." if raw.blank?
+
+      local = Time.strptime(raw, "%Y-%m-%dT%H:%M")
+      zone = ActiveSupport::TimeZone[current_account.timezone]
+      periods = zone.tzinfo.periods_for_local(local)
+      if periods.size != 1
+        raise Reservi::Errors::OperationError, "Choose an unambiguous local time."
+      end
+
+      zone.local(local.year, local.month, local.day, local.hour, local.min)
+    rescue ArgumentError, TZInfo::PeriodNotFound, TZInfo::AmbiguousTime
+      raise Reservi::Errors::OperationError, "Choose a valid appointment time."
+    end
+
     def load_fields
       field_keys = @stage_blocks.select { |b| b["type"] == "field" }.map { |b| b["key"] }.compact
       return if field_keys.empty?
 
       @field_definitions = current_account.field_definitions.active
         .where(scope: %w[customer conversation], key: field_keys)
-        .index_by(&:key)
+        .ordered
 
       # Split by scope, merge current values
       @customer_fields = {}
       @conversation_fields = {}
-      @field_definitions.each do |key, fd|
+      @field_definitions.each do |fd|
+        key = fd.key
         if fd.scope == "customer"
-          @customer_fields[key] = { definition: fd, value: @conversation.customer.custom_values[key] }
+          value = fd.built_in_binding.present? ? @conversation.customer.public_send(fd.built_in_binding) : @conversation.customer.custom_values[key]
+          @customer_fields[key] = { definition: fd, value: }
         else
           @conversation_fields[key] = { definition: fd, value: @conversation.custom_values[key] }
         end
@@ -222,7 +288,9 @@ module Accounts
       return if catalog_blocks.empty?
 
       catalog_keys = catalog_blocks.map { |b| b["catalog_key"] }.uniq
-      @catalogs = current_account.catalogs.active.where(title: catalog_keys).includes(:items)
+      @catalogs = current_account.catalogs.active
+        .where("LOWER(title) IN (?)", catalog_keys.map(&:downcase))
+        .includes(:items)
       @item_selections = @conversation.item_selections.index_by(&:role_key)
 
       @catalog_roles = {}

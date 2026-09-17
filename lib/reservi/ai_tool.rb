@@ -106,6 +106,7 @@ module Reservi
           actor_membership:  nil,
           attributes:       { key => value }
         )
+        Flows::Evaluate.call(conversation: @conversation)
       else
         return { error: "Invalid scope: #{scope}. Must be 'customer' or 'conversation'." }
       end
@@ -129,6 +130,7 @@ module Reservi
         role_key:         role,
         actor_membership: nil
       )
+      Flows::Evaluate.call(conversation: @conversation)
       { status: "selected", role: role, item_id: item.id, item_title: item.title }
     rescue => e
       { error: e.message, status: "failed" }
@@ -161,6 +163,7 @@ module Reservi
         scheduled_agent:  @agent,
         purpose:          @arguments["purpose"]
       )
+      Flows::Evaluate.call(conversation: @conversation)
       { status: "created", role: role, appointment_id: appointment.id }
     rescue => e
       { error: e.message, status: "failed" }
@@ -174,6 +177,7 @@ module Reservi
       return { error: "No pending appointment for role: #{role}" } unless appointment
 
       Appointments::Confirm.call(appointment: appointment)
+      Flows::Evaluate.call(conversation: @conversation)
       { status: "confirmed", role: role }
     rescue => e
       { error: e.message, status: "failed" }
@@ -188,6 +192,7 @@ module Reservi
 
       reason = @arguments["reason"]
       Appointments::Cancel.call(appointment: appointment, reason: reason)
+      Flows::Evaluate.call(conversation: @conversation)
       { status: "cancelled", role: role }
     rescue => e
       { error: e.message, status: "failed" }

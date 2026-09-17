@@ -18,6 +18,10 @@ Do not treat a specification decision as a verified implementation.
 
 [Accounts and AI setup](accounts-and-ai-setup.md) covers many Accounts per login, invitations, one Human/AI assignment list, simple admin onboarding, Q&A/documents/scenarios, behavior configuration and automatic stage context. It extends T01/T06/T10/T11 without introducing a separate AI workflow.
 
+## Meta inbox administration
+
+[Meta inbox setup](meta-inbox-setup.md) documents the server credentials, OAuth callback, signed webhook endpoints, and provider-identity ownership rules for WhatsApp Embedded Signup and Instagram Business OAuth.
+
 ## Core documents
 
 ### `product-requirements.md`

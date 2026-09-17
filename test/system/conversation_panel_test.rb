@@ -8,8 +8,9 @@ class ConversationPanelTest < ApplicationSystemTestCase
     @flow.update!(current_version: @flow_version)
     @alice = users(:alice)
     @conversation = conversations(:alpha_active)
-    # Ensure the conversation has a stage with some blocks for testing
     @stage = @conversation.current_stage
+    @account.field_definitions.create!(scope: "conversation", key: "budget", label: "Budget", field_type: "number", position: 1)
+    @stage.update!(blocks: [ { "type" => "field", "key" => "budget" } ])
   end
 
   test "conversation page renders with panel toggle on mobile" do
@@ -20,11 +21,19 @@ class ConversationPanelTest < ApplicationSystemTestCase
     # Should see the conversation
     assert_selector "h1", text: @conversation.customer.name
 
-    # Panel toggle button visible on mobile
-    assert_button "Tools"
-
-    # Messages area visible
+    assert_button "Work"
     assert_selector "[data-controller='slide-panel']"
+
+    if javascript_driver?
+      click_button "Work"
+      assert_selector "#conversation-work-panel[role='dialog'][aria-hidden='false']"
+      assert_text(/assignment/i)
+      assert_equal false, page.evaluate_script("document.querySelector('#conversation-work-panel').inert")
+
+      find("[data-slide-panel-target='closeButton']").click
+      assert_selector "#conversation-work-panel[aria-hidden='true']", visible: :all
+      assert_equal true, page.evaluate_script("document.querySelector('#conversation-work-panel').inert")
+    end
   end
 
   test "conversation page renders with panel visible on desktop" do
@@ -34,8 +43,11 @@ class ConversationPanelTest < ApplicationSystemTestCase
 
     assert_selector "h1", text: @conversation.customer.name
 
-    # Turbo frame for panel is present (may show "Loading tools..." since it's lazy)
     assert_selector "turbo-frame#conversation_panel"
+    if javascript_driver?
+      assert_selector "#conversation-work-panel[role='complementary']"
+      assert_text(/assignment/i)
+    end
   end
 
   test "panel endpoint returns content" do
@@ -48,6 +60,7 @@ class ConversationPanelTest < ApplicationSystemTestCase
 
     # Should show available agents
     assert_text "Alice Admin"
+    assert_selector "turbo-frame#conversation_panel"
   end
 
   test "can send message and add note" do

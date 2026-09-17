@@ -22,6 +22,12 @@ Rails.application.routes.draw do
   scope "/a/:account_id", module: :accounts do
     get "/", to: "home#show", as: :account_home
     get "inbox", to: "inbox#index", as: :account_inbox
+    get "inboxes", to: "channels#index", as: :account_channels
+    get "inboxes/connect", to: "channels#new", as: :new_account_channel
+    get "inboxes/connect/:provider", to: "channels#setup", as: :setup_account_channel
+    get "inboxes/connect/:provider/authorize", to: "channels#authorize", as: :authorize_account_channel
+    post "inboxes/connect/whatsapp/complete", to: "channels#complete_whatsapp", as: :complete_whatsapp_account_channel
+    get "inboxes/:id", to: "channels#show", as: :account_channel
     get "conversations/new", to: "conversations#new", as: :new_account_conversation
     post "conversations", to: "conversations#create", as: :account_conversations
     get "conversations/:id", to: "conversations#show", as: :account_conversation
@@ -36,8 +42,8 @@ Rails.application.routes.draw do
     patch "conversations/:id/customer_field", to: "conversations#update_customer_field", as: :account_conversation_customer_field
     post "conversations/:id/reassign", to: "conversations#reassign", as: :account_conversation_reassign
     post "conversations/:id/appointments", to: "conversations#create_appointment", as: :account_conversation_appointments
-    post "conversations/:appointment_id/confirm_appointment", to: "conversations#confirm_appointment", as: :confirm_account_conversation_appointment
-    post "conversations/:appointment_id/cancel_appointment", to: "conversations#cancel_appointment", as: :cancel_account_conversation_appointment
+    post "conversations/:id/appointments/:appointment_id/confirm", to: "conversations#confirm_appointment", as: :confirm_account_conversation_appointment
+    post "conversations/:id/appointments/:appointment_id/cancel", to: "conversations#cancel_appointment", as: :cancel_account_conversation_appointment
     get "people", to: "people#index", as: :account_people
     get "invitations/new", to: "invitations#new", as: :new_account_invitation
     post "invitations", to: "invitations#create", as: :account_invitations
@@ -77,6 +83,10 @@ Rails.application.routes.draw do
     end
   end
 
+
+  # Provider OAuth callbacks validate signed state and re-check Account access.
+  get "oauth/channels/:provider/callback", to: "channel_oauth_callbacks#show", as: :channel_oauth_callback
+
   # Webhook endpoints — authenticated by inbound_token, not by session
   post "webhooks/dev/:token", to: "webhooks#dev_inbound", as: :dev_webhook_inbound
   post "webhooks/dev/:token/status", to: "webhooks#dev_status", as: :dev_webhook_status
@@ -86,6 +96,13 @@ Rails.application.routes.draw do
   post "webhooks/whatsapp/:token",  to: "webhooks#whatsapp_events",  as: :whatsapp_webhook_events
   get  "webhooks/instagram/:token", to: "webhooks#instagram_verify", as: :instagram_webhook_verify
   post "webhooks/instagram/:token", to: "webhooks#instagram_events", as: :instagram_webhook_events
+
+  # OAuth-connected Meta inboxes share app-level callbacks and are resolved
+  # from trusted provider identity inside each signed payload.
+  get  "webhooks/meta/whatsapp", to: "webhooks#meta_whatsapp_verify", as: :meta_whatsapp_webhook_verify
+  post "webhooks/meta/whatsapp", to: "webhooks#meta_whatsapp_events", as: :meta_whatsapp_webhook_events
+  get  "webhooks/meta/instagram", to: "webhooks#meta_instagram_verify", as: :meta_instagram_webhook_verify
+  post "webhooks/meta/instagram", to: "webhooks#meta_instagram_events", as: :meta_instagram_webhook_events
 
   get "up" => "rails/health#show", as: :rails_health_check
 

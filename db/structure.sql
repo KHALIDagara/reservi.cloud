@@ -48,9 +48,9 @@ CREATE TABLE public.account_invitations (
     accepted_at timestamp(6) without time zone,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    CONSTRAINT account_invitations_delivery_status_check CHECK (((delivery_status)::text = ANY ((ARRAY['pending'::character varying, 'delivered'::character varying, 'failed'::character varying, 'unknown'::character varying])::text[]))),
-    CONSTRAINT account_invitations_role_check CHECK (((role)::text = ANY ((ARRAY['admin'::character varying, 'manager'::character varying, 'operator'::character varying])::text[]))),
-    CONSTRAINT account_invitations_status_check CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'accepted'::character varying, 'revoked'::character varying])::text[])))
+    CONSTRAINT account_invitations_delivery_status_check CHECK (((delivery_status)::text = ANY (ARRAY[('pending'::character varying)::text, ('delivered'::character varying)::text, ('failed'::character varying)::text, ('unknown'::character varying)::text]))),
+    CONSTRAINT account_invitations_role_check CHECK (((role)::text = ANY (ARRAY[('admin'::character varying)::text, ('manager'::character varying)::text, ('operator'::character varying)::text]))),
+    CONSTRAINT account_invitations_status_check CHECK (((status)::text = ANY (ARRAY[('pending'::character varying)::text, ('accepted'::character varying)::text, ('revoked'::character varying)::text])))
 );
 
 
@@ -133,7 +133,7 @@ CREATE TABLE public.agent_configurations (
     published_at timestamp(6) without time zone,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    CONSTRAINT agent_configurations_status_check CHECK (((status)::text = ANY ((ARRAY['draft'::character varying, 'published'::character varying])::text[])))
+    CONSTRAINT agent_configurations_status_check CHECK (((status)::text = ANY (ARRAY[('draft'::character varying)::text, ('published'::character varying)::text])))
 );
 
 
@@ -206,9 +206,9 @@ CREATE TABLE public.agents (
     updated_at timestamp(6) without time zone NOT NULL,
     operational_status character varying DEFAULT 'draft'::character varying NOT NULL,
     agent_configuration_id bigint,
-    CONSTRAINT agents_kind_check CHECK (((kind)::text = ANY ((ARRAY['human'::character varying, 'ai'::character varying])::text[]))),
+    CONSTRAINT agents_kind_check CHECK (((kind)::text = ANY (ARRAY[('human'::character varying)::text, ('ai'::character varying)::text]))),
     CONSTRAINT agents_kind_membership_check CHECK (((((kind)::text = 'human'::text) AND (membership_id IS NOT NULL)) OR (((kind)::text = 'ai'::text) AND (membership_id IS NULL)))),
-    CONSTRAINT agents_operational_status_check CHECK (((operational_status)::text = ANY ((ARRAY['draft'::character varying, 'active'::character varying, 'paused'::character varying, 'archived'::character varying])::text[])))
+    CONSTRAINT agents_operational_status_check CHECK (((operational_status)::text = ANY (ARRAY[('draft'::character varying)::text, ('active'::character varying)::text, ('paused'::character varying)::text, ('archived'::character varying)::text])))
 );
 
 
@@ -253,7 +253,7 @@ CREATE TABLE public.ai_runs (
     failure_reason text,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    CONSTRAINT ai_runs_status_check CHECK (((status)::text = ANY ((ARRAY['admitted'::character varying, 'evaluating'::character varying, 'completed'::character varying, 'failed'::character varying, 'cancelled'::character varying])::text[])))
+    CONSTRAINT ai_runs_status_check CHECK (((status)::text = ANY (ARRAY[('admitted'::character varying)::text, ('evaluating'::character varying)::text, ('completed'::character varying)::text, ('failed'::character varying)::text, ('cancelled'::character varying)::text])))
 );
 
 
@@ -417,7 +417,9 @@ CREATE TABLE public.channels (
     rate_limit_per_minute integer DEFAULT 10,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    provider_config jsonb DEFAULT '{}'::jsonb NOT NULL
+    provider_config jsonb DEFAULT '{}'::jsonb NOT NULL,
+    credentials text,
+    provider_external_id character varying
 );
 
 
@@ -492,7 +494,8 @@ CREATE TABLE public.conversations (
     custom_values jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    revision integer DEFAULT 0 NOT NULL
+    revision integer DEFAULT 0 NOT NULL,
+    stage_entry_id character varying
 );
 
 
@@ -570,8 +573,8 @@ CREATE TABLE public.field_definitions (
     archived boolean DEFAULT false NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    CONSTRAINT field_definitions_scope_check CHECK (((scope)::text = ANY ((ARRAY['customer'::character varying, 'conversation'::character varying])::text[]))),
-    CONSTRAINT field_definitions_type_check CHECK (((field_type)::text = ANY ((ARRAY['text'::character varying, 'number'::character varying, 'boolean'::character varying, 'single_choice'::character varying, 'multi_choice'::character varying, 'date'::character varying])::text[])))
+    CONSTRAINT field_definitions_scope_check CHECK (((scope)::text = ANY (ARRAY[('customer'::character varying)::text, ('conversation'::character varying)::text]))),
+    CONSTRAINT field_definitions_type_check CHECK (((field_type)::text = ANY (ARRAY[('text'::character varying)::text, ('number'::character varying)::text, ('boolean'::character varying)::text, ('single_choice'::character varying)::text, ('multi_choice'::character varying)::text, ('date'::character varying)::text])))
 );
 
 
@@ -751,7 +754,7 @@ CREATE TABLE public.knowledge_revisions (
     published_at timestamp(6) without time zone,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    CONSTRAINT knowledge_revisions_status_check CHECK (((status)::text = ANY ((ARRAY['draft'::character varying, 'published'::character varying])::text[])))
+    CONSTRAINT knowledge_revisions_status_check CHECK (((status)::text = ANY (ARRAY[('draft'::character varying)::text, ('published'::character varying)::text])))
 );
 
 
@@ -788,7 +791,7 @@ CREATE TABLE public.knowledge_sources (
     archived boolean DEFAULT false NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    CONSTRAINT knowledge_sources_kind_check CHECK (((kind)::text = ANY ((ARRAY['qa'::character varying, 'document'::character varying, 'scenario'::character varying])::text[])))
+    CONSTRAINT knowledge_sources_kind_check CHECK (((kind)::text = ANY (ARRAY[('qa'::character varying)::text, ('document'::character varying)::text, ('scenario'::character varying)::text])))
 );
 
 
@@ -823,7 +826,7 @@ CREATE TABLE public.memberships (
     active boolean DEFAULT true NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    CONSTRAINT memberships_role_check CHECK (((role)::text = ANY ((ARRAY['admin'::character varying, 'manager'::character varying, 'operator'::character varying])::text[])))
+    CONSTRAINT memberships_role_check CHECK (((role)::text = ANY (ARRAY[('admin'::character varying)::text, ('manager'::character varying)::text, ('operator'::character varying)::text])))
 );
 
 
@@ -2597,6 +2600,13 @@ CREATE UNIQUE INDEX index_channels_on_inbound_token ON public.channels USING btr
 
 
 --
+-- Name: index_channels_on_unique_provider_identity; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_channels_on_unique_provider_identity ON public.channels USING btree (provider_type, provider_external_id) WHERE (provider_external_id IS NOT NULL);
+
+
+--
 -- Name: index_conversation_reads_on_agent_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2671,6 +2681,13 @@ CREATE INDEX index_conversations_on_customer_id ON public.conversations USING bt
 --
 
 CREATE INDEX index_conversations_on_flow_version_id_and_current_stage_id ON public.conversations USING btree (flow_version_id, current_stage_id);
+
+
+--
+-- Name: index_conversations_on_stage_entry_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_conversations_on_stage_entry_id ON public.conversations USING btree (stage_entry_id) WHERE (stage_entry_id IS NOT NULL);
 
 
 --
@@ -3811,6 +3828,9 @@ ALTER TABLE ONLY public.team_memberships
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260917091500'),
+('20260917091000'),
+('20260917090000'),
 ('20260916223910'),
 ('20260916000000'),
 ('20260915235000'),

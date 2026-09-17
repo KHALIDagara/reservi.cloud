@@ -1,0 +1,37 @@
+<% provider_name = @provider == "whatsapp" ? "WhatsApp" : "Instagram" %>
+<div class="mx-auto max-w-2xl">
+  <%= link_to "← Choose another provider", new_account_channel_path(current_account), class: "text-sm font-semibold text-slate-500 hover:text-slate-900" %>
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"
+       <% if @provider == "whatsapp" && @oauth_configured %>
+         data-controller="whatsapp-signup"
+         data-whatsapp-signup-app-id-value="<%= @public_config[:app_id] %>"
+         data-whatsapp-signup-configuration-id-value="<%= @public_config[:configuration_id] %>"
+         data-whatsapp-signup-api-version-value="<%= @public_config[:api_version] %>"
+         data-whatsapp-signup-endpoint-value="<%= complete_whatsapp_account_channel_path(current_account) %>"
+       <% end %>>
+    <span class="flex size-12 items-center justify-center rounded-2xl <%= @provider == 'whatsapp' ? 'bg-emerald-50 text-emerald-600' : 'bg-fuchsia-50 text-fuchsia-600' %>"><%= app_icon(:inbox, class_name: "size-6") %></span>
+    <p class="mt-5 text-sm font-semibold text-indigo-600"><%= provider_name %> inbox</p>
+    <h1 class="mt-1 text-2xl font-bold tracking-tight text-slate-950">Connect with <%= provider_name %></h1>
+    <p class="mt-3 text-sm leading-6 text-slate-500">You’ll continue to Meta to choose the business account you want to connect. Reservi never sees your Meta password.</p>
+
+    <% if @oauth_configured %>
+      <% if @provider == "instagram" %>
+        <%= link_to "Continue with Instagram", authorize_account_channel_path(current_account, provider: @provider), class: "mt-7 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-fuchsia-600 px-5 text-sm font-bold text-white shadow-sm hover:bg-fuchsia-700", data: { turbo: false } %>
+      <% else %>
+        <button type="button" data-whatsapp-signup-target="button" data-action="click->whatsapp-signup#start" class="mt-7 min-h-12 w-full rounded-xl bg-emerald-600 px-5 text-sm font-bold text-white shadow-sm hover:bg-emerald-700 disabled:cursor-wait">Continue with WhatsApp</button>
+        <p data-whatsapp-signup-target="status" class="mt-3 text-center text-xs font-medium text-slate-500" aria-live="polite"></p>
+      <% end %>
+    <% else %>
+      <div class="mt-7 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">This provider is not configured yet. Add the Meta application credentials to the server environment.</div>
+    <% end %>
+
+    <div class="mt-6 border-t border-slate-100 pt-5">
+      <p class="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">What happens next</p>
+      <ol class="mt-3 space-y-2 text-sm text-slate-600">
+        <li>1. Sign in securely with Meta.</li>
+        <li>2. Select the business account and inbox.</li>
+        <li>3. Return here with the inbox ready to receive messages.</li>
+      </ol>
+    </div>
+  </div>
+</div>

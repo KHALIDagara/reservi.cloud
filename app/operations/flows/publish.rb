@@ -252,7 +252,7 @@ module Flows
 
     def validate_ref!(ref, stage_key, context)
       kind = ref["kind"]
-      unless %w[field owner team].include?(kind)
+      unless %w[field owner team item_selection appointment].include?(kind)
         raise Reservi::Errors::OperationError,
           "Stage '#{stage_key}', #{context}: unsupported reference kind '#{kind}'"
       end
@@ -269,6 +269,20 @@ module Flows
         if key.blank?
           raise Reservi::Errors::OperationError,
             "Stage '#{stage_key}', #{context}: field reference must specify a key"
+        end
+      end
+
+      if %w[item_selection appointment].include?(kind)
+        key = ref["key"] || ref["role_key"]
+        if key.blank?
+          raise Reservi::Errors::OperationError,
+            "Stage '#{stage_key}', #{context}: #{kind} reference must specify a key"
+        end
+
+        allowed_attributes = kind == "item_selection" ? %w[count item_id] : %w[status starts_at ends_at]
+        if ref["attribute"].present? && !allowed_attributes.include?(ref["attribute"])
+          raise Reservi::Errors::OperationError,
+            "Stage '#{stage_key}', #{context}: unsupported #{kind} attribute '#{ref['attribute']}'"
         end
       end
     end

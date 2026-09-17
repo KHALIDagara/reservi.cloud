@@ -1,121 +1,131 @@
-<!-- Magic side panel — loaded lazily via Turbo Frame -->
 <% stage = @conversation.current_stage %>
 
-<div class="space-y-5">
-  <!-- Stage header -->
-  <div>
-    <h3 class="text-sm font-semibold text-stone-900"><%= stage&.label || "No stage" %></h3>
-    <p class="text-xs text-stone-500"><%= @conversation.owner&.name || "Unowned" %> · <%= stage&.key %></p>
-  </div>
+<div class="space-y-5 p-4 sm:p-5">
+  <section class="rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 p-4 text-white shadow-sm shadow-indigo-100">
+    <p class="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-indigo-100">Current stage</p>
+    <h3 class="mt-2 text-lg font-bold"><%= stage&.label || "No active stage" %></h3>
+    <p class="mt-1 text-xs text-indigo-100"><%= stage&.blocks&.size || 0 %> work item<%= "s" unless stage&.blocks&.size == 1 %> in this stage</p>
+  </section>
 
-  <!-- Assignment -->
-  <div>
-    <h4 class="mb-2 text-xs font-semibold uppercase tracking-wide text-stone-500">Assignment</h4>
+  <section class="rounded-2xl border border-slate-200 bg-white p-4">
+    <div class="mb-3 flex items-center justify-between">
+      <h4 class="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Assignment</h4>
+      <span class="size-2 rounded-full <%= @conversation.owner ? 'bg-emerald-400' : 'bg-amber-400' %>"></span>
+    </div>
     <%= form_with url: account_conversation_reassign_path(current_account, @conversation), method: :post, class: "flex gap-2" do |f| %>
-      <%= f.select :agent_id,
-            @account_agents.map { |a| [a.name, a.id] },
-            { selected: @conversation.owner_id },
-            class: "min-w-0 flex-1 rounded-md border border-stone-300 px-2 py-1.5 text-xs shadow-sm focus:border-stone-500 focus:outline-none" %>
-      <%= f.submit "Assign", class: "shrink-0 rounded-md bg-stone-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-stone-700" %>
+      <%= f.label :agent_id, "Assigned agent", class: "sr-only" %>
+      <%= f.select :agent_id, @account_agents.map { |a| [a.name, a.id] }, { selected: @conversation.owner_id }, class: "min-h-10 min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 outline-none focus:border-indigo-300" %>
+      <%= f.submit "Assign", class: "min-h-10 shrink-0 cursor-pointer rounded-xl bg-slate-900 px-3 text-xs font-bold text-white hover:bg-slate-700" %>
     <% end %>
-  </div>
+    <% if @conversation.owner.present? %>
+      <%= button_to "Release ownership", account_conversation_unclaim_path(current_account, @conversation), method: :post, class: "mt-2 min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 hover:bg-slate-50" %>
+    <% end %>
+  </section>
 
-  <!-- Fields -->
   <% if local_assigns[:customer_fields].present? || local_assigns[:conversation_fields].present? %>
-    <div>
-      <h4 class="mb-2 text-xs font-semibold uppercase tracking-wide text-stone-500">Fields</h4>
-      <div class="space-y-3">
+    <section class="rounded-2xl border border-slate-200 bg-white p-4">
+      <h4 class="mb-4 text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Details</h4>
+      <div class="space-y-4">
         <% (local_assigns[:customer_fields] || {}).each do |key, field| %>
           <% fd = field[:definition] %>
           <div>
-            <label class="block text-xs font-medium text-stone-600"><%= fd.label %> <span class="text-stone-400">· customer</span></label>
-            <%= form_with url: account_conversation_customer_field_path(current_account, @conversation), method: :patch, class: "mt-1 flex gap-1" do |f| %>
-              <%= f.hidden_field :key, value: key %>
-              <%= render_field_input(f, fd, field[:value]) %>
-              <%= f.submit "Save", class: "shrink-0 rounded-md border border-stone-300 px-2 py-1 text-xs text-stone-600 hover:bg-stone-100" %>
+            <%= form_with url: account_conversation_customer_field_path(current_account, @conversation), method: :patch, class: "mt-1.5 flex gap-2" do |f| %>
+              <% input_id = "customer_field_#{fd.id}" %>
+              <%= f.hidden_field :key, value: (fd.built_in_binding.presence || key) %>
+              <div class="min-w-0 flex-1">
+                <%= f.label :value, for: input_id, class: "block text-xs font-bold text-slate-600" do %><%= fd.label.presence || fd.key.titleize %> <span class="font-normal text-slate-400">· customer</span><% end %>
+                <div class="mt-1.5 flex"><%= render "field_input", f:, field_definition: fd, value: field[:value], input_id: %></div>
+              </div>
+              <%= f.submit "Save", class: "mt-6 min-h-10 shrink-0 cursor-pointer rounded-xl border border-slate-200 px-3 text-xs font-bold text-slate-600 hover:bg-slate-50" %>
             <% end %>
           </div>
         <% end %>
         <% (local_assigns[:conversation_fields] || {}).each do |key, field| %>
           <% fd = field[:definition] %>
           <div>
-            <label class="block text-xs font-medium text-stone-600"><%= fd.label %> <span class="text-stone-400">· conversation</span></label>
-            <%= form_with url: account_conversation_field_path(current_account, @conversation), method: :patch, class: "mt-1 flex gap-1" do |f| %>
+            <%= form_with url: account_conversation_field_path(current_account, @conversation), method: :patch, class: "mt-1.5 flex gap-2" do |f| %>
+              <% input_id = "conversation_field_#{fd.id}" %>
               <%= f.hidden_field :key, value: key %>
-              <%= render_field_input(f, fd, field[:value]) %>
-              <%= f.submit "Save", class: "shrink-0 rounded-md border border-stone-300 px-2 py-1 text-xs text-stone-600 hover:bg-stone-100" %>
+              <div class="min-w-0 flex-1">
+                <%= f.label :value, for: input_id, class: "block text-xs font-bold text-slate-600" do %><%= fd.label.presence || fd.key.titleize %> <span class="font-normal text-slate-400">· request</span><% end %>
+                <div class="mt-1.5 flex"><%= render "field_input", f:, field_definition: fd, value: field[:value], input_id: %></div>
+              </div>
+              <%= f.submit "Save", class: "mt-6 min-h-10 shrink-0 cursor-pointer rounded-xl border border-slate-200 px-3 text-xs font-bold text-slate-600 hover:bg-slate-50" %>
             <% end %>
           </div>
         <% end %>
       </div>
-    </div>
+    </section>
   <% end %>
 
-  <!-- Catalog selections -->
   <% if local_assigns[:catalog_roles].present? %>
-    <div>
-      <h4 class="mb-2 text-xs font-semibold uppercase tracking-wide text-stone-500">Items</h4>
-      <div class="space-y-3">
+    <section class="rounded-2xl border border-slate-200 bg-white p-4">
+      <h4 class="mb-4 text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Selected items</h4>
+      <div class="space-y-4">
         <% @catalog_roles.each do |role_key, catalog_key| %>
-          <% catalog = @catalogs.find { |c| c.title == catalog_key } %>
+          <% catalog = @catalogs.find { |c| c.title.casecmp?(catalog_key) } %>
           <% selection = @item_selections[role_key] %>
           <div>
-            <label class="block text-xs font-medium text-stone-600"><%= role_key.titleize %></label>
+            <label class="block text-xs font-bold text-slate-600"><%= role_key.titleize %></label>
             <% if selection %>
-              <p class="rounded bg-stone-50 px-2 py-1 text-xs"><%= selection.item_snapshot&.dig("title") || "Selected" %>
-                <%= button_to "×", account_item_selection_path(current_account, selection), method: :delete, class: "ml-1 text-red-500 hover:text-red-700", form_class: "inline" %>
-              </p>
+              <div class="mt-1.5 flex items-center justify-between rounded-xl bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-700">
+                <span class="truncate"><%= selection.snapshot&.dig("title") || selection.item.title %></span>
+                <%= button_to "×", item_selection_path(current_account, selection, conversation_id: @conversation.id), method: :delete, class: "ml-2 flex size-7 items-center justify-center rounded-lg hover:bg-indigo-100", form_class: "shrink-0", aria: { label: "Clear #{role_key.titleize} selection" } %>
+              </div>
             <% end %>
-            <% if catalog&.items&.any? %>
-              <div class="mt-1 flex flex-wrap gap-1">
+            <% if catalog&.items&.active&.any? %>
+              <div class="mt-2 flex flex-wrap gap-1.5">
                 <% catalog.items.active.each do |item| %>
-                  <%= button_to item.title,
-                        account_item_selections_path(current_account),
-                        method: :post,
-                        params: { item_selection: { role_key: role_key, item_id: item.id, conversation_id: @conversation.id } },
-                        class: "rounded-full border px-2 py-0.5 text-xs #{selection&.item_id == item.id ? 'border-stone-900 bg-stone-900 text-white' : 'border-stone-300 text-stone-600 hover:bg-stone-100'}" %>
+                  <%= button_to item.title, item_selections_path(current_account, conversation_id: @conversation.id), method: :post,
+                        params: { item_selection: { role_key:, item_id: item.id } },
+                        class: "min-h-9 rounded-full border px-3 text-xs font-semibold #{selection&.item_id == item.id ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300 hover:text-indigo-700'}" %>
                 <% end %>
               </div>
             <% end %>
           </div>
         <% end %>
       </div>
-    </div>
+    </section>
   <% end %>
 
-  <!-- Appointments -->
-  <% if local_assigns[:appointments].present? %>
-    <div>
-      <h4 class="mb-2 text-xs font-semibold uppercase tracking-wide text-stone-500">Appointments</h4>
-      <div class="space-y-2">
+  <% if (@stage_blocks || []).any? { |block| block["type"] == "appointment" && block["role_key"].present? } %>
+    <section class="rounded-2xl border border-slate-200 bg-white p-4">
+      <h4 class="mb-4 text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Appointments</h4>
+      <div class="space-y-4">
         <% (@stage_blocks || []).select { |b| b["type"] == "appointment" && b["role_key"].present? }.each do |block| %>
           <% role = block["role_key"] %>
           <% appt = @appointments[role] %>
           <div>
-            <label class="block text-xs font-medium text-stone-600"><%= role.titleize %></label>
-            <% if appt %>
-              <div class="mt-1 rounded bg-stone-50 px-2 py-1 text-xs">
-                <p><%= appt.starts_at&.strftime("%d %b %H:%M") %> · <%= appt.status %></p>
-                <div class="mt-1 flex gap-1">
+            <label class="block text-xs font-bold text-slate-600"><%= role.titleize %></label>
+            <% if appt && !appt.cancelled? %>
+              <div class="mt-1.5 rounded-xl bg-slate-50 p-3">
+                <div class="flex items-start justify-between gap-2">
+                  <p class="text-sm font-semibold text-slate-800"><%= appt.starts_at&.in_time_zone(appt.timezone)&.strftime("%a, %d %b · %H:%M") %></p>
+                  <span class="rounded-full px-2 py-0.5 text-[0.68rem] font-bold capitalize <%= appt.confirmed? ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' %>"><%= appt.status %></span>
+                </div>
+                <p class="mt-1 text-xs text-slate-400"><%= appt.timezone %></p>
+                <div class="mt-3 flex gap-2">
                   <% if appt.pending? %>
-                    <%= button_to "Confirm", confirm_account_conversation_appointment_path(current_account, @conversation, appt), method: :post, class: "rounded bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700 hover:bg-emerald-200" %>
+                    <%= button_to "Confirm", confirm_account_conversation_appointment_path(current_account, @conversation, appt), method: :post, class: "min-h-9 rounded-lg bg-emerald-600 px-3 text-xs font-bold text-white hover:bg-emerald-700" %>
                   <% end %>
                   <% if appt.pending? || appt.confirmed? %>
-                    <%= button_to "Cancel", cancel_account_conversation_appointment_path(current_account, @conversation, appt), method: :post, class: "rounded bg-red-50 px-2 py-0.5 text-xs text-red-600 hover:bg-red-100" %>
+                    <%= button_to "Cancel", cancel_account_conversation_appointment_path(current_account, @conversation, appt), method: :post, class: "min-h-9 rounded-lg border border-rose-200 bg-white px-3 text-xs font-bold text-rose-600 hover:bg-rose-50" %>
                   <% end %>
                 </div>
               </div>
             <% else %>
-              <p class="rounded bg-stone-50 px-2 py-1 text-xs text-stone-400">No appointment</p>
-              <%= form_with url: account_conversation_appointments_path(current_account, @conversation), method: :post, class: "mt-1 flex gap-1" do |f| %>
+              <% if appt&.cancelled? %><p class="mt-1 text-xs text-slate-400">Previous appointment cancelled</p><% end %>
+              <%= form_with url: account_conversation_appointments_path(current_account, @conversation), method: :post, class: "mt-1.5 space-y-2" do |f| %>
                 <%= f.hidden_field :role_key, value: role %>
-                <%= f.datetime_local_field :starts_at, class: "min-w-0 flex-1 rounded-md border border-stone-300 px-2 py-1 text-xs" %>
-                <%= f.submit "Add", class: "shrink-0 rounded-md bg-stone-900 px-3 py-1 text-xs font-medium text-white hover:bg-stone-700" %>
+                <%= f.label :starts_at, "Date and time", class: "sr-only" %>
+                <%= f.datetime_local_field :starts_at, required: true, class: "min-h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs text-slate-700 outline-none focus:border-indigo-300" %>
+                <%= f.submit "Add appointment", class: "min-h-10 w-full cursor-pointer rounded-xl bg-slate-900 px-3 text-xs font-bold text-white hover:bg-slate-700" %>
+                <p class="text-[0.68rem] text-slate-400"><%= current_account.timezone %> · 1 hour</p>
               <% end %>
             <% end %>
           </div>
         <% end %>
       </div>
-    </div>
+    </section>
   <% end %>
 </div>

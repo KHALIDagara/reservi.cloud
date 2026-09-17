@@ -1,0 +1,7 @@
+<%= turbo_frame_tag "conversation_panel" do %>
+  <%= render "panel",
+        customer_fields: @customer_fields,
+        conversation_fields: @conversation_fields,
+        catalog_roles: @catalog_roles,
+        appointments: @appointments %>
+<% end %>

@@ -100,21 +100,7 @@ class WebhooksController < ApplicationController
   def whatsapp_events
     body = request.body.read
     parsed = JSON.parse(body) rescue {}
-
-    receipt = WebhookReceipt.process!(
-      channel: @channel,
-      provider_event_id: extract_whatsapp_event_id(parsed),
-      event_type: extract_whatsapp_event_type(parsed),
-      payload: parsed
-    )
-    head(:ok) and return unless receipt.previously_new_record?
-
-    receipt.update!(processed_at: Time.current)
-
-    normalized = Reservi::Channels::WhatsappCloudAdapter.normalize_payload(parsed)
-    process_normalized_message(@channel, normalized) if normalized
-
-    head :ok
+    process_whatsapp_payload(parsed)
   end
 
   # GET /webhooks/instagram/:token — Meta challenge-response verification
@@ -126,24 +112,115 @@ class WebhooksController < ApplicationController
   def instagram_events
     body = request.body.read
     parsed = JSON.parse(body) rescue {}
+    process_instagram_payload(parsed)
+  end
 
-    receipt = WebhookReceipt.process!(
-      channel: @channel,
-      provider_event_id: extract_instagram_event_id(parsed),
-      event_type: extract_instagram_event_type(parsed),
-      payload: Array.wrap(parsed)
-    )
-    head(:ok) and return unless receipt.previously_new_record?
+  def meta_whatsapp_verify
+    verify_global_meta_webhook("whatsapp")
+  end
 
-    receipt.update!(processed_at: Time.current)
+  def meta_instagram_verify
+    verify_global_meta_webhook("instagram")
+  end
 
-    normalized = Reservi::Channels::InstagramAdapter.normalize_payload(Array.wrap(parsed))
-    process_normalized_message(@channel, normalized) if normalized
+  def meta_whatsapp_events
+    body = request.body.read
+    return head :unauthorized unless valid_meta_signature?(body, "whatsapp")
 
-    head :ok
+    parsed = JSON.parse(body)
+    phone_number_id = parsed.dig("entry", 0, "changes", 0, "value", "metadata", "phone_number_id")
+    @channel = oauth_channel_for("whatsapp", phone_number_id)
+    return head :not_found unless @channel
+
+    process_whatsapp_payload(parsed)
+  rescue JSON::ParserError
+    head :unprocessable_content
+  end
+
+  def meta_instagram_events
+    body = request.body.read
+    return head :unauthorized unless valid_meta_signature?(body, "instagram")
+
+    parsed = JSON.parse(body)
+    instagram_id = Array.wrap(parsed).first&.dig("id") || Array.wrap(parsed).first&.dig("entry", 0, "id")
+    @channel = oauth_channel_for("instagram", instagram_id)
+    return head :not_found unless @channel
+
+    process_instagram_payload(parsed)
+  rescue JSON::ParserError
+    head :unprocessable_content
   end
 
   private
+
+  def process_whatsapp_payload(parsed)
+    event_id = extract_whatsapp_event_id(parsed)
+    receipt = WebhookReceipt.process!(
+      channel: @channel,
+      provider_event_id: event_id,
+      event_type: extract_whatsapp_event_type(parsed),
+      payload: parsed
+    )
+    if receipt.previously_new_record? || receipt.processed_at.nil?
+      process_domain_work(receipt) do
+        normalized = Reservi::Channels::WhatsappCloudAdapter.normalize_payload(parsed)
+        process_normalized_message(@channel, normalized) if normalized
+      end
+    end
+    head :ok
+  end
+
+  def process_instagram_payload(parsed)
+    entries = instagram_entries(parsed)
+    event_id = extract_instagram_event_id(entries)
+    receipt = WebhookReceipt.process!(
+      channel: @channel,
+      provider_event_id: event_id,
+      event_type: extract_instagram_event_type(entries),
+      payload: Array.wrap(parsed)
+    )
+    if receipt.previously_new_record? || receipt.processed_at.nil?
+      process_domain_work(receipt) do
+        normalized = Reservi::Channels::InstagramAdapter.normalize_payload(entries)
+        process_normalized_message(@channel, normalized) if normalized
+      end
+    end
+    head :ok
+  end
+
+  def verify_global_meta_webhook(provider)
+    expected = ENV["#{provider.upcase}_WEBHOOK_VERIFY_TOKEN"] || ENV["META_WEBHOOK_VERIFY_TOKEN"]
+    supplied = params["hub.verify_token"]
+    if params["hub.mode"] == "subscribe" && expected.present? && supplied.present? &&
+        ActiveSupport::SecurityUtils.secure_compare(supplied, expected) && params["hub.challenge"].present?
+      render plain: params["hub.challenge"], status: :ok
+    else
+      render plain: "Verification failed", status: :forbidden
+    end
+  end
+
+  def valid_meta_signature?(body, provider)
+    secret = ENV[provider == "whatsapp" ? "WHATSAPP_APP_SECRET" : "INSTAGRAM_APP_SECRET"]
+    signature = request.headers["X-Hub-Signature-256"].to_s
+    return false if secret.blank? || signature.blank?
+
+    expected = "sha256=#{OpenSSL::HMAC.hexdigest('SHA256', secret, body)}"
+    signature.bytesize == expected.bytesize && ActiveSupport::SecurityUtils.secure_compare(signature, expected)
+  end
+
+  def oauth_channel_for(provider, external_id)
+    return if external_id.blank?
+
+    Channel.active.find_by(provider_type: provider, provider_external_id: external_id.to_s)
+  end
+
+  def process_domain_work(receipt, &block)
+    block.call
+    receipt.update!(processed_at: Time.current)
+  rescue => e
+    Rails.logger.error "Webhook domain processing failed for receipt #{receipt.id}: #{e.class}: #{e.message}"
+    # Leave processed_at nil so the next delivery can retry
+  end
 
   def authenticate_channel
     token = params[:token]
@@ -181,6 +258,10 @@ class WebhooksController < ApplicationController
     msgs = messaging&.dig("messaging") || []
     entry = msgs.first || {}
     entry.dig("message", "mid") || entry.dig("read", "mid") || "unknown_#{Time.current.to_i}"
+  end
+
+  def instagram_entries(payload)
+    payload.is_a?(Hash) && payload["entry"].present? ? payload["entry"] : Array.wrap(payload)
   end
 
   def extract_instagram_event_type(payload)

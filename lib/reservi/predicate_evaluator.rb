@@ -90,8 +90,41 @@ module Reservi
         @context[:owner_id]
       when "team"
         @context[:team_id]
+      when "item_selection"
+        resolve_item_selection(ref)
+      when "appointment"
+        resolve_appointment(ref)
       else
         nil
+      end
+    end
+
+    def resolve_item_selection(ref)
+      conversation = @context[:conversation]
+      role_key = ref["key"] || ref["role_key"]
+      return nil unless conversation && role_key.present?
+
+      selections = conversation.item_selections.for_role(role_key)
+      case ref["attribute"]
+      when "count" then selections.count
+      when "item_id" then selections.order(:id).pick(:item_id)
+      else selections.exists? ? true : nil
+      end
+    end
+
+    def resolve_appointment(ref)
+      conversation = @context[:conversation]
+      role_key = ref["key"] || ref["role_key"]
+      return nil unless conversation && role_key.present?
+
+      appointment = conversation.appointments.current.for_role(role_key).first
+      return nil unless appointment
+
+      case ref["attribute"]
+      when "status" then appointment.status
+      when "starts_at" then appointment.starts_at
+      when "ends_at" then appointment.ends_at
+      else true
       end
     end
 
@@ -185,6 +218,8 @@ module Reservi
       when "field" then "Field #{ref['scope']}.#{ref['key']}"
       when "owner" then "Owner"
       when "team" then "Team"
+      when "item_selection" then "Item selection #{ref['key'] || ref['role_key']}#{".#{ref['attribute']}" if ref['attribute'].present?}"
+      when "appointment" then "Appointment #{ref['key'] || ref['role_key']}#{".#{ref['attribute']}" if ref['attribute'].present?}"
       else "Reference #{ref['kind']}"
       end
     end

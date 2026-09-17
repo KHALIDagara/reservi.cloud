@@ -8,6 +8,9 @@ class Accounts::ItemSelectionsControllerTest < ActionDispatch::IntegrationTest
     @catalog = @account.catalogs.create!(title: "Services")
     @item = @catalog.items.create!(title: "Garden Maintenance", price: 150, currency: "USD", unit: "visit",
       account: @account)
+    @conversation.current_stage.update!(blocks: [
+      { "type" => "catalog", "role_key" => "requested_service", "catalog_key" => "Services" }
+    ])
   end
 
   test "create adds selection" do
@@ -68,5 +71,35 @@ class Accounts::ItemSelectionsControllerTest < ActionDispatch::IntegrationTest
     end
 
     assert_redirected_to account_conversation_url(@account, @conversation)
+  end
+
+  test "rejects an unconfigured selector role" do
+    sign_in_as(@admin)
+
+    assert_no_difference -> { @conversation.item_selections.count } do
+      post item_selections_url(account_id: @account.id), params: {
+        item_selection: { item_id: @item.id, role_key: "forged_role" },
+        conversation_id: @conversation.id
+      }
+    end
+
+    assert_redirected_to account_conversation_url(@account, @conversation)
+    assert_equal "That item selector is not available in the current stage.", flash[:alert]
+  end
+
+  test "rejects an item from a different catalog than the configured selector" do
+    sign_in_as(@admin)
+    other_catalog = @account.catalogs.create!(title: "Cars")
+    other_item = other_catalog.items.create!(title: "Roadster", account: @account)
+
+    assert_no_difference -> { @conversation.item_selections.count } do
+      post item_selections_url(account_id: @account.id), params: {
+        item_selection: { item_id: other_item.id, role_key: "requested_service" },
+        conversation_id: @conversation.id
+      }
+    end
+
+    assert_redirected_to account_conversation_url(@account, @conversation)
+    assert_equal "That item does not belong to the configured catalog.", flash[:alert]
   end
 end

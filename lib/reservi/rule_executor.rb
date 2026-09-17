@@ -82,9 +82,10 @@ module Reservi
       }
     end
 
-    def generate_execution_key(stage, rule_key)
-      "#{stage.id}_#{rule_key}_#{@conversation.id}_#{@conversation.updated_at.to_i}"
-    end
+def generate_execution_key(stage, rule_key)
+  entry = @conversation.stage_entry_id || "#{@conversation.id}_#{stage.id}_#{@conversation.created_at.to_i}"
+  "#{stage.id}_#{rule_key}_#{entry}"
+end
 
     def build_explanation(rule, result, predicate, context)
       if predicate.blank?

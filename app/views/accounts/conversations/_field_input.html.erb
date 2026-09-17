@@ -1,18 +1,18 @@
 <%# Render a form input for a field definition %>
-<% fd = local_assigns[:field_definition]; val = local_assigns[:value] %>
+<% fd = local_assigns[:field_definition]; val = local_assigns[:value]; input_id = local_assigns[:input_id] %>
 <% case fd.field_type %>
 <% when "text" %>
-  <%= f.text_field :value, value: val, class: "min-w-0 flex-1 rounded-md border border-stone-300 px-2 py-1 text-xs shadow-sm focus:border-stone-500 focus:outline-none" %>
+  <%= f.text_field :value, id: input_id, value: val, class: "min-h-10 min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs outline-none focus:border-indigo-300" %>
 <% when "number" %>
-  <%= f.number_field :value, value: val, class: "min-w-0 flex-1 rounded-md border border-stone-300 px-2 py-1 text-xs shadow-sm focus:border-stone-500 focus:outline-none" %>
+  <%= f.number_field :value, id: input_id, value: val, class: "min-h-10 min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs outline-none focus:border-indigo-300" %>
 <% when "boolean" %>
-  <%= f.select :value, [["Yes", "true"], ["No", "false"]], { selected: val.to_s }, class: "min-w-0 flex-1 rounded-md border border-stone-300 px-2 py-1 text-xs shadow-sm focus:border-stone-500 focus:outline-none" %>
+  <%= f.select :value, [["Yes", "true"], ["No", "false"]], { selected: val.to_s }, id: input_id, class: "min-h-10 min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs outline-none focus:border-indigo-300" %>
 <% when "single_choice" %>
-  <%= f.select :value, (fd.choices || []).map { |c| [c, c] }, { selected: val }, class: "min-w-0 flex-1 rounded-md border border-stone-300 px-2 py-1 text-xs shadow-sm focus:border-stone-500 focus:outline-none" %>
+  <%= f.select :value, (fd.options || []).map { |option| [option["label"] || option["key"], option["key"]] }, { selected: val }, id: input_id, class: "min-h-10 min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs outline-none focus:border-indigo-300" %>
 <% when "multi_choice" %>
-  <%= f.select :value, (fd.choices || []).map { |c| [c, c] }, { selected: val }, class: "min-w-0 flex-1 rounded-md border border-stone-300 px-2 py-1 text-xs shadow-sm focus:border-stone-500 focus:outline-none" %>
+  <%= f.select :value, (fd.options || []).map { |option| [option["label"] || option["key"], option["key"]] }, { selected: val }, id: input_id, multiple: true, class: "min-h-20 min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs outline-none focus:border-indigo-300" %>
 <% when "date" %>
-  <%= f.date_field :value, value: val, class: "min-w-0 flex-1 rounded-md border border-stone-300 px-2 py-1 text-xs shadow-sm focus:border-stone-500 focus:outline-none" %>
+  <%= f.date_field :value, id: input_id, value: val, class: "min-h-10 min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs outline-none focus:border-indigo-300" %>
 <% else %>
-  <%= f.text_field :value, value: val, class: "min-w-0 flex-1 rounded-md border border-stone-300 px-2 py-1 text-xs shadow-sm focus:border-stone-500 focus:outline-none" %>
+  <%= f.text_field :value, id: input_id, value: val, class: "min-h-10 min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs outline-none focus:border-indigo-300" %>
 <% end %>

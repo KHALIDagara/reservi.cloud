@@ -33,6 +33,8 @@ module Flows
           return already_advanced_result
         end
 
+        next_entry_id = "#{@conversation.id}_#{next_stage&.id || 'terminal'}_#{Time.current.to_i}"
+
         transition = @conversation.stage_transitions.create!(
           from_stage: current_stage,
           to_stage: next_stage,
@@ -46,12 +48,14 @@ module Flows
         if next_stage
           @conversation.update!(
             current_stage: next_stage,
+            stage_entry_id: next_entry_id,
             last_activity_at: Time.current
           )
         else
           # Terminal stage — complete the conversation
           @conversation.update!(
             process_status: "completed",
+            stage_entry_id: nil,
             owner: nil,
             attention: false,
             last_activity_at: Time.current
