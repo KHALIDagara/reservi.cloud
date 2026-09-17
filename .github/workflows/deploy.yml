@@ -99,7 +99,6 @@ jobs:
               -e RAILS_ENV=production \
               -e RESERVI_DATABASE_URL=postgresql://opc:reservi_prod_2026@localhost:5432/reservi_cloud_production \
               -e RAILS_SERVE_STATIC_FILES=true \
-              -e SOLID_QUEUE_IN_PUMA=1 \
               -e RESEND_API_KEY="${RESEND_API_KEY}" \
               ${APP_NAME}:latest ./bin/rails server -p 3000 && \
             docker exec -e RESERVI_DATABASE_URL=postgresql://opc:reservi_prod_2026@localhost:5432/reservi_cloud_production ${APP_NAME} bin/rails db:migrate 2>/dev/null || true"
@@ -111,4 +110,6 @@ jobs:
 
       - name: Reload Caddy
         run: |
+          ssh deploy-vps "sudo systemctl status caddy --no-pager 2>/dev/null || echo 'Caddy service not found'" && \
+          ssh deploy-vps "sudo caddy adapt --config /etc/caddy/Caddyfile 2>/dev/null | grep -A 5 'reservi.cloud' || echo 'reservi.cloud not found in Caddy config'" && \
           ssh deploy-vps "sudo systemctl reload caddy 2>/dev/null || echo 'Caddy not found — skip reload'"
