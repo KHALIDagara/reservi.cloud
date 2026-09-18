@@ -121,8 +121,8 @@ Rails.application.routes.draw do
 
   # OAuth-connected Meta inboxes share app-level callbacks and are resolved
   # from trusted provider identity inside each signed payload.
-  get  "webhooks/meta/whatsapp/:phone_number", to: "webhooks#meta_whatsapp_verify", as: :meta_whatsapp_webhook_verify
-  post "webhooks/meta/whatsapp/:phone_number", to: "webhooks#meta_whatsapp_events", as: :meta_whatsapp_webhook_events
+  get  "webhooks/meta/whatsapp", to: "webhooks#meta_whatsapp_verify", as: :meta_whatsapp_webhook_verify
+  post "webhooks/meta/whatsapp", to: "webhooks#meta_whatsapp_events", as: :meta_whatsapp_webhook_events
   get  "webhooks/meta/instagram", to: "webhooks#meta_instagram_verify", as: :meta_instagram_webhook_verify
   post "webhooks/meta/instagram", to: "webhooks#meta_instagram_events", as: :meta_instagram_webhook_events
 
