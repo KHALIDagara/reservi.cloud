@@ -146,8 +146,8 @@ class CrossTenantRegressionTest < ActionDispatch::IntegrationTest
     beta_conv  = conversations(:beta_active)
     alpha_conv = conversations(:alpha_active)
 
-    assert_select "a[href='#{account_conversation_path(@beta, beta_conv)}']"
-    assert_select "a[href='#{account_conversation_path(@beta, alpha_conv)}']", count: 0
+    assert_select "a[href='#{account_inbox_path(@beta, id: beta_conv.id)}']"
+    assert_select "a[href='#{account_inbox_path(@beta, id: alpha_conv.id)}']", count: 0
   end
 
   # ─────────────────────────────────────────────────────
@@ -177,6 +177,6 @@ class CrossTenantRegressionTest < ActionDispatch::IntegrationTest
 
     # A beta conversation should not appear in alpha inbox
     beta_conv = conversations(:beta_active)
-    assert_select "a[href='#{account_conversation_path(@alpha, beta_conv)}']", count: 0
+    assert_select "a[href='#{account_inbox_path(@alpha, id: beta_conv.id)}']", count: 0
   end
 end

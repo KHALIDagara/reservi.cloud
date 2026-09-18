@@ -72,8 +72,8 @@ class TeamIsolationTest < ActionDispatch::IntegrationTest
     assert_response :success
 
     # Both should appear since Bob is in both teams
-    assert_select "a[href='#{account_conversation_path(@account, general_conv)}']"
-    assert_select "a[href='#{account_conversation_path(@account, vip_conv)}']"
+    assert_select "a[href='#{account_inbox_path(@account, id: general_conv.id, filter: 'team')}']"
+    assert_select "a[href='#{account_inbox_path(@account, id: vip_conv.id, filter: 'team')}']"
   end
 
   test "team filter does NOT show conversations of teams agent does not belong to" do
@@ -103,8 +103,8 @@ class TeamIsolationTest < ActionDispatch::IntegrationTest
     get account_inbox_url(@account, filter: "team")
     assert_response :success
 
-    assert_select "a[href='#{account_conversation_path(@account, general_conv)}']"
-    assert_select "a[href='#{account_conversation_path(@account, vip_conv)}']", count: 0
+    assert_select "a[href='#{account_inbox_path(@account, id: general_conv.id, filter: 'team')}']"
+    assert_select "a[href='#{account_inbox_path(@account, id: vip_conv.id, filter: 'team')}']", count: 0
   end
 
   test "mine filter shows only conversations owned by the current agent" do
@@ -131,8 +131,8 @@ class TeamIsolationTest < ActionDispatch::IntegrationTest
     get account_inbox_url(@account, filter: "mine")
     assert_response :success
 
-    assert_select "a[href='#{account_conversation_path(@account, bob_conv)}']"
-    assert_select "a[href='#{account_conversation_path(@account, alice_conv)}']", count: 0
+    assert_select "a[href='#{account_inbox_path(@account, id: bob_conv.id, filter: 'mine')}']"
+    assert_select "a[href='#{account_inbox_path(@account, id: alice_conv.id, filter: 'mine')}']", count: 0
   end
 
   test "unowned filter shows only unassigned conversations" do
@@ -159,8 +159,8 @@ class TeamIsolationTest < ActionDispatch::IntegrationTest
     get account_inbox_url(@account, filter: "unowned")
     assert_response :success
 
-    assert_select "a[href='#{account_conversation_path(@account, unowned_conv)}']"
-    assert_select "a[href='#{account_conversation_path(@account, owned_conv)}']", count: 0
+    assert_select "a[href='#{account_inbox_path(@account, id: unowned_conv.id, filter: 'unowned')}']"
+    assert_select "a[href='#{account_inbox_path(@account, id: owned_conv.id, filter: 'unowned')}']", count: 0
   end
 
   test "all filter shows all active conversations" do
@@ -188,7 +188,7 @@ class TeamIsolationTest < ActionDispatch::IntegrationTest
     assert_response :success
 
     # Both should be visible in the "all" filter
-    assert_select "a[href='#{account_conversation_path(@account, general_conv)}']"
-    assert_select "a[href='#{account_conversation_path(@account, vip_conv)}']"
+    assert_select "a[href='#{account_inbox_path(@account, id: general_conv.id, filter: 'all')}']"
+    assert_select "a[href='#{account_inbox_path(@account, id: vip_conv.id, filter: 'all')}']"
   end
 end
