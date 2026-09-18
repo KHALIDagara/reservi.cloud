@@ -115,11 +115,32 @@ module Reservi
         phone = phones.find { |candidate| candidate["id"].to_s == phone_number_id.to_s }
         raise ProviderError, "The selected WhatsApp number could not be verified." unless phone
 
+        verify_token = SecureRandom.urlsafe_base64(32)
+
+        # Step 1: Subscribe the app to the WABA
         request_json(
           :post,
           "#{GRAPH_BASE}/#{escape_path(waba_id)}/subscribed_apps",
           form: { access_token: }
         )
+
+        # Step 2: Override callback URL with our verify token so Meta can
+        # validate the webhook immediately — no manual console setup needed.
+        callback_url = "#{webhook_base_url}/webhooks/meta/whatsapp"
+        begin
+          request_json(
+            :post,
+            "#{GRAPH_BASE}/#{escape_path(waba_id)}/subscribed_apps",
+            form: {
+              override_callback_uri: callback_url,
+              verify_token: verify_token,
+              subscribed_fields: "messages",
+              access_token: access_token
+            }
+          )
+        rescue ProviderError => e
+          Rails.logger.warn("[WHATSAPP] Webhook callback override non-fatal: #{e.message}")
+        end
 
         {
           provider: "whatsapp",
@@ -131,7 +152,7 @@ module Reservi
             "phone_number_id" => phone_number_id.to_s,
             "display_phone_number" => phone["display_phone_number"],
             "verified_name" => phone["verified_name"],
-            "webhook_verify_token" => SecureRandom.urlsafe_base64(32)
+            "webhook_verify_token" => verify_token
           }.compact,
           credentials: {
             "access_token" => access_token
@@ -168,6 +189,10 @@ module Reservi
       def whatsapp_app_secret = ENV.fetch("WHATSAPP_APP_SECRET")
       def instagram_app_id = ENV.fetch("INSTAGRAM_APP_ID")
       def instagram_app_secret = ENV.fetch("INSTAGRAM_APP_SECRET")
+
+      def webhook_base_url
+        ENV.fetch("WEBHOOK_BASE_URL", "https://reservi.cloud")
+      end
     end
   end
 end
