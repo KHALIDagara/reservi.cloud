@@ -54,7 +54,24 @@ Rails.application.routes.draw do
 
     # Inboxes — the places where conversations arrive (WhatsApp, Instagram, etc.)
     # Backed by Channel records; ChannelsController handles OAuth/connect flows.
-    resources :inboxes, only: [ :index, :show, :destroy ], controller: "inboxes"
+    resources :inboxes, only: [ :index, :show, :destroy ], controller: "inboxes" do
+      scope module: :inboxes do
+        resources :conversations, only: [ :index, :show ] do
+          scope module: :conversations do
+            resources :messages, only: [ :index, :create ]
+            resources :notes,    only: [ :index, :create ]
+            resource  :panel,    only: [ :show ], controller: "panel" do
+              patch :field,          to: "panel#update_field"
+              patch :customer_field, to: "panel#update_customer_field"
+            end
+          end
+        end
+      end
+    end
+
+    # Standalone conversation actions (create, claim, cancel, reassign, appointments)
+    # that are not inbox-scoped. These remain on the old ConversationsController
+    # until fully extracted.
     get "conversations/new", to: "conversations#new", as: :new_account_conversation
     post "conversations", to: "conversations#create", as: :account_conversations
     get "conversations/:id", to: "conversations#show", as: :account_conversation
@@ -64,7 +81,6 @@ Rails.application.routes.draw do
     post "conversations/:id/claim", to: "conversations#claim", as: :account_conversation_claim
     post "conversations/:id/unclaim", to: "conversations#unclaim", as: :account_conversation_unclaim
     post "conversations/:id/cancel", to: "conversations#cancel", as: :account_conversation_cancel
-    # Magic side panel operations
     patch "conversations/:id/field", to: "conversations#update_field", as: :account_conversation_field
     patch "conversations/:id/customer_field", to: "conversations#update_customer_field", as: :account_conversation_customer_field
     post "conversations/:id/reassign", to: "conversations#reassign", as: :account_conversation_reassign
