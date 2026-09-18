@@ -63,7 +63,7 @@ module Accounts
     end
 
     def destroy
-      @channel.deactivate!
+      @channel.destroy!
       redirect_to account_channels_path(current_account), notice: "Inbox deleted."
     end
 

@@ -20,8 +20,4 @@ class Channel < ApplicationRecord
   def credential(key)
     (credentials || {})[key.to_s] || provider_config[key.to_s]
   end
-
-  def deactivate!
-    update!(active: false)
-  end
 end
