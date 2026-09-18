@@ -23,6 +23,27 @@ Rails.application.routes.draw do
     get "/", to: "home#show", as: :account_home
     get "inbox", to: "inbox#index", as: :account_inbox
     get "calendar", to: "calendar#index", as: :account_calendar
+
+    # Collaborative appointment scheduling
+    resources :appointments, only: [] do
+      collection do
+        get  :agents,        to: "appointments#agents"
+        get  :availability,  to: "appointments#availability"
+        post :book,          to: "appointments#book"
+      end
+      member do
+        post :change_status
+        post :reassign
+        post :reschedule
+        post :takeover_conversation
+      end
+    end
+
+    # Personal calendar settings for the logged-in agent
+    resource :calendar_setting, only: [ :show, :edit, :update ], controller: "calendar_settings" do
+      resources :calendar_exceptions, only: [ :create, :update, :destroy ],
+        controller: "calendar_exceptions", as: :exceptions
+    end
     get "inboxes", to: "channels#index", as: :account_channels
     get "inboxes/connect", to: "channels#new", as: :new_account_channel
     get "inboxes/connect/:provider", to: "channels#setup", as: :setup_account_channel

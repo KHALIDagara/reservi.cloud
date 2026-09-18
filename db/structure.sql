@@ -277,6 +277,41 @@ ALTER SEQUENCE public.ai_runs_id_seq OWNED BY public.ai_runs.id;
 
 
 --
+-- Name: appointment_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.appointment_events (
+    id bigint NOT NULL,
+    appointment_id bigint NOT NULL,
+    actor_id bigint,
+    action character varying NOT NULL,
+    before_state jsonb DEFAULT '{}'::jsonb,
+    after_state jsonb DEFAULT '{}'::jsonb,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: appointment_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.appointment_events_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: appointment_events_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.appointment_events_id_seq OWNED BY public.appointment_events.id;
+
+
+--
 -- Name: appointments; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -297,7 +332,10 @@ CREATE TABLE public.appointments (
     completed_at timestamp(6) without time zone,
     superseded_by_id bigint,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    lock_version integer DEFAULT 0 NOT NULL,
+    created_by_id bigint,
+    operation_key character varying
 );
 
 
@@ -330,6 +368,73 @@ CREATE TABLE public.ar_internal_metadata (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
 );
+
+
+--
+-- Name: calendar_exceptions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.calendar_exceptions (
+    id bigint NOT NULL,
+    calendar_setting_id bigint NOT NULL,
+    date date NOT NULL,
+    intervals jsonb DEFAULT '[]'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: calendar_exceptions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.calendar_exceptions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: calendar_exceptions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.calendar_exceptions_id_seq OWNED BY public.calendar_exceptions.id;
+
+
+--
+-- Name: calendar_settings; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.calendar_settings (
+    id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    agent_id bigint NOT NULL,
+    timezone character varying NOT NULL,
+    weekly_hours jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: calendar_settings_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.calendar_settings_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: calendar_settings_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.calendar_settings_id_seq OWNED BY public.calendar_settings.id;
 
 
 --
@@ -1624,10 +1729,31 @@ ALTER TABLE ONLY public.ai_runs ALTER COLUMN id SET DEFAULT nextval('public.ai_r
 
 
 --
+-- Name: appointment_events id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.appointment_events ALTER COLUMN id SET DEFAULT nextval('public.appointment_events_id_seq'::regclass);
+
+
+--
 -- Name: appointments id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.appointments ALTER COLUMN id SET DEFAULT nextval('public.appointments_id_seq'::regclass);
+
+
+--
+-- Name: calendar_exceptions id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.calendar_exceptions ALTER COLUMN id SET DEFAULT nextval('public.calendar_exceptions_id_seq'::regclass);
+
+
+--
+-- Name: calendar_settings id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.calendar_settings ALTER COLUMN id SET DEFAULT nextval('public.calendar_settings_id_seq'::regclass);
 
 
 --
@@ -1924,6 +2050,14 @@ ALTER TABLE ONLY public.ai_runs
 
 
 --
+-- Name: appointment_events appointment_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.appointment_events
+    ADD CONSTRAINT appointment_events_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: appointments appointments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1937,6 +2071,22 @@ ALTER TABLE ONLY public.appointments
 
 ALTER TABLE ONLY public.ar_internal_metadata
     ADD CONSTRAINT ar_internal_metadata_pkey PRIMARY KEY (key);
+
+
+--
+-- Name: calendar_exceptions calendar_exceptions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.calendar_exceptions
+    ADD CONSTRAINT calendar_exceptions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: calendar_settings calendar_settings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.calendar_settings
+    ADD CONSTRAINT calendar_settings_pkey PRIMARY KEY (id);
 
 
 --
@@ -2072,7 +2222,7 @@ ALTER TABLE ONLY public.messages
 --
 
 ALTER TABLE ONLY public.appointments
-    ADD CONSTRAINT no_overlapping_confirmed_appointments EXCLUDE USING gist (account_id WITH =, scheduled_agent_id WITH =, tsrange(starts_at, ends_at, '[)'::text) WITH &&) WHERE (((scheduled_agent_id IS NOT NULL) AND ((status)::text = 'confirmed'::text)));
+    ADD CONSTRAINT no_overlapping_confirmed_appointments EXCLUDE USING gist (account_id WITH =, scheduled_agent_id WITH =, tsrange(starts_at, ends_at, '[)'::text) WITH &&) WHERE (((scheduled_agent_id IS NOT NULL) AND ((status)::text = 'confirmed'::text) AND ((superseded_by_id IS NULL) OR (superseded_by_id = 0))));
 
 
 --
@@ -2285,10 +2435,38 @@ CREATE INDEX idx_ai_runs_conversation_status ON public.ai_runs USING btree (conv
 
 
 --
+-- Name: idx_appointment_events_lookup; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_appointment_events_lookup ON public.appointment_events USING btree (appointment_id, created_at);
+
+
+--
 -- Name: idx_appointments_account_scheduled_agent; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_appointments_account_scheduled_agent ON public.appointments USING btree (account_id, scheduled_agent_id);
+
+
+--
+-- Name: idx_appointments_operation_key_uniq; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_appointments_operation_key_uniq ON public.appointments USING btree (conversation_id, role_key, operation_key) WHERE ((operation_key IS NOT NULL) AND (superseded_by_id IS NULL));
+
+
+--
+-- Name: idx_calendar_exceptions_setting_date_unique; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_calendar_exceptions_setting_date_unique ON public.calendar_exceptions USING btree (calendar_setting_id, date);
+
+
+--
+-- Name: idx_calendar_settings_account_agent_unique; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_calendar_settings_account_agent_unique ON public.calendar_settings USING btree (account_id, agent_id);
 
 
 --
@@ -2516,6 +2694,20 @@ CREATE INDEX index_ai_runs_on_conversation_id ON public.ai_runs USING btree (con
 
 
 --
+-- Name: index_appointment_events_on_actor_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_appointment_events_on_actor_id ON public.appointment_events USING btree (actor_id);
+
+
+--
+-- Name: index_appointment_events_on_appointment_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_appointment_events_on_appointment_id ON public.appointment_events USING btree (appointment_id);
+
+
+--
 -- Name: index_appointments_on_account_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2530,10 +2722,38 @@ CREATE INDEX index_appointments_on_conversation_id ON public.appointments USING 
 
 
 --
+-- Name: index_appointments_on_created_by_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_appointments_on_created_by_id ON public.appointments USING btree (created_by_id);
+
+
+--
 -- Name: index_appointments_on_scheduled_agent_id; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX index_appointments_on_scheduled_agent_id ON public.appointments USING btree (scheduled_agent_id);
+
+
+--
+-- Name: index_calendar_exceptions_on_calendar_setting_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_calendar_exceptions_on_calendar_setting_id ON public.calendar_exceptions USING btree (calendar_setting_id);
+
+
+--
+-- Name: index_calendar_settings_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_calendar_settings_on_account_id ON public.calendar_settings USING btree (account_id);
+
+
+--
+-- Name: index_calendar_settings_on_agent_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_calendar_settings_on_agent_id ON public.calendar_settings USING btree (agent_id);
 
 
 --
@@ -3382,6 +3602,14 @@ ALTER TABLE ONLY public.ai_runs
 
 
 --
+-- Name: calendar_exceptions fk_rails_2b199ff966; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.calendar_exceptions
+    ADD CONSTRAINT fk_rails_2b199ff966 FOREIGN KEY (calendar_setting_id) REFERENCES public.calendar_settings(id);
+
+
+--
 -- Name: message_deliveries fk_rails_2e5e6e1d74; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3502,6 +3730,14 @@ ALTER TABLE ONLY public.rule_executions
 
 
 --
+-- Name: appointment_events fk_rails_7842b881e9; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.appointment_events
+    ADD CONSTRAINT fk_rails_7842b881e9 FOREIGN KEY (actor_id) REFERENCES public.agents(id);
+
+
+--
 -- Name: account_invitations fk_rails_7a9e106543; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3531,6 +3767,22 @@ ALTER TABLE ONLY public.agent_knowledge_grants
 
 ALTER TABLE ONLY public.messages
     ADD CONSTRAINT fk_rails_7f927086d2 FOREIGN KEY (conversation_id) REFERENCES public.conversations(id);
+
+
+--
+-- Name: calendar_settings fk_rails_7f927b669a; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.calendar_settings
+    ADD CONSTRAINT fk_rails_7f927b669a FOREIGN KEY (account_id) REFERENCES public.accounts(id);
+
+
+--
+-- Name: calendar_settings fk_rails_85ec5371f5; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.calendar_settings
+    ADD CONSTRAINT fk_rails_85ec5371f5 FOREIGN KEY (agent_id) REFERENCES public.agents(id);
 
 
 --
@@ -3742,11 +3994,27 @@ ALTER TABLE ONLY public.channels
 
 
 --
+-- Name: appointments fk_rails_dc29d99253; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.appointments
+    ADD CONSTRAINT fk_rails_dc29d99253 FOREIGN KEY (created_by_id) REFERENCES public.agents(id);
+
+
+--
 -- Name: agent_knowledge_grants fk_rails_dcd80b2d1d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.agent_knowledge_grants
     ADD CONSTRAINT fk_rails_dcd80b2d1d FOREIGN KEY (account_id) REFERENCES public.accounts(id);
+
+
+--
+-- Name: appointment_events fk_rails_ddcd1b7be8; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.appointment_events
+    ADD CONSTRAINT fk_rails_ddcd1b7be8 FOREIGN KEY (appointment_id) REFERENCES public.appointments(id);
 
 
 --
@@ -3828,6 +4096,7 @@ ALTER TABLE ONLY public.team_memberships
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260917234502'),
 ('20260917091500'),
 ('20260917091000'),
 ('20260917090000'),

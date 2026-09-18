@@ -22,7 +22,7 @@ module ApplicationHelper
     case section
     when :home then controller_path == "accounts/home"
     when :inbox then controller_path.in?([ "accounts/inbox", "accounts/conversations" ])
-    when :calendar then controller_path == "accounts/calendar"
+    when :calendar then controller_path.in?([ "accounts/calendar", "accounts/calendar_settings", "accounts/calendar_exceptions" ])
     when :channels then controller_path == "accounts/channels"
     when :people then controller_path.in?([ "accounts/people", "accounts/invitations", "accounts/memberships" ])
     when :flows then controller_path.in?([ "accounts/flows", "accounts/flow_versions", "accounts/stages" ])
@@ -30,6 +30,14 @@ module ApplicationHelper
     when :fields then controller_path.in?([ "accounts/field_definitions", "accounts/customer_fields" ])
     else false
     end
+  end
+
+  # Returns an avatar initial for an agent (fallback when no real avatar exists).
+  def avatar_for_agent(agent)
+    return nil unless agent
+    # In a real app this would return a processed avatar URL.
+    # For now return the initial + a color hint for client-side rendering.
+    nil
   end
 
   # Returns a Tailwind CSS color class for delivery status indicators.

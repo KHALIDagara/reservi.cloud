@@ -11,6 +11,8 @@ class Agent < ApplicationRecord
   has_many :teams, through: :team_memberships
   has_many :owned_conversations, class_name: "Conversation", foreign_key: :owner_id, inverse_of: :owner
   has_many :appointments, foreign_key: :scheduled_agent_id, inverse_of: :scheduled_agent
+  has_one :calendar_setting, dependent: :destroy
+  has_many :appointment_events, foreign_key: :actor_id, inverse_of: :actor
   has_many :ai_runs
   has_many :agent_configurations
   has_many :knowledge_grants, class_name: "AgentKnowledgeGrant"
@@ -25,8 +27,15 @@ class Agent < ApplicationRecord
   scope :human,         -> { where(kind: "human") }
   scope :ai,            -> { where(kind: "ai") }
   scope :operational,   -> { where(operational_status: %w[active paused]) }
+  scope :schedulable,   -> {
+    active.human.joins(:membership).where(memberships: { active: true })
+  }
 
   def operational?
     %w[active paused].include?(operational_status)
+  end
+
+  def schedulable?
+    active? && kind == "human" && membership&.active?
   end
 end

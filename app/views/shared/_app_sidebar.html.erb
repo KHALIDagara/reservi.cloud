@@ -21,7 +21,8 @@
     <% primary_items = [
       [ :home, "Overview", account_home_path(current_account), :home ],
       [ :inbox, "Inbox", account_inbox_path(current_account), :inbox ],
-      [ :calendar, "Calendar", account_calendar_path(current_account), :calendar ]
+      [ :calendar, "Calendar", account_calendar_path(current_account), :calendar ],
+      [ :my_calendar, "My Schedule", calendar_setting_path(current_account), :calendar ]
     ] %>
     <div class="space-y-1">
       <% primary_items.each do |section, label, path, icon| %>

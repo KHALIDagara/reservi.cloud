@@ -175,8 +175,8 @@ class Accounts::ConversationsControllerTest < ActionDispatch::IntegrationTest
     get account_conversation_panel_url(@account, conversation)
 
     assert_select "p", text: "Previous appointment cancelled"
-    assert_select "form[action='#{account_conversation_appointments_path(@account, conversation)}']"
-    assert_select "input[type='datetime-local']"
+    # The new booking UI renders after cancellation:
+    assert_select "[data-controller='appointment-booking']"
   end
 
   test "create message on conversation" do

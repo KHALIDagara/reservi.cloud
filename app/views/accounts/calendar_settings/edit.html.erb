@@ -1,0 +1,117 @@
+<%= content_for :title, "Edit Calendar — #{current_agent.name}" %>
+
+<div class="mx-auto max-w-2xl px-4 py-6 sm:px-6 lg:px-8">
+  <h1 class="text-2xl font-bold tracking-tight text-slate-950">Edit My Calendar</h1>
+  <p class="mt-1 text-sm text-slate-500"><%= current_agent.name %></p>
+
+  <div class="mt-6 space-y-6">
+    <%# Settings form %>
+    <section class="rounded-2xl border border-slate-200 bg-white p-5">
+      <h2 class="text-base font-bold text-slate-800">Weekly hours</h2>
+
+      <%= form_with url: account_calendar_setting_path(current_account),
+            method: :patch,
+            html: { class: "mt-4" } do |f| %>
+
+        <div class="mb-4">
+          <%= f.label :timezone, "Timezone", class: "block text-xs font-semibold text-slate-600 mb-1.5" %>
+          <%= f.time_zone_select :timezone,
+                @timezones,
+                { default: @setting.try(:timezone) || current_account.timezone },
+                class: "min-h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 outline-none focus:border-indigo-300" %>
+        </div>
+
+        <% day_map = {
+          "monday" => "1", "tuesday" => "2", "wednesday" => "3",
+          "thursday" => "4", "friday" => "5", "saturday" => "6", "sunday" => "0"
+        } %>
+        <div class="space-y-3">
+          <% day_map.each do |day_name, wday| %>
+            <%
+              intervals = (@setting.try(:weekly_hours) || {})[wday] || []
+              default_value = intervals.map { |p| p.join("-") }.join(", ")
+            %>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1 capitalize">
+                <%= day_name %>
+              </label>
+              <%= f.text_field "weekly_hours[#{day_name}]",
+                    value: default_value,
+                    placeholder: "09:00-17:00, 13:00-14:00",
+                    class: "min-h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 placeholder:text-slate-400 outline-none focus:border-indigo-300" %>
+              <p class="mt-0.5 text-[0.65rem] text-slate-400">Format: HH:MM-HH:MM (comma-separated). Leave empty for closed.</p>
+            </div>
+          <% end %>
+        </div>
+
+        <div class="mt-5">
+          <%= f.submit "Save calendar",
+                class: "min-h-11 w-full cursor-pointer rounded-xl bg-indigo-600 px-4 text-sm font-bold text-white hover:bg-indigo-700" %>
+        </div>
+      <% end %>
+    </section>
+
+    <%# Exceptions management %>
+    <section class="rounded-2xl border border-slate-200 bg-white p-5">
+      <h2 class="text-base font-bold text-slate-800">Exceptions</h2>
+      <p class="mt-1 text-sm text-slate-500">Override hours for specific dates (holidays, events).</p>
+
+      <%# Existing exceptions %>
+      <% existing_exceptions = (@setting.try(:calendar_exceptions) || []).select(&:persisted?).sort_by(&:date) %>
+      <% if existing_exceptions.any? %>
+        <ul class="mt-3 divide-y divide-slate-100">
+          <% existing_exceptions.first(14).each do |ex| %>
+            <li class="flex items-center justify-between gap-3 py-2">
+              <div>
+                <span class="text-sm font-semibold text-slate-800"><%= ex.date.strftime("%a %d %b %Y") %></span>
+                <% if ex.intervals.empty? %>
+                  <span class="ml-2 rounded-full bg-rose-100 px-2 py-0.5 text-[0.68rem] font-bold text-rose-700">Closed</span>
+                <% else %>
+                  <% ex.intervals.each do |pair| %>
+                    <span class="ml-2 text-xs text-slate-500"><%= pair[0] %>&ndash;<%= pair[1] %></span>
+                  <% end %>
+                <% end %>
+              </div>
+              <div class="flex gap-1 shrink-0">
+                <%= button_to "×", account_calendar_exception_path(current_account, ex),
+                      method: :delete,
+                      class: "flex size-7 items-center justify-center rounded-lg text-rose-600 hover:bg-rose-50",
+                      form: { class: "shrink-0" },
+                      aria: { label: "Remove exception for #{ex.date}" } %>
+              </div>
+            </li>
+          <% end %>
+        </ul>
+      <% end %>
+
+      <%# Add new exception %>
+      <details class="group mt-3" open>
+        <summary class="cursor-pointer text-xs font-bold text-indigo-600 hover:text-indigo-700">+ Add exception</summary>
+        <div class="mt-3 rounded-xl bg-slate-50 p-3">
+          <%= form_with url: account_calendar_exceptions_path(current_account),
+                method: :post,
+                class: "space-y-3" do |f| %>
+
+            <div>
+              <%= f.label :date, "Date", class: "block text-xs font-semibold text-slate-600 mb-1" %>
+              <%= f.date_field :date,
+                    required: true,
+                    class: "min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-indigo-300" %>
+            </div>
+
+            <div>
+              <%= f.label :intervals_value, "Hours (leave empty for closed all day)", class: "block text-xs font-semibold text-slate-600 mb-1" %>
+              <%= f.text_field :intervals_value,
+                    placeholder: "09:00-17:00",
+                    class: "min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 placeholder:text-slate-400 outline-none focus:border-indigo-300" %>
+              <p class="mt-0.5 text-[0.65rem] text-slate-400">Format: HH:MM-HH:MM. Leave empty for closed all day.</p>
+            </div>
+
+            <%= f.submit "Add exception",
+                  class: "min-h-10 cursor-pointer rounded-xl bg-slate-900 px-4 text-xs font-bold text-white hover:bg-slate-700" %>
+          <% end %>
+        </div>
+      </details>
+    </section>
+  </div>
+</div>
