@@ -1,60 +1,88 @@
-<div class="flex items-start justify-between gap-4">
-  <div>
-    <p class="text-sm font-semibold text-indigo-600">Customer conversations</p>
-    <h1 class="mt-1 text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">Inbox</h1>
-    <p class="mt-1 text-sm text-slate-500">Keep every request moving toward the next step.</p>
-  </div>
-  <%= link_to new_account_conversation_path(current_account), class: "inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-3.5 text-sm font-semibold text-white shadow-sm shadow-indigo-200 hover:bg-indigo-700 sm:px-4" do %>
-    <%= app_icon(:plus, class_name: "size-4") %><span class="hidden sm:inline">New conversation</span><span class="sm:hidden">New</span>
-  <% end %>
-</div>
+<% content_for :title, "Inbox · Reservi" %>
+<% content_for :main_class, "w-full px-0" %>
 
-<nav class="app-scrollbar -mx-4 mt-6 flex gap-1 overflow-x-auto border-y border-slate-200 bg-white px-4 py-2 sm:mx-0 sm:w-fit sm:rounded-xl sm:border sm:p-1" aria-label="Inbox filters">
-  <% [["All", nil], ["Mine", "mine"], ["Unowned", "unowned"], ["My teams", "team"]].each do |label, filter| %>
-    <% active = params[:filter].presence == filter %>
-    <%= link_to label, account_inbox_path(current_account, filter: filter),
-          class: "whitespace-nowrap rounded-lg px-3.5 py-2 text-sm font-semibold transition #{active ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'}",
-          aria: (active ? { current: "page" } : {}) %>
-  <% end %>
-</nav>
-
-<% if @conversations.any? %>
-  <section class="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm" aria-label="Conversations">
-    <ul class="divide-y divide-slate-100">
-      <% @conversations.each do |conversation| %>
-        <li class="relative">
-          <%= link_to account_conversation_path(current_account, conversation), class: "group flex min-h-24 items-center gap-3 px-4 py-4 transition hover:bg-slate-50 sm:gap-4 sm:px-5" do %>
-            <% if conversation.attention %><span class="absolute inset-y-3 left-0 w-1 rounded-r-full bg-indigo-500"></span><% end %>
-            <span class="relative flex size-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-100 to-violet-100 text-sm font-bold text-indigo-700 ring-2 ring-white sm:size-12"><%= conversation.customer.name.first.upcase %></span>
-            <span class="min-w-0 flex-1">
-              <span class="flex items-center justify-between gap-3">
-                <span class="truncate text-sm font-bold text-slate-900"><%= conversation.customer.name %></span>
-                <span class="shrink-0 text-xs font-medium text-slate-400"><%= time_ago_in_words(conversation.last_activity_at || conversation.created_at) %></span>
-              </span>
-              <span class="mt-1 block truncate text-sm <%= conversation.attention ? 'font-medium text-slate-700' : 'text-slate-500' %>"><%= conversation[:latest_message_content]&.truncate(100) || "No messages yet" %></span>
-              <span class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-400">
-                <span class="rounded-md bg-slate-100 px-2 py-0.5 font-medium text-slate-600"><%= conversation.current_stage&.label || "No stage" %></span>
-                <span><%= conversation.owner&.name || "Unassigned" %></span>
-                <% if conversation.attention %><span class="font-semibold text-indigo-600">Needs attention</span><% end %>
-              </span>
-            </span>
-            <span class="hidden text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-indigo-500 sm:block">→</span>
+<div class="flex h-[calc(100dvh-4rem)]">
+  <%# ── Left: Conversation list ─────────────────────────────────────── %>
+  <aside class="w-80 shrink-0 overflow-hidden border-r border-slate-200 bg-white lg:w-88">
+    <div class="flex h-full flex-col">
+      <div class="border-b border-slate-200 px-4 py-3">
+        <div class="flex items-center justify-between gap-2">
+          <h1 class="text-lg font-bold tracking-tight text-slate-950">Inbox</h1>
+          <%= link_to new_account_conversation_path(current_account),
+                class: "flex size-9 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm hover:bg-indigo-700",
+                aria: { label: "New conversation" } do %>
+            <%= app_icon(:plus, class_name: "size-4") %>
           <% end %>
-        </li>
-      <% end %>
-    </ul>
-  </section>
+        </div>
+        <nav class="mt-2 flex gap-1" aria-label="Inbox filters">
+          <% [["All", nil], ["Mine", "mine"], ["Unowned", "unowned"], ["Team", "team"]].each do |label, filter| %>
+            <% active = params[:filter].presence == filter %>
+            <%= link_to label, account_inbox_path(current_account, filter: filter),
+                  class: "whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-semibold transition #{active ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'}" %>
+          <% end %>
+        </nav>
+      </div>
 
-  <% if @next_cursor %>
-    <div class="mt-5 text-center">
-      <%= link_to "Load older conversations", account_inbox_path(current_account, before: @next_cursor, filter: params[:filter]), class: "inline-flex min-h-11 items-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50" %>
+      <div class="app-scrollbar flex-1 overflow-y-auto">
+        <% if @conversations.any? %>
+          <ul class="divide-y divide-slate-100">
+            <% @conversations.each do |conversation| %>
+              <li class="relative">
+                <%= link_to account_inbox_path(current_account, id: conversation.id, filter: params[:filter]),
+                      class: "group flex min-h-20 items-start gap-3 px-4 py-3 transition hover:bg-slate-50 #{params[:id].to_i == conversation.id ? 'bg-indigo-50/70 border-l-2 border-l-indigo-600' : ''}",
+                      data: { turbo_frame: "conversation_detail" } do %>
+                  <% if conversation.attention && params[:id].to_i != conversation.id %>
+                    <span class="absolute inset-y-3 left-0 w-1 rounded-r-full bg-indigo-500"></span>
+                  <% end %>
+                  <span class="flex size-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-100 to-violet-100 text-xs font-bold text-indigo-700"><%= conversation.customer.name.first.upcase %></span>
+                  <span class="min-w-0 flex-1">
+                    <span class="flex items-center justify-between gap-2">
+                      <span class="truncate text-sm font-bold text-slate-900"><%= conversation.customer.name %></span>
+                      <span class="shrink-0 text-[0.65rem] text-slate-400"><%= time_ago_in_words(conversation.last_activity_at || conversation.created_at) %></span>
+                    </span>
+                    <span class="mt-0.5 block truncate text-xs <%= conversation.attention ? 'font-medium text-slate-700' : 'text-slate-500' %>"><%= conversation[:latest_message_content]&.truncate(80) || "No messages yet" %></span>
+                    <span class="mt-1.5 flex items-center gap-x-1.5 text-[0.65rem] text-slate-400">
+                      <span class="rounded-md bg-slate-100 px-1.5 py-0.5 font-medium text-slate-600"><%= conversation.current_stage&.label || "No stage" %></span>
+                      <span><%= conversation.owner&.name || "Unassigned" %></span>
+                    </span>
+                  </span>
+                <% end %>
+              </li>
+            <% end %>
+          </ul>
+          <% if @next_cursor %>
+            <div class="border-t border-slate-100 p-3 text-center">
+              <%= link_to "Load more", account_inbox_path(current_account, before: @next_cursor, filter: params[:filter]),
+                    class: "text-xs font-semibold text-indigo-600 hover:text-indigo-700" %>
+            </div>
+          <% end %>
+        <% else %>
+          <div class="p-6 text-center">
+            <p class="text-sm text-slate-500">No conversations here</p>
+          </div>
+        <% end %>
+      </div>
     </div>
-  <% end %>
-<% else %>
-  <div class="mt-6 rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center shadow-sm">
-    <span class="mx-auto flex size-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600"><%= app_icon(:inbox, class_name: "size-6") %></span>
-    <p class="mt-4 font-bold text-slate-900">No conversations here</p>
-    <p class="mx-auto mt-1 max-w-sm text-sm text-slate-500">New customer requests and conversations matching this filter will appear here.</p>
-    <%= link_to "Start a conversation", new_account_conversation_path(current_account), class: "mt-5 inline-flex min-h-11 items-center rounded-xl bg-indigo-600 px-4 text-sm font-semibold text-white hover:bg-indigo-700" %>
-  </div>
-<% end %>
+  </aside>
+
+  <%# ── Center: Conversation detail or empty state ─────────────────── %>
+  <main class="flex min-w-0 flex-1 flex-col bg-slate-50">
+    <%= turbo_frame_tag "conversation_detail" do %>
+      <% if @conversation %>
+        <%= render "accounts/conversations/conversation_detail",
+              conversation: @conversation,
+              messages: @messages,
+              notes: @notes,
+              panel_open: @panel_open %>
+      <% else %>
+        <div class="flex h-full flex-col items-center justify-center px-6 text-center">
+          <span class="flex size-16 items-center justify-center rounded-2xl bg-white text-slate-300 shadow-sm ring-1 ring-slate-200">
+            <%= app_icon(:inbox, class_name: "size-8") %>
+          </span>
+          <h2 class="mt-5 text-lg font-bold text-slate-700">Select a conversation</h2>
+          <p class="mt-1 text-sm text-slate-500">Choose a conversation from the list to view messages and manage the request.</p>
+        </div>
+      <% end %>
+    <% end %>
+  </main>
+</div>

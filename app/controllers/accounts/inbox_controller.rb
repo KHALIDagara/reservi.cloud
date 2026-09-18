@@ -7,6 +7,14 @@ module Accounts
       conversations = scoped_conversations.limit(PAGE_SIZE + 1).to_a
       @next_cursor = encode_cursor(conversations[PAGE_SIZE - 1]) if conversations.size > PAGE_SIZE
       @conversations = conversations.first(PAGE_SIZE)
+
+      if params[:id].present?
+        @conversation = current_account.conversations.find(params[:id])
+        @messages = @conversation.messages.chronological.includes(:agent)
+        @notes = @conversation.notes.chronological.includes(:agent)
+        @panel_open = params[:panel] == "open"
+        touch_read_cursor!(@conversation)
+      end
     end
 
     private
@@ -50,6 +58,14 @@ module Accounts
       { "time" => Time.iso8601(parsed["time"].to_s), "id" => Integer(parsed["id"].to_s, 10) }
     rescue ArgumentError, JSON::ParserError, TypeError
       nil
+    end
+
+    def touch_read_cursor!(conversation)
+      read = conversation.conversation_reads.find_or_initialize_by(agent: current_membership.agent)
+      last_message = conversation.messages.order(id: :desc).first
+      if last_message && (read.new_record? || read.last_read_message_id.to_i < last_message.id)
+        read.update!(last_read_message_id: last_message.id)
+      end
     end
   end
 end

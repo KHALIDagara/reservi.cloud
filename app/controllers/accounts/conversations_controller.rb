@@ -29,7 +29,7 @@ module Accounts
         content: conversation_params[:initial_message],
         team_id: agent.teams.first&.id
       )
-      redirect_to account_conversation_path(current_account, conversation), notice: "Conversation created."
+      redirect_to account_inbox_path(current_account, id: conversation.id), notice: "Conversation created."
     rescue Reservi::Errors::OperationError => e
       redirect_to new_account_conversation_path(current_account), alert: e.message
     end
@@ -41,9 +41,9 @@ module Accounts
         content: params[:content],
         direction: "outbound"
       )
-      redirect_to account_conversation_path(current_account, @conversation)
+      redirect_to conversation_return_path
     rescue ActiveRecord::RecordInvalid => e
-      redirect_to account_conversation_path(current_account, @conversation), alert: e.message
+      redirect_to conversation_return_path, alert: e.message
     end
 
     def create_note
@@ -52,14 +52,14 @@ module Accounts
         agent: current_membership.agent,
         content: params[:content]
       )
-      redirect_to account_conversation_path(current_account, @conversation)
+      redirect_to conversation_return_path
     rescue ActiveRecord::RecordInvalid => e
-      redirect_to account_conversation_path(current_account, @conversation), alert: e.message
+      redirect_to conversation_return_path, alert: e.message
     end
 
     def claim
       Conversations::Claim.call(conversation: @conversation, agent: current_membership.agent)
-      redirect_to account_conversation_path(current_account, @conversation), notice: "Conversation claimed."
+      redirect_to conversation_return_path, notice: "Conversation claimed."
     rescue Reservi::Errors::OperationError => e
       redirect_to account_inbox_path(current_account), alert: e.message
     end
@@ -68,7 +68,7 @@ module Accounts
       Conversations::Unclaim.call(conversation: @conversation, agent: current_membership.agent)
       redirect_to account_inbox_path(current_account), notice: "Conversation released."
     rescue Reservi::Errors::AuthorizationError, Reservi::Errors::OperationError => e
-      redirect_to account_conversation_path(current_account, @conversation), alert: e.message
+      redirect_to conversation_return_path, alert: e.message
     end
 
     def cancel
@@ -79,7 +79,7 @@ module Accounts
       )
       redirect_to account_inbox_path(current_account), notice: "Conversation cancelled."
     rescue Reservi::Errors::OperationError => e
-      redirect_to account_conversation_path(current_account, @conversation), alert: e.message
+      redirect_to conversation_return_path, alert: e.message
     end
 
     # ── Magic side panel ────────────────────────────────────────────────
@@ -107,9 +107,9 @@ module Accounts
         actor_membership: current_membership,
         attributes: { params[:key] => value }
       )
-      redirect_to account_conversation_path(current_account, @conversation), notice: "Field updated."
+      redirect_to conversation_return_path, notice: "Field updated."
     rescue Reservi::Errors::OperationError => e
-      redirect_to account_conversation_path(current_account, @conversation), alert: e.message
+      redirect_to conversation_return_path, alert: e.message
     end
 
     def update_customer_field
@@ -120,9 +120,9 @@ module Accounts
         attributes: { params[:key] => value }
       )
       Flows::Evaluate.call(conversation: @conversation)
-      redirect_to account_conversation_path(current_account, @conversation), notice: "Customer field updated."
+      redirect_to conversation_return_path, notice: "Customer field updated."
     rescue Reservi::Errors::OperationError => e
-      redirect_to account_conversation_path(current_account, @conversation), alert: e.message
+      redirect_to conversation_return_path, alert: e.message
     end
 
     def reassign
@@ -133,9 +133,9 @@ module Accounts
         Conversations::Unclaim.call(conversation: @conversation, agent: @conversation.owner)
       end
       Conversations::Claim.call(conversation: @conversation, agent: agent)
-      redirect_to account_conversation_path(current_account, @conversation), notice: "Conversation assigned."
+      redirect_to conversation_return_path, notice: "Conversation assigned."
     rescue Reservi::Errors::OperationError => e
-      redirect_to account_conversation_path(current_account, @conversation), alert: e.message
+      redirect_to conversation_return_path, alert: e.message
     end
 
     def create_appointment
@@ -153,7 +153,7 @@ module Accounts
       Flows::Evaluate.call(conversation: @conversation)
       redirect_to account_conversation_path(current_account, @conversation), notice: "Appointment added."
     rescue Reservi::Errors::OperationError => e
-      redirect_to account_conversation_path(current_account, @conversation), alert: e.message
+      redirect_to conversation_return_path, alert: e.message
     end
 
     def confirm_appointment
@@ -168,7 +168,7 @@ module Accounts
       Flows::Evaluate.call(conversation: @conversation)
       redirect_to account_conversation_path(current_account, @conversation), notice: "Appointment confirmed."
     rescue Reservi::Errors::OperationError => e
-      redirect_to account_conversation_path(current_account, @conversation), alert: e.message
+      redirect_to conversation_return_path, alert: e.message
     end
 
     def cancel_appointment
@@ -183,7 +183,7 @@ module Accounts
       Flows::Evaluate.call(conversation: @conversation)
       redirect_to account_conversation_path(current_account, @conversation), notice: "Appointment cancelled."
     rescue Reservi::Errors::OperationError => e
-      redirect_to account_conversation_path(current_account, @conversation), alert: e.message
+      redirect_to conversation_return_path, alert: e.message
     end
 
     private
@@ -316,6 +316,15 @@ module Accounts
         .where(role_key: role_keys)
         .where("superseded_by_id IS NULL OR superseded_by_id = 0")
         .index_by(&:role_key)
+    end
+
+    def conversation_return_path
+      referer = request.referer.to_s
+      if referer.include?(account_inbox_path(current_account))
+        account_inbox_path(current_account, id: @conversation.id)
+      else
+        account_conversation_path(current_account, @conversation)
+      end
     end
   end
 end
