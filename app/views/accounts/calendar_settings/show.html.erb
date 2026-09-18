@@ -1,10 +1,10 @@
-<%= content_for :title, "My Calendar — #{current_agent.name}" %>
+<%= content_for :title, "My Calendar — #{current_membership.agent.name}" %>
 
 <div class="mx-auto max-w-2xl px-4 py-6 sm:px-6 lg:px-8">
   <div class="flex items-center justify-between">
     <div>
       <h1 class="text-2xl font-bold tracking-tight text-slate-950">My Calendar</h1>
-      <p class="mt-1 text-sm text-slate-500"><%= current_agent.name %></p>
+      <p class="mt-1 text-sm text-slate-500"><%= current_membership.agent.name %></p>
     </div>
   </div>
 
@@ -71,7 +71,7 @@
                   <% end %>
                 </div>
                 <div class="flex gap-1 shrink-0">
-                  <%= button_to "×", account_calendar_exception_path(current_account, ex),
+                  <%= button_to "×", calendar_setting_exception_path(current_account, ex),
                         method: :delete,
                         class: "flex size-7 items-center justify-center rounded-lg text-rose-600 hover:bg-rose-50",
                         form: { class: "shrink-0" },
