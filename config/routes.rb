@@ -50,6 +50,7 @@ Rails.application.routes.draw do
     get "inboxes/connect/:provider/authorize", to: "channels#authorize", as: :authorize_account_channel
     post "inboxes/connect/whatsapp/complete", to: "channels#complete_whatsapp", as: :complete_whatsapp_account_channel
     get "inboxes/:id", to: "channels#show", as: :account_channel
+    delete "inboxes/:id", to: "channels#destroy", as: :account_channel_destroy
     get "conversations/new", to: "conversations#new", as: :new_account_conversation
     post "conversations", to: "conversations#create", as: :account_conversations
     get "conversations/:id", to: "conversations#show", as: :account_conversation

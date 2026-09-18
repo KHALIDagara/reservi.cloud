@@ -207,7 +207,7 @@ class WebhooksControllerTest < ActionDispatch::IntegrationTest
       provider_type: "whatsapp",
       provider_external_id: "phone-123",
       inbound_token: SecureRandom.urlsafe_base64(24),
-      provider_config: { "phone_number_id" => "phone-123" }
+      provider_config: { "phone_number_id" => "phone-123", "webhook_verify_token" => "verify-me" }
     )
     payload = {
       object: "whatsapp_business_account",

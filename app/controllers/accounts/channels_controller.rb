@@ -4,7 +4,7 @@ module Accounts
 
     before_action :require_account_access!
     before_action :require_admin!
-    before_action :set_channel, only: :show
+    before_action :set_channel, only: %i[show destroy]
 
     def index
       @channels = current_account.channels.order(active: :desc, name: :asc)
@@ -60,6 +60,11 @@ module Accounts
       render json: { error: "WhatsApp returned incomplete signup details." }, status: :unprocessable_content
     rescue Reservi::Errors::OperationError => e
       render json: { error: e.message }, status: :unprocessable_content
+    end
+
+    def destroy
+      @channel.deactivate!
+      redirect_to account_channels_path(current_account), notice: "Inbox deleted."
     end
 
     private
