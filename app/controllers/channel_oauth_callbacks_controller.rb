@@ -16,7 +16,7 @@ class ChannelOauthCallbacksController < ApplicationController
       redirect_uri: channel_oauth_callback_url(provider:)
     )
     channel = Channels::Connect.call(account:, connection:)
-    redirect_to account_channel_path(account, channel), notice: "Instagram inbox connected."
+    redirect_to account_inbox_path(account, channel), notice: "Instagram inbox connected."
   rescue ActiveSupport::MessageVerifier::InvalidSignature, ActionController::ParameterMissing, KeyError
     redirect_to accounts_path, alert: "This inbox connection expired or is invalid. Please try again."
   rescue ActiveRecord::RecordNotFound, Reservi::Errors::AuthorizationError => e

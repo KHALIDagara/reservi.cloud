@@ -21,7 +21,7 @@ class ChannelOauthCallbacksControllerTest < ActionDispatch::IntegrationTest
     end
 
     Reservi::Channels::OauthClient.stub(:new, fake_client) do
-      get authorize_account_channel_url(@account, provider: "instagram")
+      get authorize_account_inbox_url(@account, provider: "instagram")
     end
     assert_response :redirect
     state = Rack::Utils.parse_query(URI(response.location).query).fetch("state")
@@ -33,7 +33,7 @@ class ChannelOauthCallbacksControllerTest < ActionDispatch::IntegrationTest
     end
 
     channel = @account.channels.last
-    assert_redirected_to account_channel_path(@account, channel)
+    assert_redirected_to inbox_path(@account, channel)
     assert_equal "instagram", channel.provider_type
     assert_equal "instagram-secret", channel.credential("access_token")
 
@@ -50,7 +50,7 @@ class ChannelOauthCallbacksControllerTest < ActionDispatch::IntegrationTest
       "https://instagram.example/oauth?#{URI.encode_www_form(redirect_uri:, state:)}"
     end
     Reservi::Channels::OauthClient.stub(:new, fake_client) do
-      get authorize_account_channel_url(@account, provider: "instagram")
+      get authorize_account_inbox_url(@account, provider: "instagram")
     end
     state = Rack::Utils.parse_query(URI(response.location).query).fetch("state")
 

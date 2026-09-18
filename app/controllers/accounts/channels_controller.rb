@@ -39,7 +39,7 @@ module Accounts
         state:
       ), allow_other_host: true
     rescue Reservi::Errors::OperationError => e
-      redirect_to setup_account_channel_path(current_account, provider:), alert: e.message
+      redirect_to setup_account_inbox_path(current_account, provider:), alert: e.message
     end
 
     def complete_whatsapp
@@ -55,16 +55,11 @@ module Accounts
         phone_number_id: whatsapp_params.fetch(:phone_number_id)
       )
       channel = Channels::Connect.call(account: current_account, connection:)
-      render json: { redirect_url: account_channel_path(current_account, channel) }, status: :created
+      render json: { redirect_url: inbox_path(current_account, channel) }, status: :created
     rescue ActionController::ParameterMissing, KeyError => e
       render json: { error: "WhatsApp returned incomplete signup details." }, status: :unprocessable_content
     rescue Reservi::Errors::OperationError => e
       render json: { error: e.message }, status: :unprocessable_content
-    end
-
-    def destroy
-      @channel.destroy!
-      redirect_to account_channels_path(current_account), notice: "Inbox deleted."
     end
 
     private

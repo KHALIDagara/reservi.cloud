@@ -23,7 +23,7 @@ module ApplicationHelper
     when :home then controller_path == "accounts/home"
     when :inbox then controller_path.in?([ "accounts/inbox", "accounts/conversations" ])
     when :calendar then controller_path.in?([ "accounts/calendar", "accounts/calendar_settings", "accounts/calendar_exceptions" ])
-    when :channels then controller_path == "accounts/channels"
+    when :channels then controller_path.in?([ "accounts/inboxes", "accounts/channels" ])
     when :people then controller_path.in?([ "accounts/people", "accounts/invitations", "accounts/memberships" ])
     when :flows then controller_path.in?([ "accounts/flows", "accounts/flow_versions", "accounts/stages" ])
     when :catalogs then controller_path.in?([ "accounts/catalogs", "accounts/item_selections" ])

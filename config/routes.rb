@@ -44,13 +44,17 @@ Rails.application.routes.draw do
       resources :calendar_exceptions, only: [ :create, :update, :destroy ],
         controller: "calendar_exceptions", as: :exceptions
     end
-    get "inboxes", to: "channels#index", as: :account_channels
-    get "inboxes/connect", to: "channels#new", as: :new_account_channel
-    get "inboxes/connect/:provider", to: "channels#setup", as: :setup_account_channel
-    get "inboxes/connect/:provider/authorize", to: "channels#authorize", as: :authorize_account_channel
-    post "inboxes/connect/whatsapp/complete", to: "channels#complete_whatsapp", as: :complete_whatsapp_account_channel
-    get "inboxes/:id", to: "channels#show", as: :account_channel
-    delete "inboxes/:id", to: "channels#destroy", as: :account_channel_destroy
+    # Channel connection/management (OAuth, setup, WhatsApp embedded signup)
+    # Must appear BEFORE the resources :inboxes block so /inboxes/connect
+    # is not captured by resources :inboxes with :id => "connect".
+    get "inboxes/connect", to: "channels#new", as: :new_account_inbox_connect
+    get "inboxes/connect/:provider", to: "channels#setup", as: :setup_account_inbox
+    get "inboxes/connect/:provider/authorize", to: "channels#authorize", as: :authorize_account_inbox
+    post "inboxes/connect/whatsapp/complete", to: "channels#complete_whatsapp", as: :complete_whatsapp_account_inbox
+
+    # Inboxes — the places where conversations arrive (WhatsApp, Instagram, etc.)
+    # Backed by Channel records; ChannelsController handles OAuth/connect flows.
+    resources :inboxes, only: [ :index, :show, :destroy ], controller: "inboxes"
     get "conversations/new", to: "conversations#new", as: :new_account_conversation
     post "conversations", to: "conversations#create", as: :account_conversations
     get "conversations/:id", to: "conversations#show", as: :account_conversation

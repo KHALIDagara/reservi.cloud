@@ -40,7 +40,7 @@
         <% [
           [ :people, "People & AI", account_people_path(current_account), :users ],
           [ :flows, "Flows", flows_path(current_account), :flow ],
-          [ :channels, "Inboxes", account_channels_path(current_account), :inbox ],
+          [ :channels, "Inboxes", inboxes_path(current_account), :inbox ],
           [ :catalogs, "Catalogs", catalogs_path(account_id: current_account), :catalog ],
           [ :fields, "Fields", account_field_definitions_path(current_account), :fields ]
         ].each do |section, label, path, icon| %>

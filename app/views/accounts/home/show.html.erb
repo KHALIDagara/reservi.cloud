@@ -65,7 +65,7 @@
       <p class="mt-1 text-xs leading-5 text-slate-500">Configure how your team handles customer work.</p>
       <div class="mt-4 space-y-2">
         <% [
-          [ "Inboxes", "Connect WhatsApp or Instagram", account_channels_path(current_account), :inbox ],
+          [ "Inboxes", "Connect WhatsApp or Instagram", inboxes_path(current_account), :inbox ],
           [ "People & AI", "Manage your team", account_people_path(current_account), :users ],
           [ "Flows", "Design your process", flows_path(current_account), :flow ],
           [ "Catalogs", "Organize what you offer", catalogs_path(account_id: current_account), :catalog ],

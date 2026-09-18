@@ -8,29 +8,31 @@ class Accounts::ChannelsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "admin sees inboxes and provider picker" do
-    get account_channels_url(@account)
+    get inboxes_url(@account)
     assert_response :success
     assert_select "h1", text: "Inboxes"
-    assert_select "a[href='#{new_account_channel_path(@account)}']", text: /Connect/
+    assert_select "a[href='#{new_account_inbox_connect_path(@account)}']", text: /Connect/
 
-    get new_account_channel_url(@account)
+    get new_account_inbox_connect_url(@account)
     assert_response :success
-    assert_select "a[href='#{setup_account_channel_path(@account, provider: 'whatsapp')}']", text: /WhatsApp/
-    assert_select "a[href='#{setup_account_channel_path(@account, provider: 'instagram')}']", text: /Instagram/
+    assert_select "a[href='#{setup_account_inbox_path(@account, provider: 'whatsapp')}']", text: /WhatsApp/
+    assert_select "a[href='#{setup_account_inbox_path(@account, provider: 'instagram')}']", text: /Instagram/
   end
 
-  test "operator cannot manage inboxes" do
+test "operator can see inboxes but cannot manage them" do
     sign_out
     sign_in_as(users(:bob))
 
-    get account_channels_url(@account)
+    get inboxes_url(@account)
+    assert_response :success  # anyone can view inboxes
 
-    assert_redirected_to accounts_url
+    get new_account_inbox_connect_url(@account)
+    assert_redirected_to accounts_url  # but connect requires admin
     assert_equal "Only Account administrators can manage inboxes.", flash[:alert]
   end
 
   test "unknown provider setup is not routable" do
-    get setup_account_channel_url(@account, provider: "unknown")
+    get setup_account_inbox_url(@account, provider: "unknown")
     assert_response :not_found
   end
 
@@ -47,7 +49,7 @@ class Accounts::ChannelsControllerTest < ActionDispatch::IntegrationTest
 
     assert_difference -> { @account.channels.count } => 1 do
       Reservi::Channels::OauthClient.stub(:new, fake_client) do
-        post complete_whatsapp_account_channel_url(@account), params: {
+        post complete_whatsapp_account_inbox_url(@account), params: {
           code: "oauth-code", business_id: "11", waba_id: "22", phone_number_id: "12345"
         }, as: :json
       end
@@ -57,12 +59,12 @@ class Accounts::ChannelsControllerTest < ActionDispatch::IntegrationTest
     channel = @account.channels.last
     assert_equal "secret-token", channel.credential("access_token")
     assert_not_includes channel.read_attribute_before_type_cast("credentials"), "secret-token"
-    assert_equal account_channel_path(@account, channel), response.parsed_body["redirect_url"]
+    assert_equal inbox_path(@account, channel), response.parsed_body["redirect_url"]
   end
 
   test "WhatsApp completion rejects missing embedded signup identity" do
     assert_no_difference -> { @account.channels.count } do
-      post complete_whatsapp_account_channel_url(@account), params: {
+      post complete_whatsapp_account_inbox_url(@account), params: {
         code: "oauth-code", business_id: "11", waba_id: "22"
       }, as: :json
     end
