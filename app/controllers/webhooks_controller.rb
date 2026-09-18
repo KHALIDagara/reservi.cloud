@@ -116,11 +116,38 @@ class WebhooksController < ApplicationController
   end
 
   def meta_whatsapp_verify
-    verify_global_meta_webhook("whatsapp")
+    phone_number = params[:phone_number]
+    return render plain: "Missing phone number", status: :bad_request if phone_number.blank?
+
+    channel = resolve_whatsapp_channel(phone_number)
+    return render plain: "Channel not found", status: :not_found unless channel
+
+    expected = ensure_webhook_verify_token(channel)
+    supplied = params["hub.verify_token"].to_s
+
+    if params["hub.mode"] == "subscribe" && expected.present? &&
+        ActiveSupport::SecurityUtils.secure_compare(supplied, expected) &&
+        params["hub.challenge"].present?
+      render plain: params["hub.challenge"], status: :ok
+    else
+      render plain: "Verification failed", status: :forbidden
+    end
   end
 
   def meta_instagram_verify
-    verify_global_meta_webhook("instagram")
+    channel = Channel.active.find_by(provider_type: "instagram")
+    return render plain: "Channel not found", status: :not_found unless channel
+
+    expected = ensure_webhook_verify_token(channel)
+    supplied = params["hub.verify_token"].to_s
+
+    if params["hub.mode"] == "subscribe" && expected.present? &&
+        ActiveSupport::SecurityUtils.secure_compare(supplied, expected) &&
+        params["hub.challenge"].present?
+      render plain: params["hub.challenge"], status: :ok
+    else
+      render plain: "Verification failed", status: :forbidden
+    end
   end
 
   def meta_whatsapp_events
@@ -413,5 +440,21 @@ class WebhooksController < ApplicationController
       customer&.destroy!
       @channel.channel_threads.find_by!(external_thread_id: thread_id)
     end
+  end
+
+  def resolve_whatsapp_channel(phone_number)
+    Channel.active.find_by(provider_type: "whatsapp", provider_external_id: phone_number.to_s) ||
+      Channel.active.where(provider_type: "whatsapp")
+             .find { |ch| ch.provider_config["display_phone_number"].to_s.gsub(/\D/, "") == phone_number.to_s.gsub(/\D/, "") }
+  end
+
+  def ensure_webhook_verify_token(channel)
+    token = channel.provider_config["webhook_verify_token"].to_s
+    if token.blank?
+      token = SecureRandom.urlsafe_base64(32)
+      config = channel.provider_config.merge("webhook_verify_token" => token)
+      channel.update_column(:provider_config, config)
+    end
+    token
   end
 end

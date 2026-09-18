@@ -88,12 +88,12 @@ module Reservi
           provider_config: {
             "instagram_id" => instagram_id,
             "username" => profile["username"],
-            "account_type" => profile["account_type"]
+            "account_type" => profile["account_type"],
+            "webhook_verify_token" => SecureRandom.urlsafe_base64(32)
           }.compact,
           credentials: {
             "access_token" => access_token,
-            "token_expires_at" => long["expires_in"] ? long["expires_in"].to_i.seconds.from_now.iso8601 : nil,
-            "webhook_verify_token" => SecureRandom.urlsafe_base64(32)
+            "token_expires_at" => long["expires_in"] ? long["expires_in"].to_i.seconds.from_now.iso8601 : nil
           }.compact
         }
       rescue KeyError
@@ -130,11 +130,11 @@ module Reservi
             "waba_id" => waba_id.to_s,
             "phone_number_id" => phone_number_id.to_s,
             "display_phone_number" => phone["display_phone_number"],
-            "verified_name" => phone["verified_name"]
+            "verified_name" => phone["verified_name"],
+            "webhook_verify_token" => SecureRandom.urlsafe_base64(32)
           }.compact,
           credentials: {
-            "access_token" => access_token,
-            "webhook_verify_token" => SecureRandom.urlsafe_base64(32)
+            "access_token" => access_token
           }
         }
       rescue KeyError
