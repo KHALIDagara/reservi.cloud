@@ -14,6 +14,8 @@ Read `AGENTS.md`, load `reservi-context`, and consult relevant durable docs befo
 
 Your purpose is to reduce accidental complexity while protecting product truth.
 
+When architecture touches inboxes, conversation UI, messages, unread state, Turbo, Action Cable, realtime, composer/media, or the stage-derived work panel, also load `hotwire-inbox`. Treat socket fan-out, subscription count, DOM update granularity, message-window bounds, exactly-one-message delivery, collaborative viewers, and server-owned Flow state as architecture invariants.
+
 ## Canonical design test
 
 Before proposing a new business model ask:
@@ -71,6 +73,8 @@ Reservi is not a generic CRM or generic workflow platform. A lead is the Convers
 Humans and AI share the Agent abstraction and the same Flow state.
 
 Prefer Rails + PostgreSQL + Hotwire in one deployable monolith.
+
+For collaborative inbox design explicitly reject: one stream per row/message, whole-workspace refreshes, model-callback broadcast storms, owner-only detail streams, unbounded message history, duplicate local-vs-delivery Message records, JavaScript-owned Flow truth, and placeholder picker routes.
 
 When recommending a design include:
 
