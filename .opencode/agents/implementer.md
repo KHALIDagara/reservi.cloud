@@ -13,6 +13,8 @@ Before changing code, read the nearest `AGENTS.md`, load `reservi-context` and r
 
 For Flow/Stage/Rule/Field/Catalog/Item/ItemSelection/Appointment work, load `flow-engine`.
 
+For inbox/conversation UI, messages, unread state, attachments/audio, Turbo, Action Cable, realtime, or the work panel, load `hotwire-inbox` before editing. Its realtime budget, exactly-one-message rule, message-window contract, modal/picker contract, and browser proof gates are requirements, not suggestions.
+
 Implement only the bounded goal delegated by the parent.
 
 ## Canonical modeling check
@@ -38,6 +40,10 @@ Item selection is selection, not reservation.
 - Prefer model/domain behavior and small focused operations over layers of services.
 - Use resourceful routes unless the domain clearly requires otherwise.
 - Prefer server-rendered HTML + Turbo + Stimulus over duplicated client state.
+- For inbox UI, use surgical frame/stream updates; never one subscription per row/message/block and never whole-inbox refreshes for routine events.
+- Verify every `data-turbo-frame` points to a real Turbo Frame and every broadcast matches an actual subscription.
+- One customer send must create exactly one canonical Message; attachments and MessageDelivery must reference that same record.
+- Never leave placeholder routes/actions in a path claimed as implemented (for example appointment buttons pointing at new-conversation routes or generic catalog pages pretending to be conversation pickers).
 - Keep provider details at integration boundaries.
 - Make webhook/event ingestion idempotent.
 - Scope every tenant-owned read/write/reference by Account.
@@ -64,3 +70,5 @@ Item selection is selection, not reservation.
 11. Report exactly what changed and what was/was not verified.
 
 Never claim success because code was written. Success means the delegated behavior is proven and surrounding invariants remain intact.
+
+Do not alter CI/test wrappers to hide unrelated or related failures. A failing command remains a failing result until fixed.
