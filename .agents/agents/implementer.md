@@ -11,6 +11,7 @@ subagent: true
 model: inherit
 commandExecutionPolicy: allow
 skills:
+  - skills/hotwire-inbox
   - skills/reservi-context
   - skills/repository-navigation
   - skills/rails-engineering
