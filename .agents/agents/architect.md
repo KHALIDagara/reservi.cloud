@@ -9,6 +9,7 @@ subagent: true
 model: inherit
 commandExecutionPolicy: off
 skills:
+  - skills/hotwire-inbox
   - skills/reservi-context
   - skills/flow-engine
   - skills/database-integrity
