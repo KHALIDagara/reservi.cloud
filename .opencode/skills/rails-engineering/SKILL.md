@@ -9,6 +9,8 @@ Reservi is a Rails monolith first. Use the framework fully before inventing repl
 
 Load `flow-engine` for Flow/Stage/Rule/Field/Catalog/Item/Appointment work.
 
+Load `hotwire-inbox` for inbox/conversation UI, messages, unread state, composer/media, Turbo Streams/Frames, Action Cable, realtime broadcasts, or the stage-derived work panel.
+
 ## Defaults
 
 Prefer:
@@ -84,6 +86,24 @@ Use:
 - Stimulus for local interaction such as toggles, focus, keyboard behavior, drag/reorder affordances, and browser APIs.
 
 Keep Stimulus DOM-oriented. Do not put Flow truth in JavaScript.
+
+For the collaborative inbox:
+
+- keep a stable workspace shell;
+- use a bounded inbox stream plus selected-conversation stream, not one stream per row/message/block;
+- broadcast only after the explicit logical operation commits;
+- reload authoritative state before rendering realtime HTML;
+- append/replace/morph the smallest stable target;
+- never use routine whole-page/inbox refreshes;
+- require exact subscription/broadcast stream-name compatibility;
+- never make detail realtime owner-only in a collaborative viewer model;
+- window message history and bound reconnect catch-up;
+- preserve scroll when prepending history;
+- use actual Turbo Frames for `data-turbo-frame` targets;
+- keep viewer-specific unread state separate from shared truth where needed;
+- guarantee one logical send -> one Message -> one MessageDelivery, with attachments on that same Message.
+
+If custom Action Cable channels are not necessary, prefer the standard Turbo Streams channel and signed stream names. Delete dead realtime infrastructure rather than keeping unused custom channels.
 
 ## Performance
 
