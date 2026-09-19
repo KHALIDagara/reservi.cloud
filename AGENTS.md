@@ -251,6 +251,54 @@ Every abstraction must pay rent now.
 
 ---
 
+
+## 6.1 Collaborative inbox / Hotwire contract
+
+For any task touching inboxes, conversation UI, messages, unread state, composer/media, Turbo, Action Cable, realtime broadcasts, or the stage-derived work panel, **load `hotwire-inbox` and follow it completely**.
+
+The runtime boundary is:
+
+```text
+PostgreSQL = truth
+      ↓
+explicit domain operation
+      ↓
+Flow / Rules evaluate
+      ↓
+outer transaction commits
+      ↓
+reload authoritative state
+      ↓
+render smallest affected ERB partial
+      ↓
+Turbo surgically updates open clients
+```
+
+Non-negotiable rules:
+
+- `/a/:account_id/inboxes/:id` is the working agent inbox; provider settings live under a settings resource.
+- Nested inbox conversations are resolved through the inbox, not merely through the Account.
+- Keep the normal workspace to a bounded set of subscriptions: active inbox/list + selected conversation (+ optional user notification stream).
+- Never put `turbo_stream_from` in every row/message/block.
+- Never use whole-inbox/page refresh as the normal response to one message/field/assignment update.
+- One logical action emits one consolidated post-commit realtime projection, not independent callback broadcasts from every touched model.
+- A selected conversation must actually subscribe to the stream receiving message/panel updates; subscription and broadcast stream names must match exactly.
+- Collaborative detail updates must not be coupled only to the current owner.
+- Do not fan out every update to every active human without a deliberate bounded reason.
+- Conversation rows update/reposition surgically; unread counts are viewer-specific and must not cause N+1 COUNT queries.
+- Message history is windowed. Initial load is bounded; older/reconnect windows are bounded; loading older preserves current messages and scroll.
+- `data-turbo-frame="X"` may only target a real `<turbo-frame id="X">`.
+- One logical outbound send creates **exactly one canonical Message**. Its attachments and MessageDelivery must reference that same Message. Retry/idempotency must not duplicate customer-visible messages.
+- Audio recording uses browser MediaRecorder only as local interaction and submits through the same Attachment/Message path.
+- The right work panel is rendered from the post-evaluation `conversation.current_stage`; JavaScript never predicts Flow progression.
+- Field, Catalog/Item, Appointment, and Assignment interactions are conversation-aware server-rendered resources/modals, not placeholder links or unbounded pill dumps.
+- Assignment UI and server validation use the canonical assignable-Agent policy; paused/draft/unconfigured AI is not assignable.
+- Desktop and phone browser flows are part of definition of done for major inbox changes.
+
+Before declaring inbox/realtime work complete, run the repair/proof checklist in `.opencode/skills/hotwire-inbox/SKILL.md`.
+
+---
+
 ## 7. Flow-engine engineering rules
 
 When implementing Flow behavior:
@@ -388,7 +436,7 @@ REPRODUCE
 -> VERIFY
 ```
 
-Never hide a defect by swallowing errors, weakening valid tests, disabling constraints, or adding arbitrary sleeps.
+Never hide a defect by swallowing errors, weakening valid tests, disabling constraints, adding arbitrary sleeps, excluding failing tests from the normal suite, rescuing a failing test command and exiting 0, or suppressing a real non-zero CI exit status. A failing suite must remain visibly failing until the defect or explicitly tracked infrastructure problem is actually resolved.
 
 ---
 
@@ -500,4 +548,5 @@ Useful skills:
 - `integration-safety`;
 - `testing`;
 - `debugging`;
-- `security`.
+- `security`;
+- `hotwire-inbox`.
