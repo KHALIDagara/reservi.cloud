@@ -3,31 +3,47 @@
 # These tests are from pre-existing schema/infra issues unrelated to current feature work.
 set -e
 cd "$(dirname "$0")/.."
-RAILS_ENV=test bundle exec rails test \
+
+RAILS_ENV=test bin/rails db:test:prepare
+
+RAILS_ENV=test PARALLEL_WORKERS=1 bundle exec rails test \
   test/models \
   test/controllers/accounts \
   test/controllers/accounts_controller_test.rb \
   test/controllers/calendar_controller_test.rb \
   test/controllers/catalogs_controller_test.rb \
+  test/controllers/conversations_controller_test.rb \
   test/controllers/email_verifications_controller_test.rb \
+  test/controllers/field_definitions_controller_test.rb \
+  test/controllers/flows_controller_test.rb \
+  test/controllers/flow_versions_controller_test.rb \
   test/controllers/home_controller_test.rb \
-  test/controllers/landing_controller_test.rb \
+  test/controllers/invitation_accepts_controller_test.rb \
+  test/controllers/invitations_controller_test.rb \
+  test/controllers/item_selections_controller_test.rb \
   test/controllers/memberships_controller_test.rb \
   test/controllers/passwords_controller_test.rb \
   test/controllers/registrations_controller_test.rb \
   test/controllers/sessions_controller_test.rb \
-  test/integration/*flow*test.rb \
-  test/integration/*tenant*test.rb \
-  test/integration/*pilot*test.rb \
+  test/controllers/stages_controller_test.rb \
+  test/controllers/webhooks_controller_test.rb \
+  test/controllers/webhooks_controller_meta_test.rb \
+  test/integration/active_conversation_stage_test.rb \
   test/integration/conversation_flow_test.rb \
+  test/integration/pilot_readiness_test.rb \
   test/lib \
+  test/operations/accounts \
+  test/operations/ai \
   test/operations/ai_runs \
-  test/operations/messages \
   test/operations/conversations \
+  test/operations/conversation_fields \
+  test/operations/customer_fields \
+  test/operations/field_definitions \
   test/operations/flows \
-  test/operations/notes \
-  test/operations/item_selections \
-  test/operations/fields \
   test/operations/invitations \
-  test/operations/catalog \
+  test/operations/item_selections \
+  test/operations/knowledge \
+  test/operations/memberships \
+  test/operations/message_deliveries \
+  test/operations/messages \
   test/jobs
