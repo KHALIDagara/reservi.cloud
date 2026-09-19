@@ -406,6 +406,13 @@ When reviewing/refactoring the existing inbox implementation, verify these known
 13. Use `Agent.assignable`/canonical eligibility in assignment UI and server validation.
 14. Ensure panel Stage content re-renders from the post-evaluation current Stage.
 15. Remove remaining legacy resource/view dependencies instead of hiding them behind new namespaces.
+16. The new workspace must not submit claim/release/reassign/cancel/item/appointment actions to legacy endpoints that redirect back through the old `/inbox` route and lose the selected inbox/conversation context. Extract nested/resourceful actions or preserve an explicit safe nested return path.
+17. Audit route helpers against `bin/rails routes`; do not use the legacy `account_inbox_path` helper as though it were the nested `inbox_path`. A commit named "fix route helpers" is not proof—exercise each link/form.
+18. Pass `has_older_messages` / oldest-cursor data into the partial that renders the load-older control; test that the control actually appears for > window-size histories.
+19. Catalog "Browse/Choose" must load a conversation + role aware picker and submit an ItemSelection; a generic catalog-items page is not sufficient.
+20. Appointment "Book/Reschedule" must target the current conversation + appointment role; a link to `new_account_conversation_path` is a blocking placeholder defect.
+21. Panel assignment uses canonical `Agent.assignable` in both controller render and realtime render. Do not use `Agent.active` and accidentally expose paused/draft AI.
+22. If the old standalone `Accounts::ConversationsController` remains temporarily, do not let the new workspace depend on its unwindowed message show, legacy redirects, or duplicate panel code. Migrate actions deliberately, then delete compatibility code.
 
 Do not mark the task complete while any required path is still a placeholder.
 
