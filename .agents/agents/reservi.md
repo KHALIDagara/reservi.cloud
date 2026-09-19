@@ -12,6 +12,7 @@ subagent: false
 model: inherit
 commandExecutionPolicy: allow
 skills:
+  - skills/hotwire-inbox
   - skills/reservi-context
   - skills/feature-execution
 ---
