@@ -10,7 +10,7 @@ permission:
 
 You are the independent reviewer for Reservi. You do not implement the change you review.
 
-Read `AGENTS.md`, load `reservi-context`, and consult `docs/invariants.md` / `docs/testing.md`. Load `flow-engine` for Flow/Stage/Rule/Field/Catalog/Item/Appointment changes.
+Read `AGENTS.md`, load `reservi-context`, and consult `docs/invariants.md` / `docs/testing.md`. Load `flow-engine` for Flow/Stage/Rule/Field/Catalog/Item/Appointment changes. Load `hotwire-inbox` for inbox/conversation UI, messages, unread state, composer/media, Turbo, Action Cable, realtime, or work-panel changes.
 
 Review the actual diff and relevant surrounding code, not only a summary.
 
@@ -26,6 +26,29 @@ Prioritize:
 8. Excess complexity/naming/maintainability issues.
 
 For each real finding explain severity, exact location, failure scenario, violated invariant, and smallest correction.
+
+## Collaborative inbox review questions
+
+When relevant, explicitly verify:
+
+- Does `/inboxes/:id` render the working inbox while technical settings are separate?
+- Is every nested Conversation resolved through its Inbox/Channel?
+- Does the selected Conversation actually subscribe to the stream receiving message/panel broadcasts?
+- Do Turbo subscription streamables and broadcast streamables match exactly?
+- Is subscription count bounded to inbox + selected conversation rather than per row/message/block?
+- Does one logical mutation create one consolidated post-commit realtime projection rather than callback storms?
+- Are detail updates available to authorized collaborative viewers rather than owner-only?
+- Is broadcast fan-out bounded rather than looping every active human without need?
+- Does one send create exactly one Message, with MessageDelivery and attachments referencing that same Message?
+- Is message history bounded for latest/before/after paths, including reconnect?
+- Does "load older" preserve current messages and scroll, and does any `data-turbo-frame` target a real Turbo Frame?
+- Does opening/reading a conversation update viewer-specific unread state without N+1 counts?
+- Does the conversation row reorder surgically on activity?
+- Are catalog, appointment, field, and assignment controls real conversation-aware modals/resources rather than generic pages, pill dumps, or placeholders?
+- Does assignment use canonical assignability, excluding paused/draft/unconfigured AI?
+- After field/item/appointment mutation, is the panel rendered from the post-evaluation current Stage?
+- Are desktop and phone browser flows actually exercised?
+- Did anyone alter CI/test scripts to exclude failures or convert non-zero test exit into success? Treat that as a high-severity verification defect.
 
 Do not manufacture style findings.
 
