@@ -310,6 +310,8 @@ Do not create a separate voice-message domain.
 
 Provider delivery must support the media being offered by the composer. If a provider/channel cannot deliver a media type yet, the UI must not pretend the attachment was sent successfully; implement the adapter support or disable that unsupported action explicitly.
 
+The adapter contract must be uniform from `MessageDeliveryJob` through every provider. Do not test only `WhatsappCloudAdapter.new.send_message(...)` / `InstagramAdapter.new.send_message(...)` while the production job calls a different class-method signature. Add integration/job proof that the real queued job successfully invokes each supported adapter using the same contract.
+
 ## 9. Stage-derived work panel
 
 The right panel is not a static CRM sidebar.
@@ -413,6 +415,7 @@ When reviewing/refactoring the existing inbox implementation, verify these known
 20. Appointment "Book/Reschedule" must target the current conversation + appointment role; a link to `new_account_conversation_path` is a blocking placeholder defect.
 21. Panel assignment uses canonical `Agent.assignable` in both controller render and realtime render. Do not use `Agent.active` and accidentally expose paused/draft AI.
 22. If the old standalone `Accounts::ConversationsController` remains temporarily, do not let the new workspace depend on its unwindowed message show, legacy redirects, or duplicate panel code. Migrate actions deliberately, then delete compatibility code.
+23. Exercise `MessageDeliveryJob` through the actual provider adapter factory for dev, WhatsApp, and Instagram. Make the method/signature contract identical; direct adapter unit tests that bypass the job are insufficient.
 
 Do not mark the task complete while any required path is still a placeholder.
 
