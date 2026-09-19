@@ -8,18 +8,18 @@ module Accounts
       before_action :set_inbox
       before_action :set_conversation, only: %i[show]
 
-      PAGE_SIZE = Inboxes::ConversationListQuery::PAGE_SIZE
+      PAGE_SIZE = ::Inboxes::ConversationListQuery::PAGE_SIZE
 
       # GET /a/:account_id/inboxes/:inbox_id/conversations
       def index
         conversations = scoped_conversations.limit(PAGE_SIZE + 1).to_a
-        @next_cursor = Inboxes::ConversationListQuery.encode_cursor(conversations[PAGE_SIZE - 1]) if conversations.size > PAGE_SIZE
+        @next_cursor = ::Inboxes::ConversationListQuery.encode_cursor(conversations[PAGE_SIZE - 1]) if conversations.size > PAGE_SIZE
         @conversations = conversations.first(PAGE_SIZE)
       end
 
       # GET /a/:account_id/inboxes/:inbox_id/conversations/:id
       def show
-        @messages = Messages::WindowQuery.call(
+        @messages = ::Messages::WindowQuery.call(
           conversation: @conversation,
           mode: :latest,
           limit: 30
@@ -45,7 +45,7 @@ module Accounts
       end
 
       def scoped_conversations
-        Inboxes::ConversationListQuery.call(
+        ::Inboxes::ConversationListQuery.call(
           inbox:          @inbox,
           agent:          current_membership.agent,
           filter:         params[:filter],

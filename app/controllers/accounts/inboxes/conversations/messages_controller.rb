@@ -23,7 +23,7 @@ module Accounts
 
           cursor_id = params[:before] || params[:after]
 
-          @messages = Messages::WindowQuery.call(
+          @messages = ::Messages::WindowQuery.call(
             conversation: @conversation,
             mode:,
             cursor_id:,
