@@ -31,7 +31,7 @@ module Accounts
       )
       inbox = conversation.channel_threads.first&.channel
       if inbox
-        redirect_to account_inbox_conversation_url(current_account, inbox, conversation),
+        redirect_to inbox_conversation_url(current_account, inbox, conversation),
           notice: "Conversation created."
       else
         redirect_to inboxes_path(current_account), notice: "Conversation created."

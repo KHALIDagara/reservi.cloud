@@ -36,7 +36,7 @@ module Accounts
         end
 
         def conversation_return_path
-          account_inbox_conversation_url(current_account, params[:inbox_id], @conversation)
+          inbox_conversation_url(current_account, params[:inbox_id], @conversation)
         end
       end
     end

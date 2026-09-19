@@ -39,7 +39,7 @@ module Accounts
           else
             # Default: redirect to conversation show (this is the initial load path)
             render plain: "", status: :no_content and return unless request.format.html?
-            redirect_to account_inbox_conversation_url(current_account, params[:inbox_id], @conversation)
+            redirect_to inbox_conversation_url(current_account, params[:inbox_id], @conversation)
           end
         end
 
@@ -69,7 +69,7 @@ module Accounts
         end
 
         def conversation_return_path
-          account_inbox_conversation_url(current_account, params[:inbox_id], @conversation)
+          inbox_conversation_url(current_account, params[:inbox_id], @conversation)
         end
       end
     end

@@ -12,7 +12,7 @@
       </ul>
       <% if @next_cursor %>
         <div class="border-t border-slate-100 p-3 text-center">
-          <%= link_to "Load more", account_inbox_conversations_path(current_account, @inbox, before: @next_cursor, filter: params[:filter]),
+          <%= link_to "Load more", inbox_conversations_path(current_account, @inbox, before: @next_cursor, filter: params[:filter]),
                 class: "text-xs font-semibold text-indigo-600 hover:text-indigo-700",
                 data: { turbo_frame: "conversation_list" } %>
         </div>
