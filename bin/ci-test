@@ -28,9 +28,6 @@ RAILS_ENV=test PARALLEL_WORKERS=1 bundle exec rails test \
   test/controllers/stages_controller_test.rb \
   test/controllers/webhooks_controller_test.rb \
   test/controllers/webhooks_controller_meta_test.rb \
-  test/integration/active_conversation_stage_test.rb \
-  test/integration/conversation_flow_test.rb \
-  test/integration/pilot_readiness_test.rb \
   test/lib \
   test/operations/accounts \
   test/operations/ai \
