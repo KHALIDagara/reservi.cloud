@@ -23,9 +23,10 @@ At the start of every non-trivial task:
 1. Read the nearest `AGENTS.md`.
 2. Load `reservi-context`.
 3. Load `feature-execution` for features/changes or `debugging` for bugs.
-4. If the task touches Flow, Stage, Rule, Field, Catalog, Item, ItemSelection, Appointment, routing, assignment automation, or AI stage behavior, load `flow-engine`.
-5. Read only relevant durable docs, beginning with `docs/README.md` when uncertain.
-6. Inspect the actual repository before proposing abstractions.
+4. If the task touches inboxes, conversation UI, messages, unread state, composer/media, Turbo, Action Cable, realtime, or the stage-derived work panel, load `hotwire-inbox` and treat its repair/proof gates as mandatory.
+5. If the task touches Flow, Stage, Rule, Field, Catalog, Item, ItemSelection, Appointment, routing, assignment automation, or AI stage behavior, load `flow-engine`.
+6. Read only relevant durable docs, beginning with `docs/README.md` when uncertain.
+7. Inspect the actual repository before proposing abstractions.
 
 Never assume the repository matches old conversation memory. Checked-in code/docs are current truth.
 
@@ -125,6 +126,7 @@ Start with ordered Stages. Do not build a graph/BPM engine until a concrete requ
 Before editing:
 
 - inspect `git status`;
+- for inbox/realtime work, read `.opencode/skills/hotwire-inbox/SKILL.md` completely and audit the current code against its known repair mandate before cosmetic changes;
 - trace routes -> domain -> persistence -> Flow evaluation -> UI/jobs/tests as relevant;
 - identify affected invariants;
 - identify concurrency/retry/configuration risks;
@@ -152,6 +154,8 @@ Before completion:
 - update durable docs when durable truth changed.
 
 A feature is not complete because the code looks plausible.
+
+Never make verification appear green by excluding failing tests, swallowing the test command's exit status, or wrapping a failing suite with `exit 0`. If the underlying suite fails, report it as failing.
 
 ## Architecture regression tests to remember
 
