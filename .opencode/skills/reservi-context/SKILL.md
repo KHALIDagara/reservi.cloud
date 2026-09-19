@@ -135,6 +135,33 @@ They operate against the same current Stage, Fields, ItemSelections, Appointment
 
 Do not put the authoritative business flow only in an AI prompt. Flow configuration is authoritative; prompts help AI operate inside it.
 
+
+## Collaborative inbox runtime
+
+The primary operator experience is a shared messaging workspace:
+
+```text
+conversation list | chronological messages + composer | current-stage work panel
+```
+
+The work panel is a live server-derived projection of the Conversation's current Stage and requirements. It may expose Fields, Catalog/Item selectors, Appointment booking, assignment, and progress/history.
+
+For this UI the engineering mental model is:
+
+```text
+Database truth
+ -> explicit domain mutation
+ -> Flow evaluates
+ -> commit
+ -> surgical Turbo update
+```
+
+Reservi must remain fast under many simultaneous conversations and agents. Prefer bounded subscriptions and message windows, viewer-aware unread projections, and tiny DOM updates over full refreshes or client-side state duplication.
+
+One logical customer send corresponds to one canonical Message. Provider delivery and attachments attach to that same Message.
+
+Load `hotwire-inbox` for any work in this area.
+
 ## Product north star
 
 Optimize for:
