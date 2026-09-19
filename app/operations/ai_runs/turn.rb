@@ -55,11 +55,38 @@ module AiRuns
     private
 
     def build_system_message(workspace)
-      stage = workspace.dig(:process, :stage_label) || "Unknown"
+      parts = []
+      parts << "You are an AI assistant for Reservi."
 
-      "You are an AI assistant for Reservi. The current stage is: #{stage}. " \
-        "Use the available tools to help move the conversation forward. " \
-        "Read the workspace to understand the current state before acting."
+      # Agent-specific instructions from AgentConfiguration
+      instructions = @ai_run.agent.agent_configuration&.guidance_config&.dig("instructions")
+      if instructions.present?
+        parts << "YOUR INSTRUCTIONS:\n#{instructions}"
+      end
+
+      # Current stage context
+      stage = workspace.dig(:process, :stage_label) || "Unknown"
+      parts << "CURRENT STAGE: #{stage}"
+
+      # Stage completion requirements
+      completion = workspace.dig(:process, :completion)
+      if completion.present?
+        parts << "The conversation can progress when: #{completion}"
+      end
+
+      # Required work from blocks
+      blocks = workspace.dig(:process, :blocks) || []
+      required_fields = blocks.select { |b| b[:type] == "field" }.map { |b| b[:key] }
+      if required_fields.any?
+        parts << "Missing required information: #{required_fields.join(', ')}"
+      end
+
+      # Guidelines
+      parts << "Use the available tools to help move the conversation forward."
+      parts << "Do not ask for information that already exists in the workspace."
+      parts << "Read the workspace to understand the current state before acting."
+
+      parts.join("\n\n")
     end
 
     def build_prompt(workspace)

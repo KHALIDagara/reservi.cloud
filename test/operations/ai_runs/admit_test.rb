@@ -115,7 +115,18 @@ class AiRuns::AdmitTest < ActiveSupport::TestCase
         agent: @agent, conversation: @conversation, trigger: "inbound_message"
       )
     end
-    assert_match /not operational/, e.message
+    assert_match /not available/i, e.message
+  end
+
+  test "paused agent is rejected" do
+    @agent.update!(operational_status: "paused")
+
+    e = assert_raises(Reservi::Errors::OperationError) do
+      AiRuns::Admit.call(
+        agent: @agent, conversation: @conversation, trigger: "inbound_message"
+      )
+    end
+    assert_match /not available/i, e.message
   end
 
   test "cancelled conversation is rejected" do
@@ -129,15 +140,26 @@ class AiRuns::AdmitTest < ActiveSupport::TestCase
     assert_match /not active/, e.message
   end
 
-  test "admit fails when agent has no agent_configuration_id" do
-    @agent.update!(agent_configuration_id: nil)
+  test "admit fails when agent has no published configuration" do
+    @agent_config.update!(status: "draft")
 
-    e = assert_raises(ActiveRecord::RecordInvalid) do
+    e = assert_raises(Reservi::Errors::OperationError) do
       AiRuns::Admit.call(
         agent: @agent, conversation: @conversation, trigger: "inbound_message"
       )
     end
-    assert_match /Agent configuration must exist/i, e.message
+    assert_match /not available/i, e.message
+  end
+
+  test "admit fails when agent has no agent_configuration_id" do
+    @agent.update!(agent_configuration_id: nil)
+
+    e = assert_raises(Reservi::Errors::OperationError) do
+      AiRuns::Admit.call(
+        agent: @agent, conversation: @conversation, trigger: "inbound_message"
+      )
+    end
+    assert_match /not available/i, e.message
   end
 
   # ── concurrent safety ───────────────────────────────────────────

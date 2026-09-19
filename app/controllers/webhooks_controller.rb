@@ -53,6 +53,16 @@ class WebhooksController < ApplicationController
       rescue => e
         Rails.logger.error "Rule evaluation failed for conversation #{conversation.id}: #{e.class}: #{e.message}"
       end
+
+      # Wake up AI if the current owner is an active AI agent
+      owner = conversation.owner
+      if owner&.kind == "ai" && owner.active_for_work?
+        begin
+          AiRuns::Admit.call(agent: owner, conversation: conversation, trigger: "inbound")
+        rescue => e
+          Rails.logger.error "AI admission failed for conversation #{conversation.id}: #{e.class}: #{e.message}"
+        end
+      end
     end
 
     render json: { status: "accepted", message_id: message.id }
@@ -331,6 +341,9 @@ class WebhooksController < ApplicationController
 
       conv = thread.conversation
 
+      # Apply channel default assignment for brand-new conversations (not replay)
+      apply_channel_default_assignment(conv)
+
       Messages::Create.call(
         conversation: conv,
         agent: nil,
@@ -351,6 +364,16 @@ class WebhooksController < ApplicationController
           Reservi::RuleExecutor.evaluate(conversation: conv)
         rescue => e
           Rails.logger.error "Rule evaluation failed for conversation #{conv.id}: #{e.class}: #{e.message}"
+        end
+
+        # Wake up AI if the current owner is an active AI agent
+        owner = conv.owner
+        if owner&.kind == "ai" && owner.active_for_work?
+          begin
+            AiRuns::Admit.call(agent: owner, conversation: conv, trigger: "inbound")
+          rescue => e
+            Rails.logger.error "AI admission failed for conversation #{conv.id}: #{e.class}: #{e.message}"
+          end
         end
       end
 
@@ -424,6 +447,9 @@ class WebhooksController < ApplicationController
         custom_values: {}
       )
 
+      # Apply channel default assignment for new conversations
+      apply_channel_default_assignment(conversation)
+
       @channel.channel_threads.create!(
         account: account,
         conversation: conversation,
@@ -447,5 +473,24 @@ class WebhooksController < ApplicationController
       channel.update_column(:provider_config, config)
     end
     token
+  end
+
+  def apply_channel_default_assignment(conversation)
+    channel = conversation.channel_threads.first&.channel
+    return unless channel
+
+    if channel.default_agent_id.present? && conversation.owner_id.nil?
+      default_agent = channel.default_agent
+      return unless default_agent&.assignable?
+
+      Conversations::Claim.call(conversation: conversation, agent: default_agent)
+      if default_agent.kind == "ai" && default_agent.active_for_work?
+        AiRuns::Admit.call(agent: default_agent, conversation: conversation, trigger: "inbound")
+      end
+    elsif channel.default_team_id.present? && conversation.team_id.nil?
+      conversation.update!(team_id: channel.default_team_id)
+    end
+  rescue => e
+    Rails.logger.error "Default assignment failed for conversation #{conversation.id}: #{e.class}: #{e.message}"
   end
 end

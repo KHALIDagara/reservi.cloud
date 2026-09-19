@@ -11,6 +11,20 @@ module Reservi
       cancel_appointment handoff
     ].freeze
 
+    # Maps tool names to capability_config keys for server-side enforcement.
+    # read_workspace is always available (no capability key).
+    TOOL_CAPABILITY = {
+      "search_knowledge"    => "search_knowledge",
+      "create_message"      => "reply",
+      "create_note"         => "add_notes",
+      "update_field"        => "update_fields",
+      "select_item"         => "select_items",
+      "create_appointment"  => "create_appointments",
+      "confirm_appointment" => "create_appointments",
+      "cancel_appointment"  => "cancel_appointments",
+      "handoff"             => "handoff"
+    }.freeze
+
     # ── entry point ───────────────────────────────────────────────
 
     def self.execute(tool_name:, arguments:, agent:, conversation:, ai_run:)
@@ -28,10 +42,24 @@ module Reservi
     def execute
       raise "Unknown tool: #{@tool_name}" unless TOOLS.include?(@tool_name)
       raise "AI agent is not operational" unless @agent.operational?
+      raise "Agent is not permitted to use '#{@tool_name}'" unless tool_permitted?
 
       send(@tool_name)
     rescue => e
       { error: e.message, tool: @tool_name }
+    end
+
+    private
+
+    def tool_permitted?
+      cap_key = TOOL_CAPABILITY[@tool_name]
+      return true unless cap_key # read_workspace is always permitted
+
+      caps = @agent.agent_configuration&.capability_config || {}
+      # Default: permit if no capability config (backward compat)
+      return true if caps.empty?
+
+      caps.fetch(cap_key, false)
     end
 
     private
@@ -59,13 +87,30 @@ module Reservi
       content = @arguments["content"].to_s.strip
       return { error: "Message content is required" } if content.blank?
 
-      Messages::Create.call(
-        conversation: @conversation,
-        agent:        @agent,
-        content:      content,
-        direction:    "outbound"
-      )
-      { status: "sent", message: "Message created" }
+      # Find the conversation's channel for external delivery
+      thread = @conversation.channel_threads.first
+      channel = thread&.channel
+
+      if channel&.active?
+        operation_key = "ai_#{@ai_run.id}_#{Time.current.to_i}_#{SecureRandom.hex(4)}"
+        MessageDeliveries::Send.call(
+          conversation: @conversation,
+          channel:      channel,
+          agent:        @agent,
+          content:      content,
+          operation_key: operation_key
+        )
+        { status: "sent", message: "Message sent through #{channel.name}" }
+      else
+        # No active channel — create local message only
+        Messages::Create.call(
+          conversation: @conversation,
+          agent:        @agent,
+          content:      content,
+          direction:    "outbound"
+        )
+        { status: "sent", message: "Message created (no active channel for delivery)" }
+      end
     rescue => e
       { error: e.message, status: "failed" }
     end
@@ -154,13 +199,16 @@ module Reservi
       end
       return { error: "Invalid ends_at format" } unless ends_at
 
+      # AI agents are actors, not schedulable calendar participants.
+      # Pass nil as scheduled_agent so the appointment can be booked
+      # against a human agent later, or left unassigned.
       appointment = Appointments::Create.call(
         conversation:     @conversation,
         role_key:         role,
         starts_at:        starts_at,
         ends_at:          ends_at,
         timezone:         @conversation.account.timezone,
-        scheduled_agent:  @agent,
+        scheduled_agent:  nil,
         purpose:          @arguments["purpose"]
       )
       Flows::Evaluate.call(conversation: @conversation)
@@ -201,8 +249,27 @@ module Reservi
     def handoff
       reason = @arguments["reason"].to_s
 
+      # Find the agent's team as fallback
+      team = @agent.teams.first
+      # Find another assignable human agent in the team (not the calling agent)
+      fallback_agent = team&.agents&.assignable&.human&.where&.not(id: @agent.id)&.first
+
       Conversations::Unclaim.call(conversation: @conversation, agent: @agent)
-      { status: "handed_off", reason: reason }
+
+      if fallback_agent
+        begin
+          Conversations::Claim.call(conversation: @conversation, agent: fallback_agent)
+          @conversation.update!(team: team, attention: true)
+          { status: "handed_off", reason: reason, assigned_to: fallback_agent.name, team: team.name }
+        rescue => e
+          { status: "handed_off", reason: reason, note: "Could not assign to #{fallback_agent.name}: #{e.message}" }
+        end
+      elsif team
+        @conversation.update!(team: team, attention: true)
+        { status: "handed_off", reason: reason, assigned_to_team: team.name }
+      else
+        { status: "handed_off", reason: reason }
+      end
     rescue => e
       { error: e.message, status: "failed" }
     end

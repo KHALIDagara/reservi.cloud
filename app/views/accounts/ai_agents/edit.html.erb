@@ -1,0 +1,28 @@
+<% config = @ai_agent.agent_configuration || @ai_agent.build_agent_configuration(account: current_account) %>
+
+<%= form_with model: @ai_agent, url: account_ai_agent_update_path(current_account, @ai_agent), method: :patch, class: "mx-auto max-w-2xl" do |f| %>
+  <h1 class="text-2xl font-semibold tracking-tight">Edit <%= @ai_agent.name %></h1>
+  <p class="mt-1 text-sm text-stone-500">Changing instructions creates a new configuration version. Active configurations continue running until a new version is published.</p>
+
+  <div class="mt-8 space-y-6">
+    <div>
+      <%= f.label :name, "Name", class: "block text-sm font-semibold text-stone-700" %>
+      <%= f.text_field :name, required: true,
+            class: "mt-1.5 block w-full rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" %>
+    </div>
+
+    <div>
+      <%= f.label :instructions, "Instructions", class: "block text-sm font-semibold text-stone-700" %>
+      <%= f.text_area :instructions, rows: 10,
+            value: config.guidance_config&.dig("instructions"),
+            placeholder: "Describe how your AI agent should behave...",
+            class: "mt-1.5 block w-full rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 font-mono" %>
+      <p class="mt-1 text-xs text-stone-400">The AI automatically receives the current conversation state, stage requirements, and available tools. Describe <em>how</em> it should behave, not what data is available.</p>
+    </div>
+
+    <div class="flex items-center justify-between border-t border-stone-200 pt-6">
+      <%= link_to "Cancel", account_ai_agent_path(current_account, @ai_agent), class: "text-sm font-medium text-stone-500 hover:text-stone-700" %>
+      <%= f.submit "Save changes", class: "cursor-pointer rounded-xl bg-stone-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-stone-700" %>
+    </div>
+  </div>
+<% end %>

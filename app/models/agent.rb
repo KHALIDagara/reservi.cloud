@@ -30,12 +30,39 @@ class Agent < ApplicationRecord
   scope :schedulable,   -> {
     active.human.joins(:membership).where(memberships: { active: true })
   }
+  scope :assignable,    -> {
+    left_joins(:agent_configuration, :membership)
+      .where(active: true)
+      .where(
+        "(agents.kind = 'human' AND agents.operational_status = 'active' AND memberships.active = true) OR " \
+        "(agents.kind = 'ai' AND agents.operational_status = 'active' AND agent_configurations.status = 'published')"
+      )
+  }
 
   def operational?
     %w[active paused].include?(operational_status)
   end
 
+  def active_for_work?
+    active? &&
+      kind == "ai" &&
+      operational_status == "active" &&
+      agent_configuration&.published?
+  end
+
   def schedulable?
     active? && kind == "human" && membership&.active?
+  end
+
+  def assignable?
+    active? &&
+      case kind
+      when "human"
+        operational_status == "active" && membership&.active?
+      when "ai"
+        operational_status == "active" && agent_configuration&.published?
+      else
+        false
+      end
   end
 end

@@ -176,9 +176,16 @@ class AiRuns::TurnTest < ActiveSupport::TestCase
 
   def system_message_key
     stage = @conversation.current_stage
-    "You are an AI assistant for Reservi. The current stage is: #{stage&.label || 'Unknown'}. " \
-      "Use the available tools to help move the conversation forward. " \
-      "Read the workspace to understand the current state before acting."
+    parts = []
+    parts << "You are an AI assistant for Reservi."
+    parts << "CURRENT STAGE: #{stage&.label || 'Unknown'}"
+    if stage&.completion.present?
+      parts << "The conversation can progress when: #{stage.completion}"
+    end
+    parts << "Use the available tools to help move the conversation forward."
+    parts << "Do not ask for information that already exists in the workspace."
+    parts << "Read the workspace to understand the current state before acting."
+    parts.join("\n\n")
   end
 
   # ── preconditions ────────────────────────────────────────────────

@@ -38,7 +38,7 @@
     </div>
     <%= form_with url: account_conversation_reassign_path(current_account, @conversation), method: :post, class: "flex gap-2" do |f| %>
       <%= f.label :agent_id, "Assigned agent", class: "sr-only" %>
-      <%= f.select :agent_id, @account_agents.map { |a| [a.name, a.id] }, { selected: @conversation.owner_id }, class: "min-h-10 min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 outline-none focus:border-indigo-300" %>
+      <%= f.select :agent_id, @account_agents.map { |a| ["#{a.name} (#{a.kind == 'ai' ? 'AI' : 'H'})", a.id] }, { selected: @conversation.owner_id, include_blank: "Unassigned" }, class: "min-h-10 min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 outline-none focus:border-indigo-300" %>
       <%= f.submit "Assign", class: "min-h-10 shrink-0 cursor-pointer rounded-xl bg-slate-900 px-3 text-xs font-bold text-white hover:bg-slate-700" %>
     <% end %>
     <% if @conversation.owner.present? %>

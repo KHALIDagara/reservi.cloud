@@ -1,6 +1,8 @@
 # Reservi implementation plan
 
-Status: T00 verified (2026-09-12); T01 verified (2026-09-13); T02 verified (2026-09-13); T03 verified (2026-09-13); T04 verified (2026-09-13); T05 verified (2026-09-13); T06 verified (2026-09-13); T07 verified (2026-09-13); T08 verified (2026-09-14); T09 verified (2026-09-15); T10 verified (2026-09-15); T11 verified (2026-09-16). The audited specification baseline is `153315d`; the implementation baseline is `c6e0923` (specifications plus agent tooling). No task marked VERIFIED below claims behavior that is not proven by a commit and recorded checks.
+Status: T00 verified (2026-09-12); T01 verified (2026-09-13); T02 verified (2026-09-13); T03 verified (2026-09-13); T04 verified (2026-09-13); T05 verified (2026-09-13); T06 verified (2026-09-13); T07 verified (2026-09-13); T08 verified (2026-09-14); T09 verified (2026-09-15); T10 verified (2026-09-15); T11 verified (2026-09-16); T12 in-progress (2026-09-18). The audited specification baseline is `153315d`; the implementation baseline is `c6e0923` (specifications plus agent tooling). No task marked VERIFIED below claims behavior that is not proven by a commit and recorded checks.
+
+T12: AI Agents administration (in-progress). Navbar split (People, AI Agents, Teams), AI Agent CRUD with activation/preview, channel default assignment, server-side tool capability enforcement, AI runtime wiring into webhook and assignment paths. Status as of 2026-09-18: core backend + UI implemented with 31 new tests (all passing), only pre-existing test failures remain in Channels/OAuth/Appointments areas.
 
 ## 1. Delivery strategy
 

@@ -1,0 +1,37 @@
+<div class="mx-auto max-w-2xl">
+  <div class="flex items-center gap-3">
+    <%= link_to account_ai_agent_path(current_account, @ai_agent), class: "text-stone-400 hover:text-stone-600" do %>
+      ←
+    <% end %>
+    <h1 class="text-2xl font-semibold tracking-tight">Test Result: <%= @ai_agent.name %></h1>
+  </div>
+
+  <section class="mt-8 rounded-2xl border border-stone-200 bg-white p-6">
+    <h2 class="text-xs font-bold uppercase tracking-[0.14em] text-stone-400">Response</h2>
+    <div class="mt-3 rounded-xl bg-stone-50 p-4">
+      <p class="whitespace-pre-wrap text-sm leading-relaxed text-stone-800"><%= @response_text %></p>
+    </div>
+  </section>
+
+  <% if @tool_calls.any? %>
+    <section class="mt-6 rounded-2xl border border-stone-200 bg-white p-6">
+      <h2 class="text-xs font-bold uppercase tracking-[0.14em] text-stone-400">Proposed actions</h2>
+      <ul class="mt-3 space-y-2">
+        <% @tool_calls.each do |call| %>
+          <li class="rounded-xl border border-stone-200 bg-stone-50 p-3">
+            <div class="flex items-center gap-2">
+              <span class="rounded-full bg-indigo-100 px-2 py-0.5 text-[0.65rem] font-bold text-indigo-700"><%= call[:name] %></span>
+            </div>
+            <% if call[:arguments].present? %>
+              <pre class="mt-2 whitespace-pre-wrap text-xs text-stone-600"><%= JSON.pretty_generate(call[:arguments]) %></pre>
+            <% end %>
+          </li>
+        <% end %>
+      </ul>
+    </section>
+  <% end %>
+
+  <div class="mt-6">
+    <%= link_to "Run another test", preview_account_ai_agent_path(current_account, @ai_agent), class: "rounded-lg border border-stone-200 px-4 py-2 text-sm font-medium text-stone-600 hover:bg-stone-50" %>
+  </div>
+</div>

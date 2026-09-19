@@ -83,7 +83,7 @@ class Reservi::AiToolTest < ActiveSupport::TestCase
       )
 
       assert_equal "sent",        result[:status]
-      assert_equal "Message created", result[:message]
+      assert_match(/Message created/, result[:message])
     end
 
     msg = @conversation.messages.last

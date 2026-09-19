@@ -1,0 +1,24 @@
+alpha_lina_config:
+  account: alpha
+  agent: alpha_lina_ai
+  version_number: 1
+  status: published
+  role: Receptionist
+  guidance_config: {"instructions": "You are the receptionist for Marrakech Garden. Reply professionally in the customer's language. Collect required information and schedule appointments."}
+  capability_config: {"reply": true, "update_fields": true, "select_items": true, "create_appointments": true, "search_knowledge": true, "add_notes": true, "handoff": true, "cancel_appointments": false}
+  provider_type: fake
+  model_identifier: fake-v1
+  max_concurrent_runs: 1
+  published_at: <%= 1.day.ago %>
+
+alpha_scheduler_config:
+  account: alpha
+  agent: alpha_scheduler_ai
+  version_number: 1
+  status: draft
+  role: Scheduling
+  guidance_config: {"instructions": "Help customers schedule appointments."}
+  capability_config: {"reply": true, "create_appointments": true, "cancel_appointments": true, "update_fields": false, "select_items": false, "search_knowledge": false, "add_notes": false, "handoff": false}
+  provider_type: fake
+  model_identifier: fake-v1
+  max_concurrent_runs: 1

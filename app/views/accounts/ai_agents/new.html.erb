@@ -1,0 +1,40 @@
+<%= form_with model: @ai_agent, url: account_ai_agents_create_path(current_account), class: "mx-auto max-w-2xl" do |f| %>
+  <h1 class="text-2xl font-semibold tracking-tight">Create AI Agent</h1>
+  <p class="mt-1 text-sm text-stone-500">AI agents can own conversations, reply to customers, and help progress them through your Flows.</p>
+
+  <div class="mt-8 space-y-6">
+    <div>
+      <%= f.label :name, "Name", class: "block text-sm font-semibold text-stone-700" %>
+      <%= f.text_field :name, required: true, autofocus: true,
+            placeholder: "e.g. Lina",
+            class: "mt-1.5 block w-full rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100" %>
+      <p class="mt-1 text-xs text-stone-400">Give your AI agent a name your team will recognise.</p>
+    </div>
+
+    <div>
+      <%= f.label :instructions, "Instructions", class: "block text-sm font-semibold text-stone-700" %>
+      <%= f.text_area :instructions, rows: 10, required: false,
+            placeholder: "You are the receptionist for Marrakech Garden.\n\nReply professionally in the customer's language.\n\nYour goal is to understand their request, collect the information required by the current stage and schedule an appointment.\n\nIf the customer requests something outside our services, assign the conversation to Ahmed.",
+            class: "mt-1.5 block w-full rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 font-mono" %>
+      <div class="mt-3 rounded-xl border border-indigo-100 bg-indigo-50/50 p-3 text-xs text-indigo-700">
+        <p class="font-semibold">The AI automatically knows:</p>
+        <ul class="mt-1.5 list-inside list-disc space-y-0.5 text-indigo-600">
+          <li>Customer information</li>
+          <li>Conversation history</li>
+          <li>Current stage requirements</li>
+          <li>Required fields</li>
+          <li>Selected catalog items</li>
+          <li>Appointments</li>
+          <li>Internal notes</li>
+          <li>Business knowledge</li>
+        </ul>
+        <p class="mt-2">You only need to describe <em>how</em> it should behave.</p>
+      </div>
+    </div>
+
+    <div class="flex items-center justify-between border-t border-stone-200 pt-6">
+      <%= link_to "Cancel", account_ai_agents_path(current_account), class: "text-sm font-medium text-stone-500 hover:text-stone-700" %>
+      <%= f.submit "Create Agent", class: "cursor-pointer rounded-xl bg-stone-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-stone-700" %>
+    </div>
+  </div>
+<% end %>

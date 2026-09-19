@@ -1,0 +1,6 @@
+alpha_dev:
+  account: alpha
+  name: Dev Inbox
+  provider_type: dev
+  inbound_token: dev-test-token-alphaxxxxx
+  active: false

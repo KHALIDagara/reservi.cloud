@@ -45,3 +45,22 @@ beta_eve_human:
   name: Eve Operator
   active: true
   capabilities: {}
+
+# AI Agents
+alpha_lina_ai:
+  account: alpha
+  kind: ai
+  name: Lina
+  active: true
+  operational_status: active
+  agent_configuration: alpha_lina_config
+  capabilities: {}
+
+alpha_scheduler_ai:
+  account: alpha
+  kind: ai
+  name: Scheduling Assistant
+  active: true
+  operational_status: draft
+  agent_configuration: alpha_scheduler_config
+  capabilities: {}

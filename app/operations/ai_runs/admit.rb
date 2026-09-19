@@ -22,7 +22,9 @@ module AiRuns
     end
 
     def call
-      raise Reservi::Errors::OperationError, "Agent is not operational" unless @agent.operational?
+      # AI agents must be active and have a published configuration.
+      # Paused/draft AI agents cannot admit new runs (existing runs can complete).
+      raise Reservi::Errors::OperationError, "AI agent is not available for new work" unless @agent.active_for_work?
       raise Reservi::Errors::OperationError, "Conversation is not active" unless @conversation.active?
 
       if AiRun.active.for_conversation(@conversation).exists?

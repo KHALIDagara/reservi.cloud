@@ -1,12 +1,16 @@
 # Accounts and the shared human/AI workspace
 
-Status: implementation plan, not shipped behavior. Extends the architecture at `4130274` with the account administration, invitations, assignment and knowledge experience requested on 2026-09-11.
+Status: partially implemented (2026-09-18). Navbar split, AI Agents CRUD, channel default assignment, and capability enforcement are complete. AI runtime wiring into webhooks and assignment is complete.
 
 ## 1. Product decision
 
 One login can create and administer many independent Accounts. Each Account has human and AI Agents in the same team, assignment, knowledge and operational interface model. Administrators configure business knowledge and agent behavior once; Reservi supplies the current Conversation, stage, requirements and allowed actions automatically at runtime.
 
-The ordinary admin works with three concepts: **People & AI**, **Knowledge**, and **Flow**. Channels connect customers to that workspace. Advanced model/retrieval/tool settings are not required onboarding steps.
+The admin navigation separates People, AI Agents, and Teams as distinct areas:
+
+- **People**: Human members, invitations, roles. Authenticated Account members.
+- **AI Agents**: Autonomous workers with name, instructions, capability configuration.
+- **Teams**: Groups of both human and AI agents for routing and fallback.
 
 No fixed product limit on Account count is imposed by the domain model. This does not mean unlimited simultaneous inference or storage: transparent usage budgets, pagination, abuse controls and fair worker scheduling protect a shared service. Account creation is never a database/server deployment per customer.
 

@@ -4,20 +4,24 @@ module Reservi
   # tools it may call and how to structure their arguments.
   class AiToolSchema
     # Return OpenAI-compatible function definitions for all available tools.
+    # Filters by agent capability_config when available.
     def self.function_definitions(agent:)
-      base_tools = [
-        read_workspace_def,
-        create_message_def, create_note_def,
-        update_field_def, select_item_def,
-        create_appointment_def, confirm_appointment_def,
-        cancel_appointment_def, handoff_def
-      ]
+      caps = agent.agent_configuration&.capability_config || {}
+      # Default to all capabilities if no config (backward compat)
+      return all_tool_definitions if caps.empty?
 
-      # Include search_knowledge for all agents — the tool itself
-      # returns a placeholder until the knowledge system is built (T11+).
-      base_tools.unshift(search_knowledge_def)
-
-      base_tools
+      tools = []
+      tools << read_workspace_def                               # always available
+      tools << search_knowledge_def if caps.fetch("search_knowledge", true)
+      tools << create_message_def   if caps.fetch("reply", true)
+      tools << create_note_def      if caps.fetch("add_notes", true)
+      tools << update_field_def     if caps.fetch("update_fields", true)
+      tools << select_item_def      if caps.fetch("select_items", true)
+      tools << create_appointment_def  if caps.fetch("create_appointments", true)
+      tools << confirm_appointment_def if caps.fetch("create_appointments", true)
+      tools << cancel_appointment_def  if caps.fetch("cancel_appointments", false)
+      tools << handoff_def          if caps.fetch("handoff", true)
+      tools
     end
 
     # Validate that proposed tool calls are within schema bounds.
@@ -48,6 +52,17 @@ module Reservi
     end
 
     private
+
+    def self.all_tool_definitions
+      [
+        read_workspace_def,
+        search_knowledge_def,
+        create_message_def, create_note_def,
+        update_field_def, select_item_def,
+        create_appointment_def, confirm_appointment_def,
+        cancel_appointment_def, handoff_def
+      ]
+    end
 
     def self.read_workspace_def
       {
