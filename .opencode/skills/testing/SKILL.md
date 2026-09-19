@@ -56,7 +56,12 @@ Use for critical journeys:
 - assign/reassign;
 - Appointment create/reschedule/cancel;
 - human/AI handoff;
-- mobile-first interactions.
+- mobile-first interactions;
+- collaborative inbox realtime behavior across two sessions;
+- message-window pagination/scroll preservation;
+- viewer-specific unread updates;
+- stage-panel morph after field/item/appointment changes;
+- attachment/audio composer behavior when supported.
 
 ## Architecture regression scenarios
 
@@ -92,6 +97,46 @@ When relevant cover:
 - provider failures do not leave impossible local state.
 
 Do not invent Item reservation/conflict semantics simply because an Item is a car/room/service. Item selection is not reservation.
+
+
+## CI integrity — mandatory
+
+The verification command's real exit status is part of the evidence.
+
+Forbidden:
+
+- excluding known failing tests from the normal suite merely to make CI green;
+- shell wrappers that run tests under `... || { ...; exit 0; }`;
+- suppressing a non-zero test exit code;
+- reporting "0 failures" when the underlying command failed;
+- weakening/deleting valid assertions instead of fixing the defect.
+
+If a failure is genuinely pre-existing or infrastructure-related, keep it visible, report it precisely, and triage it separately. Do not counterfeit a green suite.
+
+## Collaborative inbox proof matrix
+
+When `hotwire-inbox` applies, prove as relevant:
+
+1. inbox route renders workspace, settings are separate;
+2. cross-inbox nested Conversation access is rejected;
+3. 25-row list uses bounded/query-efficient projection and keyset pagination;
+4. latest message window is bounded and chronological;
+5. before-window prepends older messages without deleting current messages and preserves visual scroll;
+6. after/reconnect window is bounded;
+7. opening Conversation updates this agent's read cursor/unread badge without changing another agent's unread state;
+8. one send creates exactly one Message and one delivery intent; retry does not duplicate it;
+9. attachment belongs to the same Message that delivery references;
+10. provider media behavior matches what composer UI offers;
+11. selected Conversation receives a realtime message in a second browser/session without reload;
+12. list row updates/reorders without full-list refresh;
+13. no per-row/message/block subscriptions;
+14. field update may advance Stage and panel renders the new current Stage;
+15. Catalog picker is conversation/role aware;
+16. Appointment picker is conversation/role aware and follows agent -> day -> slot -> confirm;
+17. assignment excludes non-assignable AI and remains live for collaborative viewers;
+18. mobile work-panel/dialog focus/escape/inert behavior works.
+
+A unit test of a broadcast helper alone does not prove browser subscription compatibility.
 
 ## Test quality rules
 
