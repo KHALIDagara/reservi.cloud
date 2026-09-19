@@ -1,0 +1,46 @@
+<%# Field edit modal — rendered inside turbo_frame_tag "conversation_modal" %>
+<%# Locals: @field_definition, @current_value, @conversation %>
+
+<%= turbo_frame_tag "conversation_modal" do %>
+  <div class="p-5 sm:p-6">
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <h2 class="text-lg font-bold text-slate-950"><%= @field_definition.label.presence || @field_definition.key.titleize %></h2>
+        <p class="text-xs text-slate-500"><%= @field_definition.scope == "customer" ? "Customer profile" : "This conversation" %></p>
+      </div>
+      <button type="button"
+              data-action="click->modal#close"
+              class="flex size-9 items-center justify-center rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-900"
+              aria-label="Close">×</button>
+    </div>
+
+    <% form_path = @field_definition.scope == "customer" ?
+          customer_field_inbox_conversation_panel_path(current_account, @inbox, @conversation) :
+          field_inbox_conversation_panel_path(current_account, @inbox, @conversation) %>
+
+    <%= form_with url: form_path, method: :patch do |f| %>
+      <%= f.hidden_field :key, value: (@field_definition.built_in_binding.presence || @field_definition.key) %>
+      <%= f.hidden_field :scope, value: @field_definition.scope %>
+
+      <div class="space-y-4">
+        <div>
+          <%= render "accounts/conversations/field_input",
+                f: f,
+                field_definition: @field_definition,
+                value: @current_value,
+                input_id: "modal_field_#{@field_definition.id}" %>
+        </div>
+
+        <div class="flex justify-end gap-3 pt-2">
+          <button type="button"
+                  data-action="click->modal#close"
+                  class="min-h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-600 hover:bg-slate-50">
+            Cancel
+          </button>
+          <%= f.submit "Save",
+                class: "min-h-10 cursor-pointer rounded-xl bg-indigo-600 px-4 text-sm font-bold text-white shadow-sm hover:bg-indigo-700" %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+<% end %>

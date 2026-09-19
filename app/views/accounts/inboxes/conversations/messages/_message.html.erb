@@ -1,0 +1,48 @@
+<%# Single message bubble — used for initial render and live appends %>
+<%# Locals: message %>
+
+<article id="<%= dom_id(message) %>" class="flex <%= message.direction == 'inbound' ? 'justify-start' : 'justify-end' %>">
+  <div class="max-w-[88%] sm:max-w-[75%]">
+    <div class="rounded-2xl px-4 py-3 shadow-sm <%= message.direction == 'inbound' ? 'rounded-bl-md border border-slate-200 bg-white text-slate-800' : 'rounded-br-md bg-indigo-600 text-white shadow-indigo-100' %>">
+      <p class="text-[0.68rem] font-bold <%= message.direction == 'inbound' ? 'text-slate-400' : 'text-indigo-100' %>"><%= message.author_name %></p>
+
+      <% if message.content.present? %>
+        <p class="mt-1 whitespace-pre-wrap text-sm leading-6"><%= message.content %></p>
+      <% end %>
+
+      <% message.attachments.each do |attachment| %>
+        <% if attachment.image? && attachment.file.attached? %>
+          <div class="mt-2 overflow-hidden rounded-xl">
+            <%= image_tag attachment.file.representation(resize_to_limit: [400, 400]),
+                  class: "max-w-full h-auto" %>
+          </div>
+        <% elsif attachment.audio? && attachment.file.attached? %>
+          <div class="mt-2">
+            <audio controls class="w-full max-w-xs">
+              <source src="<%= rails_blob_url(attachment.file) %>" type="<%= attachment.file.content_type %>">
+            </audio>
+          </div>
+        <% elsif attachment.video? && attachment.file.attached? %>
+          <div class="mt-2 overflow-hidden rounded-xl">
+            <video controls class="max-w-full" preload="metadata">
+              <source src="<%= rails_blob_url(attachment.file) %>" type="<%= attachment.file.content_type %>">
+            </video>
+          </div>
+        <% elsif attachment.file.attached? %>
+          <div class="mt-2">
+            <%= link_to rails_blob_path(attachment.file, disposition: "attachment"),
+                  class: "inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-indigo-600 hover:bg-indigo-50" do %>
+              <%= attachment.file.filename %>
+            <% end %>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+    <p class="mt-1.5 px-1 text-[0.68rem] text-slate-400 <%= message.direction == 'outbound' ? 'text-right' : '' %>">
+      <time datetime="<%= message.created_at.iso8601 %>"><%= time_ago_in_words(message.created_at) %> ago</time>
+      <% if message.direction == "outbound" && message.delivery_status != "local" %>
+        · <span class="<%= delivery_status_color(message.delivery_status) %>"><%= message.delivery_status.humanize %> <%= delivery_status_icon(message.delivery_status) %></span>
+      <% end %>
+    </p>
+  </div>
+</article>

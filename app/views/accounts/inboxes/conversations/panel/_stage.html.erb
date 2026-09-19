@@ -1,0 +1,8 @@
+<%# Stage header card %>
+<%# Locals: stage, conversation %>
+
+<section class="rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 p-4 text-white shadow-sm shadow-indigo-100">
+  <p class="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-indigo-100">Current stage</p>
+  <h3 class="mt-2 text-lg font-bold"><%= stage&.label || "No active stage" %></h3>
+  <p class="mt-1 text-xs text-indigo-100"><%= stage&.blocks&.size || 0 %> work item<%= "s" unless stage&.blocks&.size == 1 %> in this stage</p>
+</section>

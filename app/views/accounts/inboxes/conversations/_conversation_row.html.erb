@@ -1,0 +1,27 @@
+<%# Single conversation row in the inbox list — used for Turbo Stream replace %>
+<%# Locals: conversation (query result row), selected_id, filter %>
+
+<li class="relative" id="<%= dom_id(conversation) %>">
+  <%= link_to account_inbox_conversation_path(current_account, @inbox, conversation, filter:),
+        class: "group flex min-h-20 items-start gap-3 px-4 py-3 transition hover:bg-slate-50 #{selected_id.to_i == conversation.id ? 'bg-indigo-50/70 border-l-2 border-l-indigo-600' : ''}",
+        data: { turbo_frame: "conversation_workspace" } do %>
+    <% if conversation.attention && selected_id.to_i != conversation.id %>
+      <span class="absolute inset-y-3 left-0 w-1 rounded-r-full bg-indigo-500"></span>
+    <% end %>
+    <span class="flex size-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-100 to-violet-100 text-xs font-bold text-indigo-700"><%= conversation.customer_initial&.upcase || conversation.customer_name&.first&.upcase %></span>
+    <span class="min-w-0 flex-1">
+      <span class="flex items-center justify-between gap-2">
+        <span class="truncate text-sm font-bold text-slate-900"><%= conversation.push_name || conversation.customer_name %></span>
+        <span class="shrink-0 text-[0.65rem] text-slate-400"><%= time_ago_in_words(conversation.last_activity) %></span>
+      </span>
+      <span class="mt-0.5 block truncate text-xs <%= conversation.attention ? 'font-medium text-slate-700' : 'text-slate-500' %>"><%= conversation.latest_message_preview&.truncate(80) || "No messages yet" %></span>
+      <span class="mt-1.5 flex items-center gap-x-1.5 text-[0.65rem] text-slate-400">
+        <span class="rounded-md bg-slate-100 px-1.5 py-0.5 font-medium text-slate-600"><%= conversation.stage_label || "No stage" %></span>
+        <span><%= conversation.owner_name || "Unassigned" %></span>
+        <% if conversation.unread_count.to_i > 0 %>
+          <span class="ml-auto rounded-full bg-indigo-600 px-1.5 py-0.5 text-[0.6rem] font-bold leading-none text-white"><%= conversation.unread_count %></span>
+        <% end %>
+      </span>
+    </span>
+  <% end %>
+</li>

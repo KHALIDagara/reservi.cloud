@@ -1,0 +1,6 @@
+<%# Partial: messages list — used for loading older messages via Turbo %>
+<%# Locals: messages %>
+
+<% messages.each do |message| %>
+  <%= render "accounts/inboxes/conversations/messages/message", message: message %>
+<% end %>

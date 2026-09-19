@@ -1,0 +1,23 @@
+<%# Error state for field edit modal %>
+
+<%= turbo_frame_tag "conversation_modal" do %>
+  <div class="p-5 sm:p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold text-rose-700">Error</h2>
+      <button type="button"
+              data-action="click->modal#close"
+              class="flex size-9 items-center justify-center rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-900"
+              aria-label="Close">×</button>
+    </div>
+    <div class="rounded-xl bg-rose-50 p-4 text-sm text-rose-700">
+      <%= error %>
+    </div>
+    <div class="mt-4 flex justify-end">
+      <button type="button"
+              data-action="click->modal#close"
+              class="min-h-10 rounded-xl bg-slate-900 px-4 text-sm font-bold text-white hover:bg-slate-700">
+        OK
+      </button>
+    </div>
+  </div>
+<% end %>

@@ -1,25 +1,32 @@
 module Accounts
   module Inboxes
     # The conversation collection and individual conversation within an inbox.
-    # Replaces the old InboxController#scoped_conversations and the
-    # ConversationsController conversation workspace actions.
+    # Uses Inboxes::ConversationListQuery to produce a rich read model for
+    # each row (push name, unread count, stage, assignee, etc).
     class ConversationsController < ApplicationController
       before_action :require_account_access!
       before_action :set_inbox
       before_action :set_conversation, only: %i[show]
 
-      PAGE_SIZE = 25
+      PAGE_SIZE = Inboxes::ConversationListQuery::PAGE_SIZE
 
       # GET /a/:account_id/inboxes/:inbox_id/conversations
       def index
         conversations = scoped_conversations.limit(PAGE_SIZE + 1).to_a
-        @next_cursor = encode_cursor(conversations[PAGE_SIZE - 1]) if conversations.size > PAGE_SIZE
+        @next_cursor = Inboxes::ConversationListQuery.encode_cursor(conversations[PAGE_SIZE - 1]) if conversations.size > PAGE_SIZE
         @conversations = conversations.first(PAGE_SIZE)
       end
 
       # GET /a/:account_id/inboxes/:inbox_id/conversations/:id
       def show
-        @messages = @conversation.messages.chronological.includes(:agent)
+        @messages = Messages::WindowQuery.call(
+          conversation: @conversation,
+          mode: :latest,
+          limit: 30
+        )
+        @has_older_messages = @conversation.messages.count > @messages.size
+        @oldest_message_id = @messages.first&.id
+
         @notes    = @conversation.notes.chronological.includes(:agent)
         @panel_open = params[:panel] == "open"
         touch_read_cursor!
@@ -32,48 +39,18 @@ module Accounts
       end
 
       def set_conversation
-        @conversation = current_account.conversations.find(params[:id])
+        @conversation = @inbox.conversations.find(params[:id])
       rescue ActiveRecord::RecordNotFound
-        redirect_to account_inbox_path(current_account), alert: "Conversation not found."
+        redirect_to account_inbox_path(current_account, @inbox), alert: "Conversation not found."
       end
 
       def scoped_conversations
-        scope = current_account.conversations.active
-          .includes(:customer, :owner, :current_stage)
-          .select("conversations.*, (SELECT content FROM messages WHERE messages.conversation_id = conversations.id ORDER BY messages.created_at DESC, messages.id DESC LIMIT 1) AS latest_message_content")
-          .order(Arel.sql("COALESCE(conversations.last_activity_at, conversations.created_at) DESC"), id: :desc)
-
-        case params[:filter]
-        when "mine"
-          scope = scope.owned_by(current_membership.agent.id)
-        when "unowned"
-          scope = scope.unowned
-        when "team"
-          scope = scope.for_team(current_membership.agent.teams.pluck(:id))
-        end
-
-        if params[:before].present? && (cursor = decode_cursor(params[:before]))
-          scope = scope.where(
-            "COALESCE(conversations.last_activity_at, conversations.created_at) < :time OR (COALESCE(conversations.last_activity_at, conversations.created_at) = :time AND conversations.id < :id)",
-            time: cursor.fetch("time"), id: cursor.fetch("id")
-          )
-        end
-        scope
-      end
-
-      def encode_cursor(conversation)
-        Base64.urlsafe_encode64(
-          { time: (conversation.last_activity_at || conversation.created_at).iso8601(6), id: conversation.id }.to_json,
-          padding: false
+        Inboxes::ConversationListQuery.call(
+          inbox:          @inbox,
+          agent:          current_membership.agent,
+          filter:         params[:filter],
+          before_cursor:  params[:before]
         )
-      end
-
-      def decode_cursor(cursor)
-        parsed = JSON.parse(Base64.urlsafe_decode64(cursor))
-        return unless parsed["time"].present? && parsed["id"].present?
-        { "time" => Time.iso8601(parsed["time"].to_s), "id" => Integer(parsed["id"].to_s, 10) }
-      rescue ArgumentError, JSON::ParserError, TypeError
-        nil
       end
 
       def touch_read_cursor!

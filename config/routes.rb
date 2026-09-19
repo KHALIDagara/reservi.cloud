@@ -21,7 +21,11 @@ Rails.application.routes.draw do
   # request revalidates an active Membership (INV-130).
   scope "/a/:account_id", module: :accounts do
     get "/", to: "home#show", as: :account_home
-    get "inbox", to: "inbox#index", as: :account_inbox
+    get "inbox", to: redirect { |path_params, _req|
+      account = Account.find(path_params[:account_id])
+      inbox  = account.channels.active.first
+      inbox ? "/a/#{account.id}/inboxes/#{inbox.id}" : "/a/#{account.id}/inboxes"
+    }, as: :account_inbox
     get "calendar", to: "calendar#index", as: :account_calendar
 
     # Collaborative appointment scheduling
@@ -54,13 +58,15 @@ Rails.application.routes.draw do
 
     # Inboxes — the places where conversations arrive (WhatsApp, Instagram, etc.)
     # Backed by Channel records; ChannelsController handles OAuth/connect flows.
-    resources :inboxes, only: [ :index, :show, :destroy ], controller: "inboxes" do
+    resources :inboxes, only: [ :index, :show, :update, :destroy ], controller: "inboxes" do
+      resource :settings, only: [ :show ], controller: "inboxes/settings"
       scope module: :inboxes do
         resources :conversations, only: [ :index, :show ] do
           scope module: :conversations do
             resources :messages, only: [ :index, :create ]
             resources :notes,    only: [ :index, :create ]
             resource  :panel,    only: [ :show ], controller: "panel" do
+              get  :edit_field, to: "panel#edit_field"
               patch :field,          to: "panel#update_field"
               patch :customer_field, to: "panel#update_customer_field"
             end
@@ -94,6 +100,18 @@ Rails.application.routes.draw do
     post "invitations/:id/revoke", to: "invitations#revoke", as: :revoke_account_invitation
     post "memberships/:id/role", to: "memberships#update_role", as: :account_membership_role
     post "memberships/:id/remove", to: "memberships#remove", as: :account_membership_remove
+
+    # AI Agents administration
+    get "ai_agents",            to: "ai_agents#index",   as: :account_ai_agents
+    get "ai_agents/new",        to: "ai_agents#new",     as: :new_account_ai_agent
+    post "ai_agents",           to: "ai_agents#create",  as: :account_ai_agents_create
+    get "ai_agents/:id",        to: "ai_agents#show",    as: :account_ai_agent
+    get "ai_agents/:id/edit",   to: "ai_agents#edit",    as: :edit_account_ai_agent
+    patch "ai_agents/:id",      to: "ai_agents#update",  as: :account_ai_agent_update
+    post "ai_agents/:id/activate",   to: "ai_agents/activations#create",  as: :activate_account_ai_agent
+    post "ai_agents/:id/deactivate", to: "ai_agents/activations#destroy", as: :deactivate_account_ai_agent
+    get "ai_agents/:id/preview",      to: "ai_agents/previews#new",     as: :preview_account_ai_agent
+    post "ai_agents/:id/preview",     to: "ai_agents/previews#create",  as: :run_preview_account_ai_agent
 
     # Field definitions (admin)
     get "field_definitions", to: "field_definitions#index", as: :account_field_definitions

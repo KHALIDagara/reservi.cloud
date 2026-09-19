@@ -1,0 +1,24 @@
+<%# Panel show — renders inside turbo_frame_tag "conversation_panel" %>
+<%# This is the entry point: it dispatches to block partials based on stage config %>
+
+<%= turbo_frame_tag "conversation_panel" do %>
+  <div class="space-y-5 p-4 sm:p-5">
+    <%= render "stage", stage: @stage, conversation: @conversation %>
+    <%= render "assignment", conversation: @conversation, agents: @account_agents %>
+    <%= render "stage_history", transitions: @stage_history, current_stage: @stage %>
+
+    <% (@stage_blocks || []).each do |block| %>
+      <% case block["type"] %>
+      <% when "field" %>
+        <%= render "blocks/field", block: block, conversation: @conversation,
+              customer_fields: @customer_fields, conversation_fields: @conversation_fields %>
+      <% when "catalog" %>
+        <%= render "blocks/catalog", block: block, conversation: @conversation,
+              catalogs: @catalogs, item_selections: @item_selections, catalog_roles: @catalog_roles %>
+      <% when "appointment" %>
+        <%= render "blocks/appointment", block: block, conversation: @conversation,
+              appointments: @appointments %>
+      <% end %>
+    <% end %>
+  </div>
+<% end %>

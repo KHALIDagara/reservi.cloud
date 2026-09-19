@@ -20,7 +20,7 @@
   <nav class="mt-5 flex-1 overflow-y-auto px-3" aria-label="Primary navigation">
     <% primary_items = [
       [ :home, "Overview", account_home_path(current_account), :home ],
-      [ :inbox, "Inbox", account_inbox_path(current_account), :inbox ],
+      [ :inbox, "Inbox", inboxes_path(current_account), :inbox ],
       [ :calendar, "Calendar", account_calendar_path(current_account), :calendar ],
       [ :my_calendar, "My Schedule", calendar_setting_path(current_account), :calendar ]
     ] %>
@@ -38,7 +38,9 @@
       <p class="mb-2 mt-7 px-3 text-[0.68rem] font-bold uppercase tracking-[0.16em] text-slate-400">Manage</p>
       <div class="space-y-1">
         <% [
-          [ :people, "People & AI", account_people_path(current_account), :users ],
+          [ :people, "People", account_people_path(current_account), :users ],
+          [ :ai_agents, "AI Agents", account_ai_agents_path(current_account), :robot ],
+          [ :teams, "Teams", account_people_path(current_account), :users ],
           [ :flows, "Flows", flows_path(current_account), :flow ],
           [ :channels, "Inboxes", inboxes_path(current_account), :inbox ],
           [ :catalogs, "Catalogs", catalogs_path(account_id: current_account), :catalog ],

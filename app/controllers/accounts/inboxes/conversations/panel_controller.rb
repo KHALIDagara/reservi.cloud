@@ -5,6 +5,7 @@ module Accounts
       # appointments, assignment, and stage history.
       class PanelController < ApplicationController
         before_action :require_account_access!
+        before_action :set_inbox
         before_action :set_conversation
 
         # GET /a/:account_id/inboxes/:inbox_id/conversations/:conversation_id/panel
@@ -23,6 +24,30 @@ module Accounts
           render layout: false
         end
 
+        # GET /a/:account_id/inboxes/:inbox_id/conversations/:conversation_id/panel/edit_field
+        def edit_field
+          scope = params[:scope] || "conversation"
+          key   = params[:key]
+
+          @field_definition = current_account.field_definitions.active
+            .where(scope:)
+            .find_by("key = :key OR built_in_binding = :key", key:)
+
+          unless @field_definition
+            render plain: "Field not configured.", status: :not_found and return
+          end
+
+          @current_value = if scope == "customer"
+            @field_definition.built_in_binding.present? ?
+              @conversation.customer.public_send(@field_definition.built_in_binding) :
+              @conversation.customer.custom_values[key]
+          else
+            @conversation.custom_values[key]
+          end
+
+          render layout: false
+        end
+
         # PATCH /a/:account_id/inboxes/:inbox_id/conversations/:conversation_id/panel/field
         def update_field
           value = typed_field_value(scope: "conversation", key: params[:key], value: params[:value])
@@ -31,9 +56,22 @@ module Accounts
             actor_membership: current_membership,
             attributes: { params[:key] => value }
           )
-          redirect_to conversation_return_path, notice: "Field updated."
+
+          respond_to do |format|
+            format.turbo_stream do
+              render turbo_stream: [
+                turbo_stream.replace("conversation_panel", partial: "accounts/inboxes/conversations/panel/show",
+                  locals: rebuild_panel_locals),
+                turbo_stream.replace("conversation_modal", "")
+              ]
+            end
+            format.html { redirect_to conversation_return_path, notice: "Field updated." }
+          end
         rescue Reservi::Errors::OperationError => e
-          redirect_to conversation_return_path, alert: e.message
+          respond_to do |format|
+            format.turbo_stream { render turbo_stream: turbo_stream.replace("conversation_modal", partial: "accounts/inboxes/conversations/panel/edit_field_error", locals: { error: e.message }) }
+            format.html { redirect_to conversation_return_path, alert: e.message }
+          end
         end
 
         # PATCH /a/:account_id/inboxes/:inbox_id/conversations/:conversation_id/panel/customer_field
@@ -45,15 +83,32 @@ module Accounts
             attributes: { params[:key] => value }
           )
           Flows::Evaluate.call(conversation: @conversation)
-          redirect_to conversation_return_path, notice: "Customer field updated."
+
+          respond_to do |format|
+            format.turbo_stream do
+              render turbo_stream: [
+                turbo_stream.replace("conversation_panel", partial: "accounts/inboxes/conversations/panel/show",
+                  locals: rebuild_panel_locals),
+                turbo_stream.replace("conversation_modal", "")
+              ]
+            end
+            format.html { redirect_to conversation_return_path, notice: "Customer field updated." }
+          end
         rescue Reservi::Errors::OperationError => e
-          redirect_to conversation_return_path, alert: e.message
+          respond_to do |format|
+            format.turbo_stream { render turbo_stream: turbo_stream.replace("conversation_modal", partial: "accounts/inboxes/conversations/panel/edit_field_error", locals: { error: e.message }) }
+            format.html { redirect_to conversation_return_path, alert: e.message }
+          end
         end
 
         private
 
+        def set_inbox
+          @inbox = current_account.channels.find(params[:inbox_id])
+        end
+
         def set_conversation
-          @conversation = current_account.conversations.find(params[:conversation_id])
+          @conversation = @inbox.conversations.find(params[:conversation_id])
         rescue ActiveRecord::RecordNotFound
           redirect_to account_inbox_path(current_account), alert: "Conversation not found."
         end
@@ -87,6 +142,33 @@ module Accounts
           end
         rescue ArgumentError
           value
+        end
+
+        def rebuild_panel_locals
+          @conversation.reload
+          @stage = @conversation.current_stage
+          @stage_blocks = @stage&.blocks || []
+          load_fields if has_block_type?("field")
+          load_catalogs if has_block_type?("catalog")
+          load_appointments if has_block_type?("appointment")
+          @account_agents = current_account.agents.active.order(:name)
+          @stage_history = @conversation.stage_transitions
+            .includes(:from_stage, :to_stage)
+            .order(created_at: :asc)
+
+          {
+            stage: @stage,
+            conversation: @conversation,
+            stage_blocks: @stage_blocks,
+            customer_fields: @customer_fields,
+            conversation_fields: @conversation_fields,
+            catalogs: @catalogs,
+            item_selections: @item_selections,
+            catalog_roles: @catalog_roles,
+            appointments: @appointments,
+            account_agents: @account_agents,
+            stage_history: @stage_history
+          }
         end
 
         def load_fields

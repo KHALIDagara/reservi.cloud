@@ -29,7 +29,13 @@ module Accounts
         content: conversation_params[:initial_message],
         team_id: agent.teams.first&.id
       )
-      redirect_to account_inbox_path(current_account, id: conversation.id), notice: "Conversation created."
+      inbox = conversation.channel_threads.first&.channel
+      if inbox
+        redirect_to account_inbox_conversation_url(current_account, inbox, conversation),
+          notice: "Conversation created."
+      else
+        redirect_to inboxes_path(current_account), notice: "Conversation created."
+      end
     rescue Reservi::Errors::OperationError => e
       redirect_to new_account_conversation_path(current_account), alert: e.message
     end
@@ -90,7 +96,7 @@ module Accounts
       load_fields if has_block_type?("field")
       load_catalogs if has_block_type?("catalog")
       load_appointments if has_block_type?("appointment")
-      @account_agents = current_account.agents.active.order(:name)
+      @account_agents = current_account.agents.assignable.order(:name)
 
       # Stage history: all previous stage transitions for this conversation
       @stage_history = @conversation.stage_transitions
@@ -126,13 +132,19 @@ module Accounts
     end
 
     def reassign
-      agent = current_account.agents.active.find_by(id: params[:agent_id])
+      agent = current_account.agents.assignable.find_by(id: params[:agent_id])
       return render json: { error: "Agent not found" }, status: :not_found unless agent
 
       if @conversation.owner_id.present?
         Conversations::Unclaim.call(conversation: @conversation, agent: @conversation.owner)
       end
       Conversations::Claim.call(conversation: @conversation, agent: agent)
+
+      # Wake up AI if the new owner is an active AI agent
+      if agent.kind == "ai" && agent.active_for_work?
+        AiRuns::Admit.call(agent: agent, conversation: @conversation, trigger: "assigned")
+      end
+
       redirect_to conversation_return_path, notice: "Conversation assigned."
     rescue Reservi::Errors::OperationError => e
       redirect_to conversation_return_path, alert: e.message

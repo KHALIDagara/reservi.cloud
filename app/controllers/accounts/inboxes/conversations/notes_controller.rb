@@ -3,6 +3,7 @@ module Accounts
     module Conversations
       class NotesController < ApplicationController
         before_action :require_account_access!
+        before_action :set_inbox
         before_action :set_conversation
 
         # GET /a/:account_id/inboxes/:inbox_id/conversations/:conversation_id/notes
@@ -24,8 +25,12 @@ module Accounts
 
         private
 
+        def set_inbox
+          @inbox = current_account.channels.find(params[:inbox_id])
+        end
+
         def set_conversation
-          @conversation = current_account.conversations.find(params[:conversation_id])
+          @conversation = @inbox.conversations.find(params[:conversation_id])
         rescue ActiveRecord::RecordNotFound
           redirect_to account_inbox_path(current_account), alert: "Conversation not found."
         end

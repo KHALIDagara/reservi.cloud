@@ -1,0 +1,4 @@
+<%# Inboxes::Conversations show — rendered inside turbo_frame_tag "conversation_workspace" %>
+<%= turbo_frame_tag "conversation_workspace" do %>
+  <%= render "conversation", conversation: @conversation, messages: @messages, notes: @notes, panel_open: @panel_open %>
+<% end %>
