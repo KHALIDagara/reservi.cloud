@@ -1,14 +1,16 @@
 name: Deploy
 
-# Deploy Reservi to the VPS via Kamal.
-# push to main => build Docker image on the VPS, deploy via Kamal, verify.
+# Deploy Reservi to the VPS.
+# push to main => test the exact SHA, build an image tagged with that SHA on the VPS,
+# deploy it, migrate, verify health, reload Caddy.
 #
 # Secrets (repo > Settings > Secrets and variables > Actions):
-#   DEPLOY_SSH_KEY        — private SSH key allowed on the VPS  
-#   RAILS_MASTER_KEY      — contents of config/master.key
+#   DEPLOY_SSH_KEY              — private SSH key allowed on the VPS
+#   RAILS_MASTER_KEY            — contents of config/master.key
+#   PROD_DATABASE_URL           — production PostgreSQL connection string
 # Variables:
-#   DEPLOY_HOST           — VPS IP or hostname
-#   DEPLOY_USER           — SSH user (e.g. opc)
+#   DEPLOY_HOST                 — VPS IP or hostname
+#   DEPLOY_USER                 — SSH user (e.g. opc)
 
 on:
   push:
@@ -20,6 +22,7 @@ env:
   DEPLOY_USER: ${{ vars.DEPLOY_USER }}
   SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
   APP_NAME: reservi_cloud
+  PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
   RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
   WHATSAPP_APP_ID: ${{ secrets.WHATSAPP_APP_ID }}
   WHATSAPP_APP_SECRET: ${{ secrets.WHATSAPP_APP_SECRET }}
@@ -57,7 +60,9 @@ jobs:
         env:
           RAILS_ENV: test
           RESERVI_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/reservi_cloud_test
-        run: bin/ci-test
+        run: |
+          bin/rails db:test:prepare
+          bin/rails test test/models test/controllers test/lib test/operations test/jobs
 
       - name: Set up SSH
         run: |
@@ -71,52 +76,53 @@ jobs:
         run: |
           ssh deploy-vps "sudo mkdir -p /opt/reservi.cloud && sudo chown -R \$(whoami):\$(whoami) /opt/reservi.cloud"
 
-      - name: Clone or pull on VPS
+      - name: Deploy tested SHA on VPS
         run: |
           printf '%s\n' "$SSH_KEY" | ssh deploy-vps "install -m 600 /dev/stdin /home/${DEPLOY_USER}/.ssh/github_deploy"
           ssh deploy-vps "set -e; \
             printf 'Host github.com\n  User git\n  IdentityFile ~/.ssh/github_deploy\n  StrictHostKeyChecking accept-new\n' > ~/.ssh/config; \
             if [ ! -d /opt/reservi.cloud/.git ]; then \
               git clone git@github.com:${GITHUB_REPOSITORY}.git /opt/reservi.cloud; \
-            else \
-              cd /opt/reservi.cloud && \
-              git remote set-url origin git@github.com:${GITHUB_REPOSITORY}.git && \
-              git fetch origin --prune && \
-              (git pull --ff-only origin main || git reset --hard origin/main); \
-            fi"
+            fi && \
+            cd /opt/reservi.cloud && \
+            git remote set-url origin git@github.com:${GITHUB_REPOSITORY}.git && \
+            git fetch origin --prune && \
+            git checkout ${GITHUB_SHA}"
 
       - name: Write master key on VPS
         run: |
           echo "${{ secrets.RAILS_MASTER_KEY }}" | ssh deploy-vps "cat > /opt/reservi.cloud/config/master.key && chmod 600 /opt/reservi.cloud/config/master.key"
 
-      - name: Deploy via Kamal
+      - name: Deploy
         run: |
           ssh deploy-vps "set -e; \
             cd /opt/reservi.cloud && \
-            docker build --build-arg RUBY_VERSION=3.4.4 -t ${APP_NAME}:latest . && \
-            docker stop ${APP_NAME} 2>/dev/null || true && \
-            docker rm ${APP_NAME} 2>/dev/null || true && \
+            docker build --build-arg RUBY_VERSION=3.4.4 -t ${APP_NAME}:${GITHUB_SHA} . && \
+            docker stop ${APP_NAME} 2>/dev/null; \
+            docker rm ${APP_NAME} 2>/dev/null; \
             docker run -d \
               --name ${APP_NAME} \
               --network host \
               --restart unless-stopped \
+              --mount source=${APP_NAME}_storage,target=/rails/storage \
               -e RAILS_MASTER_KEY=\$(cat config/master.key) \
               -e RAILS_ENV=production \
-              -e RESERVI_DATABASE_URL=postgresql://opc:reservi_prod_2026@localhost:5432/reservi_cloud_production \
+              -e RESERVI_DATABASE_URL='${PROD_DATABASE_URL}' \
               -e RAILS_SERVE_STATIC_FILES=true \
-              -e RESEND_API_KEY="${RESEND_API_KEY}" \
-              -e WHATSAPP_APP_ID="${WHATSAPP_APP_ID}" \
-              -e WHATSAPP_APP_SECRET="${WHATSAPP_APP_SECRET}" \
-              -e WHATSAPP_CONFIGURATION_ID="${WHATSAPP_CONFIGURATION_ID}" \
-              -e INSTAGRAM_APP_ID="${INSTAGRAM_APP_ID}" \
-              -e INSTAGRAM_APP_SECRET="${INSTAGRAM_APP_SECRET}" \
-              ${APP_NAME}:latest ./bin/rails server -p 3000 && \
-            docker exec -e RESERVI_DATABASE_URL=postgresql://opc:reservi_prod_2026@localhost:5432/reservi_cloud_production ${APP_NAME} bin/rails db:migrate 2>/dev/null || true"
+              -e SOLID_QUEUE_IN_PUMA=true \
+              -e RESEND_API_KEY='${RESEND_API_KEY}' \
+              -e WHATSAPP_APP_ID='${WHATSAPP_APP_ID}' \
+              -e WHATSAPP_APP_SECRET='${WHATSAPP_APP_SECRET}' \
+              -e WHATSAPP_CONFIGURATION_ID='${WHATSAPP_CONFIGURATION_ID}' \
+              -e INSTAGRAM_APP_ID='${INSTAGRAM_APP_ID}' \
+              -e INSTAGRAM_APP_SECRET='${INSTAGRAM_APP_SECRET}' \
+              ${APP_NAME}:${GITHUB_SHA} ./bin/rails server -p 3000 && \
+            docker exec -e RESERVI_DATABASE_URL='${PROD_DATABASE_URL}' ${APP_NAME} bin/rails db:migrate"
 
       - name: Verify deploy
         run: |
           sleep 30
-          ssh deploy-vps "curl -fsS http://localhost:3000/up >/dev/null 2>&1 && echo 'OK: health check passed' || (echo 'WARN: health check failed' && docker logs reservi_cloud --tail 50)"
+          ssh deploy-vps "set -e; curl -fsS http://localhost:3000/up >/dev/null 2>&1 && echo 'OK: health check passed' || { echo 'FAIL: health check failed'; docker logs reservi_cloud --tail 50; exit 1; }"
 
       - name: Reload Caddy
         run: |
