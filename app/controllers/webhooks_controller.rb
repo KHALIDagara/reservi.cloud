@@ -153,10 +153,13 @@ class WebhooksController < ApplicationController
 
   def find_channel_by_phone(phone_number)
     return if phone_number.blank?
-    Channel.active.find_by(
-      provider_type: "whatsapp",
-      "provider_config->>'display_phone_number'" => phone_number.delete_prefix("+")
-    )
+    # Normalize: strip leading + and non-digit characters for lookup
+    digits = phone_number.gsub(/^\+/, "").gsub(/\D/, "")
+    return if digits.blank?
+
+    Channel.active.where(provider_type: "whatsapp").detect do |c|
+      c.provider_config["display_phone_number"].to_s.gsub(/\D/, "") == digits
+    end
   end
 
   def find_channel_from_whatsapp_payload(parsed)

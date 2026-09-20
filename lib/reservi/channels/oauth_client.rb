@@ -160,8 +160,10 @@ module Reservi
           form: { access_token: access_token }
         )
 
-        # Override callback URL with per-phone-number URL (Chatwoot pattern)
-        callback_url = "#{webhook_base_url}/webhooks/whatsapp/+#{display_phone}"
+        # Override callback URL with per-phone-number URL (Chatwoot pattern).
+        # The display_phone_number from Meta already has a leading + (e.g. "+212600000000"),
+        # so we use it directly.
+        callback_url = "#{webhook_base_url}/webhooks/whatsapp/#{display_phone}"
         request_json(
           :post,
           "#{GRAPH_BASE}/#{escape_path(waba_id)}/subscribed_apps",
