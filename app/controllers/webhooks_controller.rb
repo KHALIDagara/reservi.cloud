@@ -65,6 +65,9 @@ class WebhooksController < ApplicationController
       end
     end
 
+    # Broadcast realtime update to open inboxes
+    publish_conversation_changed(conversation, :message_created)
+
     render json: { status: "accepted", message_id: message.id }
   rescue JSON::ParserError
     render json: { error: "Invalid JSON" }, status: :unprocessable_content
@@ -377,6 +380,9 @@ class WebhooksController < ApplicationController
         end
       end
 
+      # Broadcast realtime update to open inboxes
+      publish_conversation_changed(conv, :message_created)
+
     when "message_status"
       # Update delivery status
       delivery = MessageDelivery.find_by(
@@ -492,5 +498,17 @@ class WebhooksController < ApplicationController
     end
   rescue => e
     Rails.logger.error "Default assignment failed for conversation #{conversation.id}: #{e.class}: #{e.message}"
+  end
+
+  private
+
+  def publish_conversation_changed(conversation, event)
+    return unless conversation&.persisted?
+    Realtime::ConversationChangedJob.perform_later(
+      account_id:      conversation.account_id,
+      conversation_id: conversation.id,
+      revision:        conversation.revision,
+      event:
+    )
   end
 end

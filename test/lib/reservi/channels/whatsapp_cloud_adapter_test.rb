@@ -139,7 +139,7 @@ class Reservi::Channels::WhatsappCloudAdapterTest < ActiveSupport::TestCase
     }, [ Net::HTTP::Post ])
 
     Net::HTTP.stub(:new, mock_http) do
-      result = Reservi::Channels::WhatsappCloudAdapter.new.send_message(delivery: @delivery)
+      result = Reservi::Channels::WhatsappCloudAdapter.new.send_message(message_delivery: @delivery)
       assert_equal "sent", result[:status]
       assert_equal "wamid.HBgM...", result[:provider_message_id]
     end
@@ -158,7 +158,7 @@ class Reservi::Channels::WhatsappCloudAdapterTest < ActiveSupport::TestCase
     }, [ Net::HTTP::Post ])
 
     Net::HTTP.stub(:new, mock_http) do
-      result = Reservi::Channels::WhatsappCloudAdapter.new.send_message(delivery: @delivery)
+      result = Reservi::Channels::WhatsappCloudAdapter.new.send_message(message_delivery: @delivery)
       assert_equal "failed", result[:status]
       assert_equal "Invalid OAuth access token", result[:error]
     end
@@ -167,7 +167,7 @@ class Reservi::Channels::WhatsappCloudAdapterTest < ActiveSupport::TestCase
   test "send_message returns failed on network error" do
     broken = ->(*args) { raise Net::OpenTimeout, "execution expired" }
     Net::HTTP.stub(:new, broken) do
-      result = Reservi::Channels::WhatsappCloudAdapter.new.send_message(delivery: @delivery)
+      result = Reservi::Channels::WhatsappCloudAdapter.new.send_message(message_delivery: @delivery)
       assert_equal "failed", result[:status]
       assert_match(/execution expired/, result[:error])
     end

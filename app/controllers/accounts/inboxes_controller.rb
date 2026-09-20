@@ -21,14 +21,16 @@ module Accounts
     def show
     end
 
-    def update
-      if params[:channel][:default_assignment_type] == "agent"
-        @inbox.update!(default_agent_id: params[:channel][:default_agent_id], default_team_id: nil)
-      elsif params[:channel][:default_assignment_type] == "team"
-        @inbox.update!(default_agent_id: nil, default_team_id: params[:channel][:default_team_id])
-      elsif params[:channel][:default_assignment_type] == "none"
-        @inbox.update!(default_agent_id: nil, default_team_id: nil)
-      end
+def update
+    if params[:channel][:default_assignment_type] == "agent"
+      agent = current_account.agents.find_by(id: params[:channel][:default_agent_id])
+      @inbox.update!(default_agent: agent, default_team: nil)
+    elsif params[:channel][:default_assignment_type] == "team"
+      team = current_account.teams.find_by(id: params[:channel][:default_team_id])
+      @inbox.update!(default_agent: nil, default_team: team)
+    elsif params[:channel][:default_assignment_type] == "none"
+      @inbox.update!(default_agent: nil, default_team: nil)
+    end
 
       redirect_to account_inbox_path(current_account, @inbox), notice: "Inbox updated."
     rescue ActiveRecord::RecordInvalid => e

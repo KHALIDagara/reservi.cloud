@@ -126,7 +126,7 @@ class Reservi::Channels::InstagramAdapterTest < ActiveSupport::TestCase
     }, [ Net::HTTP::Post ])
 
     Net::HTTP.stub(:new, mock_http) do
-      result = Reservi::Channels::InstagramAdapter.new.send_message(delivery: @delivery)
+      result = Reservi::Channels::InstagramAdapter.new.send_message(message_delivery: @delivery)
       assert_equal "sent", result[:status]
       assert_equal "aWdfZAG1hZ...", result[:provider_message_id]
     end
@@ -145,7 +145,7 @@ class Reservi::Channels::InstagramAdapterTest < ActiveSupport::TestCase
     }, [ Net::HTTP::Post ])
 
     Net::HTTP.stub(:new, mock_http) do
-      result = Reservi::Channels::InstagramAdapter.new.send_message(delivery: @delivery)
+      result = Reservi::Channels::InstagramAdapter.new.send_message(message_delivery: @delivery)
       assert_equal "failed", result[:status]
       assert_equal "Invalid parameter", result[:error]
     end
@@ -154,7 +154,7 @@ class Reservi::Channels::InstagramAdapterTest < ActiveSupport::TestCase
   test "send_message returns failed on network error" do
     broken = ->(*args) { raise Net::OpenTimeout, "execution expired" }
     Net::HTTP.stub(:new, broken) do
-      result = Reservi::Channels::InstagramAdapter.new.send_message(delivery: @delivery)
+      result = Reservi::Channels::InstagramAdapter.new.send_message(message_delivery: @delivery)
       assert_equal "failed", result[:status]
       assert_match(/execution expired/, result[:error])
     end

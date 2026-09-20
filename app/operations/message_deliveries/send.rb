@@ -5,15 +5,15 @@ module MessageDeliveries
   # Idempotent: the operation_key prevents duplicate intents for the same
   # logical send (INV-070).
   class Send
-    def self.call(conversation:, channel:, agent:, content:, operation_key:)
-      new(conversation:, channel:, agent:, content:, operation_key:).call
+    def self.call(conversation:, channel:, agent:, message:, operation_key:)
+      new(conversation:, channel:, agent:, message:, operation_key:).call
     end
 
-    def initialize(conversation:, channel:, agent:, content:, operation_key:)
+    def initialize(conversation:, channel:, agent:, message:, operation_key:)
       @conversation = conversation
       @channel = channel
       @agent = agent
-      @content = content
+      @message = message
       @operation_key = operation_key
     end
 
@@ -25,13 +25,10 @@ module MessageDeliveries
         existing = MessageDelivery.find_by(operation_key: @operation_key)
         return existing if existing
 
-        # Create the local message
-        message = Messages::Create.call(
-          conversation: @conversation,
-          agent: @agent,
-          content: @content,
-          direction: "outbound"
-        )
+        # Use the canonical Message created by the caller (INV-010 — exactly one
+        # Message per outbound send). Attachments are already attached to this
+        # Message; the delivery intent references the same record.
+        message = @message
 
         # Create the delivery intent
         delivery = @conversation.account.message_deliveries.create!(

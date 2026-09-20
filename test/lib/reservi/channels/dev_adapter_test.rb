@@ -26,7 +26,7 @@ class Reservi::Channels::DevAdapterTest < ActiveSupport::TestCase
   end
 
   test "sends successfully" do
-    result = Reservi::Channels::DevAdapter.send_message(message_delivery: @delivery)
+    result = Reservi::Channels::DevAdapter.new.send_message(message_delivery: @delivery)
     assert_equal "sent", result[:status]
     assert result[:provider_message_id].present?
     assert_nil result[:error]
@@ -34,21 +34,21 @@ class Reservi::Channels::DevAdapterTest < ActiveSupport::TestCase
 
   test "simulates failure" do
     @message.update!(content: "This will SIMULATE_FAILURE")
-    result = Reservi::Channels::DevAdapter.send_message(message_delivery: @delivery)
+    result = Reservi::Channels::DevAdapter.new.send_message(message_delivery: @delivery)
     assert_equal "failed", result[:status]
     assert result[:error].present?
   end
 
   test "simulates timeout" do
     @message.update!(content: "This will SIMULATE_TIMEOUT")
-    result = Reservi::Channels::DevAdapter.send_message(message_delivery: @delivery)
+    result = Reservi::Channels::DevAdapter.new.send_message(message_delivery: @delivery)
     assert_equal "unknown", result[:status]
     assert result[:provider_message_id].present?
   end
 
-  test "adapter resolution" do
+  test "adapter resolution returns instance" do
     adapter = Reservi::Channels::BaseAdapter.for_provider("dev")
-    assert_equal Reservi::Channels::DevAdapter, adapter
+    assert_instance_of Reservi::Channels::DevAdapter, adapter
   end
 
   test "unknown provider raises" do

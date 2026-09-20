@@ -28,7 +28,12 @@ module Conversations
       message = nil
 
       ActiveRecord::Base.transaction do
-        message = @conversation.messages.create!(
+        # Create the message skeleton first. For attachment-only messages,
+        # the content validation is relaxed (content presence is skipped when
+        # attachments exist — see Message#has_attachments?). We create the
+        # Message record first so it has an ID for attachments to reference,
+        # then attach files, then validate+save.
+        message = @conversation.messages.new(
           agent: @agent,
           author_name: @agent.name,
           content: @content.presence || "",
@@ -36,7 +41,12 @@ module Conversations
           delivery_status: "local"
         )
 
+        # Attach files before save so has_attachments? returns true
+        # during content validation
         attach_files!(message) if @attachments.any?
+
+        # Now save — content validation will see attachments if present
+        message.save!
 
         # Find the appropriate channel for this conversation
         channel_thread = @conversation.channel_threads.first
@@ -47,7 +57,7 @@ module Conversations
             conversation: @conversation,
             channel:,
             agent: @agent,
-            content: message.content,
+            message: message,
             operation_key: @operation_key
           )
         end

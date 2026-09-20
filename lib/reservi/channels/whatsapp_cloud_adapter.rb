@@ -10,7 +10,8 @@ module Reservi
     class WhatsappCloudAdapter < BaseAdapter
       API_BASE = "https://graph.facebook.com/v22.0".freeze
 
-      def send_message(delivery:)
+      def send_message(message_delivery:)
+        delivery = message_delivery
         config = delivery.channel.provider_config
         phone_number_id = config["phone_number_id"]
         access_token = delivery.channel.credential("access_token")

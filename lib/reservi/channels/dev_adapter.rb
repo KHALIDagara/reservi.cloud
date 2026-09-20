@@ -13,16 +13,10 @@ module Reservi
     # Inbound webhooks are received via the webhook controller, authenticated
     # by the channel's inbound_token, and create Messages directly.
     class DevAdapter
-      def self.send_message(message_delivery:)
-        new(message_delivery:).send_message
-      end
-
-      def initialize(message_delivery:)
+      def send_message(message_delivery:)
         @message_delivery = message_delivery
         @message = message_delivery.message
-      end
 
-      def send_message
         content = @message.content.to_s
 
         if content.include?("SIMULATE_FAILURE")
