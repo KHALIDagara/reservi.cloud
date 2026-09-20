@@ -10,7 +10,7 @@ module Accounts
 
         # POST /a/:account_id/inboxes/:inbox_id/conversations/:conversation_id/assignment/claim
         def claim
-          Conversations::Claim.call(conversation: @conversation, agent: current_membership.agent)
+          ::Conversations::Claim.call(conversation: @conversation, agent: current_membership.agent)
           publish_conversation_changed(@conversation, :assignment_changed)
           redirect_to inbox_conversation_path(current_account, @inbox, @conversation), notice: "Conversation claimed."
         rescue Reservi::Errors::OperationError => e
@@ -19,7 +19,7 @@ module Accounts
 
         # POST /a/:account_id/inboxes/:inbox_id/conversations/:conversation_id/assignment/unclaim
         def unclaim
-          Conversations::Unclaim.call(conversation: @conversation, agent: current_membership.agent)
+          ::Conversations::Unclaim.call(conversation: @conversation, agent: current_membership.agent)
           publish_conversation_changed(@conversation, :assignment_changed)
           redirect_to inbox_conversation_path(current_account, @inbox, @conversation), notice: "Conversation released."
         rescue Reservi::Errors::AuthorizationError, Reservi::Errors::OperationError => e
@@ -32,9 +32,9 @@ module Accounts
           return redirect_to inbox_conversation_path(current_account, @inbox, @conversation), alert: "Agent not found" unless agent
 
           if @conversation.owner_id.present?
-            Conversations::Unclaim.call(conversation: @conversation, agent: @conversation.owner)
+            ::Conversations::Unclaim.call(conversation: @conversation, agent: @conversation.owner)
           end
-          Conversations::Claim.call(conversation: @conversation, agent:)
+          ::Conversations::Claim.call(conversation: @conversation, agent:)
 
           if agent.kind == "ai" && agent.active_for_work?
             AiRuns::Admit.call(agent:, conversation: @conversation, trigger: "assigned")
@@ -48,7 +48,7 @@ module Accounts
 
         # POST /a/:account_id/inboxes/:inbox_id/conversations/:conversation_id/assignment/cancel
         def cancel
-          Conversations::Cancel.call(
+          ::Conversations::Cancel.call(
             conversation: @conversation,
             agent: current_membership.agent,
             reason: params[:reason]

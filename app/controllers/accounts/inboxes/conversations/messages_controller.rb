@@ -45,7 +45,7 @@ module Accounts
 
         # POST /a/:account_id/inboxes/:inbox_id/conversations/:conversation_id/messages
         def create
-          Conversations::SendMessage.call(
+          ::Conversations::SendMessage.call(
             conversation: @conversation,
             agent:        current_membership.agent,
             content:      params[:content],

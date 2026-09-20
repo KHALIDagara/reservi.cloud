@@ -1,43 +1,29 @@
 <%# Field block — shows field values from the current stage %>
 <%# Locals: block, conversation, customer_fields, conversation_fields %>
+<%# Only renders fields whose keys are listed in the block config. %>
+
+<% block_keys = Array(block["keys"] || block["key"]).compact %>
+<% return if block_keys.empty? %>
 
 <section class="rounded-2xl border border-slate-200 bg-white p-4">
   <h4 class="mb-4 text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Details</h4>
   <div class="space-y-4">
-    <% (customer_fields || {}).each do |key, field| %>
+    <% block_keys.each do |key| %>
+      <% field = (customer_fields || {}).find { |_, f| f[:definition].key == key }&.last ||
+                  (conversation_fields || {}).find { |_, f| f[:definition].key == key }&.last %>
+      <% next unless field %>
       <% fd = field[:definition]; val = field[:value] %>
       <div class="flex items-start justify-between gap-2">
         <div class="min-w-0 flex-1">
           <p class="text-xs font-bold text-slate-600"><%= fd.label.presence || fd.key.titleize %>
-            <span class="font-normal text-slate-400">· customer</span>
+            <span class="font-normal text-slate-400">· <%= fd.scope %></span>
           </p>
-          <p class="mt-0.5 text-sm <%= val.present? ? 'text-slate-900' : 'italic text-slate-400' %>">
-            <% if val.present? %>
-              <%= Array(val).join(", ") %>
-              <span class="ml-1 text-emerald-500">✓</span>
-            <% else %>
-              Not set
-              <span class="ml-1 text-slate-300">○</span>
-            <% end %>
-          </p>
-        </div>
-        <%= link_to "Edit",
-              edit_field_inbox_conversation_panel_path(current_account, @inbox, conversation, key: fd.key, scope: fd.scope),
-              data: { turbo_frame: "conversation_modal" },
-              class: "shrink-0 text-xs font-semibold text-indigo-600 hover:text-indigo-700" %>
-      </div>
-    <% end %>
-
-    <% (conversation_fields || {}).each do |key, field| %>
-      <% fd = field[:definition]; val = field[:value] %>
-      <div class="flex items-start justify-between gap-2">
-        <div class="min-w-0 flex-1">
-          <p class="text-xs font-bold text-slate-600"><%= fd.label.presence || fd.key.titleize %>
-            <span class="font-normal text-slate-400">· request</span>
-          </p>
-          <p class="mt-0.5 text-sm <%= val.present? ? 'text-slate-900' : 'italic text-slate-400' %>">
-            <% if val.present? %>
-              <%= Array(val).join(", ") %>
+          <p class="mt-0.5 text-sm <%= !val.nil? ? 'text-slate-900' : 'italic text-slate-400' %>">
+            <% if !val.nil? %>
+              <% if val == false %>No
+              <% elsif val == true %>Yes
+              <% else %><%= Array(val).join(", ") %>
+              <% end %>
               <span class="ml-1 text-emerald-500">✓</span>
             <% else %>
               Not set

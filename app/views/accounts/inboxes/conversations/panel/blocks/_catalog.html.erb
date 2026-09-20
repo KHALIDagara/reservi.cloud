@@ -1,33 +1,35 @@
 <%# Catalog block — shows selected items with conversation-aware picker %>
 <%# Locals: block, conversation, catalogs, item_selections, catalog_roles %>
+<%# Only renders the role specified by this block. %>
 
-<% return if (catalog_roles || {}).empty? %>
+<% role_key = block["role_key"] %>
+<% catalog_key = block["catalog_key"] %>
+<% return unless role_key.present? && catalog_key.present? %>
+
+<% catalog = catalogs.find { |c| c.title.casecmp?(catalog_key) } %>
+<% selection = item_selections[role_key] %>
 
 <section class="rounded-2xl border border-slate-200 bg-white p-4">
   <h4 class="mb-3 text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Selected items</h4>
   <div class="space-y-3">
-    <% catalog_roles.each do |role_key, catalog_key| %>
-      <% catalog = catalogs.find { |c| c.title.casecmp?(catalog_key) } %>
-      <% selection = item_selections[role_key] %>
-      <div class="rounded-xl border border-slate-100 bg-slate-50 p-3">
-        <label class="block text-xs font-bold text-slate-600"><%= role_key.titleize %></label>
+    <div class="rounded-xl border border-slate-100 bg-slate-50 p-3">
+      <label class="block text-xs font-bold text-slate-600"><%= role_key.titleize %></label>
 
-        <% if selection %>
-          <p class="mt-1 text-sm font-semibold text-indigo-700">
-            <%= selection.snapshot&.dig("title") || selection.item.title %>
-            <span class="ml-1 text-emerald-500">✓</span>
-          </p>
-        <% else %>
-          <p class="mt-1 text-sm italic text-slate-400">No item selected</p>
-        <% end %>
+      <% if selection %>
+        <p class="mt-1 text-sm font-semibold text-indigo-700">
+          <%= selection.snapshot&.dig("title") || selection.item.title %>
+          <span class="ml-1 text-emerald-500">✓</span>
+        </p>
+      <% else %>
+        <p class="mt-1 text-sm italic text-slate-400">No item selected</p>
+      <% end %>
 
-        <% if catalog %>
-          <%= link_to "Choose…",
-                item_selection_path(current_account, @inbox, conversation, role_key:),
-                data: { turbo_frame: "conversation_modal" },
-                class: "mt-2 inline-flex items-center gap-1 rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-100" %>
-        <% end %>
-      </div>
-    <% end %>
+      <% if catalog %>
+        <%= link_to "Choose…",
+              inbox_conversation_item_selection_path(current_account, @inbox, conversation, role_key:),
+              data: { turbo_frame: "conversation_modal" },
+              class: "mt-2 inline-flex items-center gap-1 rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-100" %>
+      <% end %>
+    </div>
   </div>
 </section>
