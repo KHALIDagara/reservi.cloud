@@ -1,12 +1,13 @@
 <%# Assignment section %>
 <%# Locals: conversation, agents %>
+<% inbox = @inbox || conversation.channel_threads.first&.channel %>
 
 <section class="rounded-2xl border border-slate-200 bg-white p-4">
   <div class="mb-3 flex items-center justify-between">
     <h4 class="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Assignment</h4>
     <span class="size-2 rounded-full <%= conversation.owner ? 'bg-emerald-400' : 'bg-amber-400' %>"></span>
   </div>
-  <%= form_with url: account_conversation_reassign_path(current_account, conversation), method: :post, class: "flex gap-2" do |f| %>
+  <%= form_with url: reassign_inbox_conversation_assignment_path(current_account, inbox, conversation), method: :post, class: "flex gap-2" do |f| %>
     <%= f.label :agent_id, "Assigned agent", class: "sr-only" %>
     <%= f.select :agent_id,
           agents.map { |a| ["#{a.name} (#{a.kind == 'ai' ? 'AI' : 'H'})", a.id] },
@@ -15,7 +16,7 @@
     <%= f.submit "Assign", class: "min-h-10 shrink-0 cursor-pointer rounded-xl bg-slate-900 px-3 text-xs font-bold text-white hover:bg-slate-700" %>
   <% end %>
   <% if conversation.owner.present? %>
-    <%= button_to "Release ownership", account_conversation_unclaim_path(current_account, conversation),
+    <%= button_to "Release ownership", unclaim_inbox_conversation_assignment_path(current_account, inbox, conversation),
           method: :post,
           class: "mt-2 min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 hover:bg-slate-50" %>
   <% end %>

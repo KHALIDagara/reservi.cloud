@@ -10,7 +10,8 @@ module Reservi
     class InstagramAdapter < BaseAdapter
       API_BASE = "https://graph.facebook.com/v22.0".freeze
 
-      def send_message(delivery:)
+      def send_message(message_delivery:)
+        delivery = message_delivery
         config = delivery.channel.provider_config
         instagram_id = config["instagram_id"]
         access_token = delivery.channel.credential("access_token")

@@ -1,6 +1,10 @@
-<%# Partial: messages list — used for loading older messages via Turbo %>
+<%# Partial: messages list — used for loading older messages via Turbo Frame %>
 <%# Locals: messages %>
+<%# This is rendered inside <turbo-frame id="messages_frame"> on initial load,
+    # and as a standalone partial for "Load older" Turbo Frame navigation. %>
 
-<% messages.each do |message| %>
-  <%= render "accounts/inboxes/conversations/messages/message", message: message %>
-<% end %>
+<turbo-frame id="messages_frame">
+  <% messages.each do |message| %>
+    <%= render "accounts/inboxes/conversations/messages/message", message: message %>
+  <% end %>
+</turbo-frame>

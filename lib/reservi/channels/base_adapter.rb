@@ -15,9 +15,11 @@ module Reservi
         when "whatsapp" then WhatsappCloudAdapter
         when "instagram" then InstagramAdapter
         else raise ArgumentError, "Unknown provider_type: #{provider_type}"
-        end
+        end.new
       end
 
+      # Subclasses implement:
+      #   send_message(message_delivery:) -> { status:, provider_message_id:, error: }
       def send_message(message_delivery:)
         raise NotImplementedError
       end

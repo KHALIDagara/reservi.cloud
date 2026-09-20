@@ -1,0 +1,53 @@
+<%# Item selection modal — conversation-aware picker for stage catalog items %>
+<%# Locals: @catalog, @current_selection, @role_key, @conversation, @inbox %>
+<%# Rendered inside turbo_frame_tag "conversation_modal" %>
+
+<%= turbo_frame_tag "conversation_modal" do %>
+  <div class="p-5">
+    <div class="mb-5 flex items-center justify-between">
+      <div>
+        <h2 class="text-base font-bold text-slate-900"><%= @role_key.titleize %> · Select item</h2>
+        <p class="mt-0.5 text-xs text-slate-500"><%= @catalog.title %> · <%= @catalog.items.active.count %> items</p>
+      </div>
+    </div>
+
+    <% if @current_selection %>
+      <div class="mb-4 rounded-xl bg-indigo-50 p-3 text-sm">
+        <span class="text-xs font-bold uppercase tracking-wide text-indigo-400">Currently selected</span>
+        <p class="mt-1 font-semibold text-indigo-700">
+          <%= @current_selection.snapshot&.dig("title") || @current_selection.item.title %>
+        </p>
+        <%= button_to "Clear selection",
+              inbox_conversation_item_selection_path(current_account, @inbox, @conversation, role_key: @role_key),
+              method: :delete,
+              class: "mt-2 text-xs font-semibold text-rose-600 hover:text-rose-700" %>
+      </div>
+    <% end %>
+
+    <% if @catalog.items.active.any? %>
+      <ul class="space-y-1 overflow-y-auto" style="max-height: 50vh">
+        <% @catalog.items.active.includes(:file_attachment).each do |item| %>
+          <li>
+            <%= button_to item.title,
+                  inbox_conversation_item_selection_path(current_account, @inbox, @conversation),
+                  method: :post,
+                  params: { role_key: @role_key, item_id: item.id },
+                  class: "w-full text-left min-h-12 rounded-xl px-3 py-2 text-sm font-semibold transition hover:bg-indigo-50 #{@current_selection&.item_id == item.id ? 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-100' : 'text-slate-700'}" do %>
+              <span class="flex items-center justify-between">
+                <span><%= item.title %></span>
+                <% if item.price.present? %>
+                  <span class="text-xs font-normal text-slate-400"><%= number_to_currency(item.price, unit: "") %> <%= item.currency || "MAD" %></span>
+                <% end %>
+                <% if @current_selection&.item_id == item.id %>
+                  <span class="text-emerald-500 text-xs">✓ Selected</span>
+                <% end %>
+              </span>
+            <% end %>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <p class="py-8 text-center text-sm text-slate-400">No items available in this catalog.</p>
+    <% end %>
+  </div>
+<% end %>

@@ -39,11 +39,19 @@ module Reservi
         # Find a human agent to attribute the message to, or use a system agent
         agent = @conversation.owner || @conversation.account.agents.active.human.first
 
+        # Create the canonical Message first (INV-010 — exactly one per send)
+        message = Messages::Create.call(
+          conversation: @conversation,
+          agent: agent,
+          content: content,
+          direction: "outbound"
+        )
+
         delivery = MessageDeliveries::Send.call(
           conversation: @conversation,
           channel: channel,
           agent: agent,
-          content: content,
+          message: message,
           operation_key: operation_key
         )
 

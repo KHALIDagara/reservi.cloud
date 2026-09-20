@@ -15,7 +15,7 @@ module Accounts
           load_fields if has_block_type?("field")
           load_catalogs if has_block_type?("catalog")
           load_appointments if has_block_type?("appointment")
-          @account_agents = current_account.agents.active.order(:name)
+          @account_agents = current_account.agents.assignable.order(:name)
 
           @stage_history = @conversation.stage_transitions
             .includes(:from_stage, :to_stage)
@@ -56,13 +56,16 @@ module Accounts
             actor_membership: current_membership,
             attributes: { params[:key] => value }
           )
+          publish_conversation_changed(@conversation, :field_changed)
 
           respond_to do |format|
             format.turbo_stream do
               render turbo_stream: [
                 turbo_stream.replace("conversation_panel", partial: "accounts/inboxes/conversations/panel/show",
                   locals: rebuild_panel_locals),
-                turbo_stream.replace("conversation_modal", "")
+                # Close modal: clear frame content, dispatch close event
+                turbo_stream.update("conversation_modal", ""),
+                turbo_stream.action(:dispatch_event, "modal:close", { bubbles: true, cancelable: false })
               ]
             end
             format.html { redirect_to conversation_return_path, notice: "Field updated." }
@@ -83,13 +86,16 @@ module Accounts
             attributes: { params[:key] => value }
           )
           Flows::Evaluate.call(conversation: @conversation)
+          publish_conversation_changed(@conversation, :field_changed)
 
           respond_to do |format|
             format.turbo_stream do
               render turbo_stream: [
                 turbo_stream.replace("conversation_panel", partial: "accounts/inboxes/conversations/panel/show",
                   locals: rebuild_panel_locals),
-                turbo_stream.replace("conversation_modal", "")
+                # Close modal: clear frame content, dispatch close event
+                turbo_stream.update("conversation_modal", ""),
+                turbo_stream.action(:dispatch_event, "modal:close", { bubbles: true, cancelable: false })
               ]
             end
             format.html { redirect_to conversation_return_path, notice: "Customer field updated." }
@@ -151,7 +157,7 @@ module Accounts
           load_fields if has_block_type?("field")
           load_catalogs if has_block_type?("catalog")
           load_appointments if has_block_type?("appointment")
-          @account_agents = current_account.agents.active.order(:name)
+          @account_agents = current_account.agents.assignable.order(:name)
           @stage_history = @conversation.stage_transitions
             .includes(:from_stage, :to_stage)
             .order(created_at: :asc)
@@ -213,6 +219,16 @@ module Accounts
             .where(role_key: role_keys)
             .where("superseded_by_id IS NULL OR superseded_by_id = 0")
             .index_by(&:role_key)
+        end
+
+        def publish_conversation_changed(conversation, event)
+          return unless conversation&.persisted?
+          Realtime::ConversationChangedJob.perform_later(
+            account_id:      conversation.account_id,
+            conversation_id: conversation.id,
+            revision:        conversation.revision,
+            event:
+          )
         end
       end
     end

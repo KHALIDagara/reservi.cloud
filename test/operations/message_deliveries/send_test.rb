@@ -12,14 +12,23 @@ class MessageDeliveries::SendTest < ActiveSupport::TestCase
     )
   end
 
-  test "creates message and delivery and enqueues job" do
-    assert_difference({ -> { @conversation.messages.count } => 1, -> { @account.message_deliveries.count } => 1 }) do
+  test "creates delivery and enqueues job" do
+    message = @conversation.messages.create!(
+      agent: @agent,
+      author_name: @agent.name,
+      content: "Hello from Reservi!",
+      direction: "outbound",
+      delivery_status: "local"
+    )
+
+    assert_difference -> { @conversation.messages.count } => 0,
+                      -> { @account.message_deliveries.count } => 1 do
       assert_enqueued_with(job: MessageDeliveryJob) do
         MessageDeliveries::Send.call(
           conversation: @conversation,
           channel: @channel,
           agent: @agent,
-          content: "Hello from Reservi!",
+          message: message,
           operation_key: "op_#{SecureRandom.hex(8)}"
         )
       end
@@ -29,16 +38,24 @@ class MessageDeliveries::SendTest < ActiveSupport::TestCase
     assert_equal "pending", delivery.status
     assert_equal @channel.id, delivery.channel_id
     assert_equal @conversation.id, delivery.message.conversation_id
+    assert_equal message, delivery.message
   end
 
   test "is idempotent — same operation_key returns existing delivery" do
     key = "idempotent_test"
+    message = @conversation.messages.create!(
+      agent: @agent,
+      author_name: @agent.name,
+      content: "Hello!",
+      direction: "outbound",
+      delivery_status: "local"
+    )
 
     first = MessageDeliveries::Send.call(
       conversation: @conversation,
       channel: @channel,
       agent: @agent,
-      content: "Hello!",
+      message: message,
       operation_key: key
     )
 
@@ -47,7 +64,7 @@ class MessageDeliveries::SendTest < ActiveSupport::TestCase
         conversation: @conversation,
         channel: @channel,
         agent: @agent,
-        content: "Hello!",
+        message: message,
         operation_key: key
       )
       assert_equal first.id, second.id
@@ -55,6 +72,13 @@ class MessageDeliveries::SendTest < ActiveSupport::TestCase
   end
 
   test "rejects inactive channel" do
+    message = @conversation.messages.create!(
+      agent: @agent,
+      author_name: @agent.name,
+      content: "Hello!",
+      direction: "outbound",
+      delivery_status: "local"
+    )
     @channel.update!(active: false)
 
     assert_raises(Reservi::Errors::OperationError, match: /not active/) do
@@ -62,7 +86,7 @@ class MessageDeliveries::SendTest < ActiveSupport::TestCase
         conversation: @conversation,
         channel: @channel,
         agent: @agent,
-        content: "Hello!",
+        message: message,
         operation_key: "op_#{SecureRandom.hex(8)}"
       )
     end

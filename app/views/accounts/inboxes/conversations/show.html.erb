@@ -1,4 +1,8 @@
 <%# Inboxes::Conversations show — rendered inside turbo_frame_tag "conversation_workspace" %>
 <%= turbo_frame_tag "conversation_workspace" do %>
-  <%= render "conversation", conversation: @conversation, messages: @messages, notes: @notes, panel_open: @panel_open %>
+  <%# Subscribe to realtime updates for this conversation.
+      Stream name: [account, conversation] — viewer-agnostic, so every agent
+      viewing this conversation receives message and panel updates. %>
+  <%= turbo_stream_from [current_account, @conversation] %>
+  <%= render "conversation", conversation: @conversation, messages: @messages, notes: @notes, panel_open: @panel_open, has_older_messages: @has_older_messages, oldest_message_id: @oldest_message_id %>
 <% end %>

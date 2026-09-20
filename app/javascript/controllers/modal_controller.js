@@ -13,11 +13,14 @@ export default class extends Controller {
   connect() {
     // Listen for turbo:frame-load on the modal frame
     this.boundOnFrameLoad = this.onFrameLoad.bind(this)
+    this.boundOnClose = this.close.bind(this)
     document.addEventListener("turbo:frame-load", this.boundOnFrameLoad)
+    document.addEventListener("modal:close", this.boundOnClose)
   }
 
   disconnect() {
     document.removeEventListener("turbo:frame-load", this.boundOnFrameLoad)
+    document.removeEventListener("modal:close", this.boundOnClose)
     this.close()
   }
 

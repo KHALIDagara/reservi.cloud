@@ -1,7 +1,6 @@
-<%# Single conversation row in the inbox list — used for Turbo Stream replace %>
+<%# Single conversation row in the inbox list — used for Turbo Stream prepend %>
 <%# Locals: conversation (query result row), selected_id, filter %>
-
-<li class="relative" id="<%= dom_id(conversation) %>">
+<li class="relative" id="<%= dom_id(conversation) %>" data-conversation-list-target="row">
   <%= link_to inbox_conversation_path(current_account, @inbox, conversation, filter:),
         class: "group flex min-h-20 items-start gap-3 px-4 py-3 transition hover:bg-slate-50 #{selected_id.to_i == conversation.id ? 'bg-indigo-50/70 border-l-2 border-l-indigo-600' : ''}",
         data: { turbo_frame: "conversation_workspace" } do %>

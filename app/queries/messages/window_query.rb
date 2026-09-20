@@ -38,6 +38,7 @@ module Messages
               when :after
                 scope.where("messages.id > ?", @cursor)
                   .reorder("messages.created_at ASC, messages.id ASC")
+                  .limit([@limit, 100].min)  # Cap reconnect catch-up
               else
                 raise ArgumentError, "unknown window mode: #{@mode.inspect}"
               end

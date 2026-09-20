@@ -12,9 +12,21 @@ module Accounts
 
       # GET /a/:account_id/inboxes/:inbox_id/conversations
       def index
-        conversations = scoped_conversations.limit(PAGE_SIZE + 1).to_a
-        @next_cursor = ::Inboxes::ConversationListQuery.encode_cursor(conversations[PAGE_SIZE - 1]) if conversations.size > PAGE_SIZE
-        @conversations = conversations.first(PAGE_SIZE)
+        @conversations = scoped_conversations.limit(PAGE_SIZE + 1).to_a
+
+        if @conversations.size > PAGE_SIZE
+          @next_cursor = ::Inboxes::ConversationListQuery.encode_cursor(@conversations[PAGE_SIZE - 1])
+          @conversations = @conversations.first(PAGE_SIZE)
+        end
+
+        if params[:before].present?
+          # Pagination request: append rows after the current list.
+          # Re-render only the new rows and the updated "Load more" control.
+          respond_to do |format|
+            format.html { render layout: false }
+            format.turbo_stream { render turbo_stream: turbo_stream.append("conversations_list", partial: "paginated_rows", locals: { conversations: @conversations, selected_id: nil, filter: params[:filter] }) }
+          end
+        end
       end
 
       # GET /a/:account_id/inboxes/:inbox_id/conversations/:id

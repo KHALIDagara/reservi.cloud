@@ -61,17 +61,25 @@ Rails.application.routes.draw do
     resources :inboxes, only: [ :index, :show, :update, :destroy ], controller: "inboxes" do
       resource :settings, only: [ :show ], controller: "inboxes/settings"
       scope module: :inboxes do
-        resources :conversations, only: [ :index, :show ] do
-          scope module: :conversations do
-            resources :messages, only: [ :index, :create ]
-            resources :notes,    only: [ :index, :create ]
-            resource  :panel,    only: [ :show ], controller: "panel" do
-              get  :edit_field, to: "panel#edit_field"
-              patch :field,          to: "panel#update_field"
-              patch :customer_field, to: "panel#update_customer_field"
+resources :conversations, only: [ :index, :show ] do
+              scope module: :conversations do
+                resources :messages, only: [ :index, :create ]
+                resources :notes,    only: [ :index, :create ]
+                resource  :panel,    only: [ :show ], controller: "panel" do
+                  get  :edit_field, to: "panel#edit_field"
+                  patch :field,          to: "panel#update_field"
+                  patch :customer_field, to: "panel#update_customer_field"
+                end
+                resource :item_selection, only: [ :show, :create, :destroy ], controller: "item_selections"
+                resource :appointment_booking, only: [ :show, :create ], controller: "appointment_bookings"
+                resource :assignment, only: [], controller: "assignments" do
+                  post :claim
+                  post :unclaim
+                  post :reassign
+                  post :cancel
+                end
+              end
             end
-          end
-        end
       end
     end
 

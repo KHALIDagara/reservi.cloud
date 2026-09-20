@@ -93,11 +93,20 @@ module Reservi
 
       if channel&.active?
         operation_key = "ai_#{@ai_run.id}_#{Time.current.to_i}_#{SecureRandom.hex(4)}"
+
+        # Create the canonical Message first (INV-010 — exactly one per send)
+        message = Messages::Create.call(
+          conversation: @conversation,
+          agent:        @agent,
+          content:      content,
+          direction:    "outbound"
+        )
+
         MessageDeliveries::Send.call(
           conversation: @conversation,
           channel:      channel,
           agent:        @agent,
-          content:      content,
+          message:      message,
           operation_key: operation_key
         )
         { status: "sent", message: "Message sent through #{channel.name}" }

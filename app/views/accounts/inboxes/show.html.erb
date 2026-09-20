@@ -1,9 +1,11 @@
 <% content_for :title, "#{@inbox.name} · Reservi" %>
 <% content_for :main_class, "w-full px-0" %>
 
-<div class="inbox-workspace flex h-[calc(100dvh-4rem)]">
-  <%# ── LEFT COLUMN: Conversation list ───────────────────────────────── %>
-  <aside class="conversation-list w-80 shrink-0 overflow-hidden border-r border-slate-200 bg-white lg:w-88">
+<div class="inbox-workspace flex h-[calc(100dvh-4rem)]" data-controller="inbox-shell">
+  <%# ── LEFT COLUMN: Conversation list ─────────────────────────────────
+      # Full-width on mobile, fixed sidebar on desktop.
+      # Hidden on mobile when a conversation is selected (managed by JS). %>
+  <aside class="conversation-list w-full shrink-0 overflow-hidden border-r border-slate-200 bg-white md:w-80 lg:w-88" data-inbox-shell-target="list">
     <div class="flex h-full flex-col">
       <div class="border-b border-slate-200 px-4 py-3">
         <div class="flex items-center justify-between gap-2">
@@ -43,8 +45,10 @@
     </div>
   </aside>
 
-  <%# ── CENTER COLUMN: Conversation detail ───────────────────────────── %>
-  <main class="flex min-w-0 flex-1 flex-col bg-slate-50">
+  <%# ── CENTER COLUMN: Conversation detail ─────────────────────────────
+      # Hidden on mobile until a conversation is selected, then full-width.
+      # On desktop, always visible (shows placeholder when nothing selected). %>
+  <main class="flex min-w-0 flex-1 flex-col bg-slate-50 hidden md:flex" data-inbox-shell-target="detail">
     <%= turbo_frame_tag "conversation_workspace" do %>
       <div class="flex h-full flex-col items-center justify-center px-6 text-center">
         <span class="flex size-16 items-center justify-center rounded-2xl bg-white text-slate-300 shadow-sm ring-1 ring-slate-200">
@@ -57,8 +61,10 @@
   </main>
 </div>
 
-<%# Subscribe to realtime updates for this inbox %>
-<%= turbo_stream_from Accounts::InboxChannel, [current_account, @inbox, Current.user] %>
+<%# Subscribe to realtime updates for this inbox. Uses standard signed Turbo::StreamsChannel.
+    # Stream name: [account, inbox] — viewer-agnostic, so every agent viewing
+    # this inbox receives row updates, unread count changes, etc. %>
+<%= turbo_stream_from [current_account, @inbox] %>
 
 <%# Modal dialog for field editing, catalog selection, appointment booking %>
 <div data-controller="modal"

@@ -8,6 +8,10 @@
 # The job reloads latest persisted state before rendering to prevent
 # stale out-of-order broadcasts from overwriting newer state.
 #
+# Uses standard signed Turbo::StreamsChannel for compatibility and security.
+# Subscribers (erb templates) and broadcasters (this job) must use the same
+# stream name: [account, inbox] for list rows, [account, conversation] for details.
+#
 # event: :message_created | :field_changed | :item_selected |
 #        :appointment_changed | :stage_advanced | :assignment_changed | :read
 #
@@ -30,34 +34,51 @@ module Realtime
       inbox_ids.each do |inbox_id|
         inbox = account.channels.find(inbox_id)
 
-        # Update conversation list row for every human agent
-        account.agents.human.active.each do |agent|
-          next unless row_update_event?(event)
-          broadcast_inbox_row(inbox:, agent:, conversation:, event:)
+        # Update conversation list row — use viewer-agnostic broadcast
+        # so every agent viewing this inbox sees the row update.
+        if row_update_event?(event)
+          broadcast_inbox_row(inbox:, conversation:, event:)
         end
 
         # Update open conversation detail
-        next unless detail_event?(event)
-        broadcast_conversation_detail(account:, conversation:, event:)
+        if detail_event?(event)
+          broadcast_conversation_detail(account:, conversation:, event:)
+        end
       end
     end
 
     private
 
     # -- Inbox list row --------------------------------------------------
+    # Broadcast to [account, inbox] — everyone viewing the inbox sees it.
+    # One broadcast, not per-agent fan-out.
+    #
+    # Removes the old row then prepends the updated row so the list
+    # stays ordered by last_activity_at DESC.
 
-    def broadcast_inbox_row(inbox:, agent:, conversation:, event:)
-      html = render_conversation_row(inbox:, agent:, conversation:)
+    def broadcast_inbox_row(inbox:, conversation:, event:)
+      html = render_conversation_row(inbox:, conversation:)
       return unless html
 
-      Accounts::InboxChannel.broadcast_replace_to(
-        [inbox.account, inbox, agent.user],
-        target: "conversation_#{conversation.id}",
+      target_id = "conversation_#{conversation.id}"
+
+      Turbo::StreamsChannel.broadcast_remove_to(
+        [inbox.account, inbox],
+        target: target_id
+      )
+
+      Turbo::StreamsChannel.broadcast_prepend_to(
+        [inbox.account, inbox],
+        target: "conversations_list",
         html:
       )
     end
 
-    def render_conversation_row(inbox:, agent:, conversation:)
+    def render_conversation_row(inbox:, conversation:)
+      # Pick any active human agent to query through the ConversationListQuery
+      agent = inbox.account.agents.human.active.first
+      return unless agent
+
       query = Inboxes::ConversationListQuery.call(
         inbox:, agent:
       ).where(id: conversation.id)
@@ -73,10 +94,10 @@ module Realtime
     end
 
     # -- Detail updates --------------------------------------------------
+    # Broadcast to [account, conversation] — everyone viewing the conversation
+    # detail sees the update (not just the owner).
 
     def broadcast_conversation_detail(account:, conversation:, event:)
-      return unless conversation.owner_id
-
       case event
       when :message_created
         message = conversation.messages.order(id: :desc).first
@@ -88,9 +109,9 @@ module Realtime
           layout: false
         )
 
-        Accounts::ConversationChannel.broadcast_append_to(
-          [account, conversation, conversation.owner.user],
-          target: "messages_container",
+        Turbo::StreamsChannel.broadcast_append_to(
+          [account, conversation],
+          target: "messages_frame",
           html:
         )
 
@@ -105,8 +126,8 @@ module Realtime
           layout: false
         )
 
-        Accounts::ConversationChannel.broadcast_replace_to(
-          [account, conversation, conversation.owner.user],
+        Turbo::StreamsChannel.broadcast_replace_to(
+          [account, conversation],
           target: "conversation_panel",
           html:
         )
@@ -156,7 +177,7 @@ module Realtime
           item_selections: @conversation.item_selections.index_by(&:role_key),
           catalog_roles: load_catalog_roles,
           appointments: load_appointments,
-          account_agents: @account.agents.active.order(:name),
+          account_agents: @account.agents.assignable.order(:name),
           stage_history: @conversation.stage_transitions
             .includes(:from_stage, :to_stage)
             .order(created_at: :asc)

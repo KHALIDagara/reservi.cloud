@@ -1,0 +1,20 @@
+<%# Paginated rows + updated "Load more" control %>
+<%# Locals: conversations, selected_id, filter %>
+<%
+  inbox = @inbox
+  next_cursor = @next_cursor
+%>
+
+<% conversations.each do |conversation| %>
+  <%= render "conversation_row", conversation:, selected_id:, filter: %>
+<% end %>
+
+<% if next_cursor %>
+  <%= turbo_stream.replace "load_more_container" do %>
+    <div class="border-t border-slate-100 p-3 text-center" id="load_more_container">
+      <%= link_to "Load more", inbox_conversations_path(current_account, inbox, before: next_cursor, filter:),
+            class: "text-xs font-semibold text-indigo-600 hover:text-indigo-700",
+            data: { turbo_stream: true } %>
+    </div>
+  <% end %>
+<% end %>
