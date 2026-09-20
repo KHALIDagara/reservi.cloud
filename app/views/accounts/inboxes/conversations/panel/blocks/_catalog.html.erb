@@ -1,45 +1,32 @@
-<%# Catalog block — shows selected items and allows quick selection %>
+<%# Catalog block — shows selected items with conversation-aware picker %>
 <%# Locals: block, conversation, catalogs, item_selections, catalog_roles %>
 
 <% return if (catalog_roles || {}).empty? %>
 
 <section class="rounded-2xl border border-slate-200 bg-white p-4">
-  <h4 class="mb-4 text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Selected items</h4>
-  <div class="space-y-4">
+  <h4 class="mb-3 text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Selected items</h4>
+  <div class="space-y-3">
     <% catalog_roles.each do |role_key, catalog_key| %>
       <% catalog = catalogs.find { |c| c.title.casecmp?(catalog_key) } %>
       <% selection = item_selections[role_key] %>
-      <div>
+      <div class="rounded-xl border border-slate-100 bg-slate-50 p-3">
         <label class="block text-xs font-bold text-slate-600"><%= role_key.titleize %></label>
 
         <% if selection %>
-          <div class="mt-1.5 flex items-center justify-between rounded-xl bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-700">
-            <span class="truncate"><%= selection.snapshot&.dig("title") || selection.item.title %></span>
+          <p class="mt-1 text-sm font-semibold text-indigo-700">
+            <%= selection.snapshot&.dig("title") || selection.item.title %>
             <span class="ml-1 text-emerald-500">✓</span>
-          </div>
-        <% else %>
-          <p class="mt-1.5 text-sm italic text-slate-400">
-            No item selected
-            <span class="ml-1 text-slate-300">○</span>
           </p>
+        <% else %>
+          <p class="mt-1 text-sm italic text-slate-400">No item selected</p>
         <% end %>
 
-        <div class="mt-2 flex flex-wrap gap-1.5">
-          <% if catalog&.items&.active&.any? %>
-            <% catalog.items.active.each do |item| %>
-              <% selected_class = selection&.item_id == item.id ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300 hover:text-indigo-700' %>
-              <%= button_to item.title,
-                    item_selections_path(current_account, conversation_id: conversation.id),
-                    method: :post,
-                    params: { item_selection: { role_key:, item_id: item.id } },
-                    class: "min-h-9 rounded-full border px-3 text-xs font-semibold #{selected_class}" %>
-            <% end %>
-          <% end %>
-          <%= link_to "Browse all…",
-                items_catalog_path(current_account, catalog),
+        <% if catalog %>
+          <%= link_to "Choose…",
+                item_selection_path(current_account, @inbox, conversation, role_key:),
                 data: { turbo_frame: "conversation_modal" },
-                class: "min-h-9 rounded-full border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-500 hover:border-indigo-300 hover:text-indigo-700 inline-flex items-center" if catalog %>
-        </div>
+                class: "mt-2 inline-flex items-center gap-1 rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-100" %>
+        <% end %>
       </div>
     <% end %>
   </div>

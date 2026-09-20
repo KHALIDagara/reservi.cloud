@@ -1,0 +1,62 @@
+<%# Confirm step — choose a time slot and confirm booking %>
+<%# Locals: @role_key, @conversation, @inbox, @selected_agent, @selected_date, @starts_at, @duration %>
+
+<%= turbo_frame_tag "conversation_modal" do %>
+  <div class="p-5">
+    <div class="mb-4 flex items-center gap-3">
+      <%= link_to "← Back",
+            inbox_conversation_appointment_booking_path(current_account, @inbox, @conversation, role_key: @role_key, step: "day", agent_id: @selected_agent.id),
+            data: { turbo_frame: "conversation_modal" },
+            class: "text-xs font-semibold text-slate-400 hover:text-slate-600" %>
+      <div>
+        <h2 class="text-base font-bold text-slate-900"><%= @role_key.titleize %></h2>
+        <p class="mt-0.5 text-xs text-slate-500">Step 3 of 3 · With <%= @selected_agent.name %></p>
+      </div>
+    </div>
+
+    <%# Time slot picker — hourly slots 08:00-18:00 %>
+    <div class="mb-4">
+      <label class="block text-xs font-bold text-slate-600 mb-2">Select time slot</label>
+      <div class="grid grid-cols-3 gap-1">
+        <% (8..18).each do |hour| %>
+          <% slot = format("%02d:00", hour) %>
+          <% slot_starts = Time.zone.parse("#{@selected_date} #{slot}", current_account.timezone) %>
+          <%= link_to slot,
+                inbox_conversation_appointment_booking_path(current_account, @inbox, @conversation, role_key: @role_key, step: "confirm", agent_id: @selected_agent.id, date: @selected_date.to_s, slot:, duration: @duration),
+                data: { turbo_frame: "conversation_modal" },
+                class: "rounded-lg px-2 py-2 text-center text-xs font-semibold transition #{@selected_slot == slot ? 'bg-indigo-600 text-white' : 'bg-slate-50 text-slate-700 hover:bg-indigo-50'}" %>
+        <% end %>
+      </div>
+    </div>
+
+    <%# Duration picker %>
+    <div class="mb-5">
+      <label class="block text-xs font-bold text-slate-600 mb-2">Duration</label>
+      <div class="flex gap-1">
+        <% [30, 60, 90, 120].each do |mins| %>
+          <%= link_to "#{mins}min",
+                inbox_conversation_appointment_booking_path(current_account, @inbox, @conversation, role_key: @role_key, step: "confirm", agent_id: @selected_agent.id, date: @selected_date.to_s, slot: @selected_slot, duration: mins),
+                data: { turbo_frame: "conversation_modal" },
+                class: "rounded-lg px-3 py-1.5 text-xs font-semibold transition #{@duration == mins ? 'bg-indigo-600 text-white' : 'bg-slate-50 text-slate-700 hover:bg-indigo-50'}" %>
+        <% end %>
+      </div>
+    </div>
+
+    <%# Summary %>
+    <div class="mb-5 rounded-xl bg-slate-50 p-4">
+      <p class="text-sm font-semibold text-slate-900">
+        <%= @selected_agent.name %> · <%= @selected_date.strftime("%A, %d %B") %>
+      </p>
+      <p class="mt-0.5 text-sm text-slate-600">
+        <%= @starts_at&.strftime("%H:%M") %> · <%= @duration %> minutes
+      </p>
+    </div>
+
+    <%# Book button %>
+    <%= button_to "Confirm booking",
+          inbox_conversation_appointment_booking_path(current_account, @inbox, @conversation),
+          method: :post,
+          params: { role_key: @role_key, agent_id: @selected_agent.id, starts_at: @starts_at&.iso8601, duration: @duration },
+          class: "w-full min-h-11 rounded-xl bg-indigo-600 px-4 text-sm font-bold text-white shadow-sm hover:bg-indigo-700" %>
+  </div>
+<% end %>

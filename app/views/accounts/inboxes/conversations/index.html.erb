@@ -2,19 +2,19 @@
 <%# Rendered inside turbo_frame_tag "conversation_list" %>
 <%# Each row uses virtual attributes from Inboxes::ConversationListQuery %>
 
-<%= turbo_frame_tag "conversation_list" do %>
+<%= turbo_frame_tag "conversation_list", data: { controller: "conversation-list" } do %>
   <div class="app-scrollbar flex-1 overflow-y-auto">
     <% if @conversations.any? %>
-      <ul class="divide-y divide-slate-100">
+      <ul class="divide-y divide-slate-100" id="conversations_list">
         <% @conversations.each do |conversation| %>
           <%= render "conversation_row", conversation:, selected_id: params[:id], filter: params[:filter] %>
         <% end %>
       </ul>
       <% if @next_cursor %>
-        <div class="border-t border-slate-100 p-3 text-center">
+        <div class="border-t border-slate-100 p-3 text-center" id="load_more_container">
           <%= link_to "Load more", inbox_conversations_path(current_account, @inbox, before: @next_cursor, filter: params[:filter]),
                 class: "text-xs font-semibold text-indigo-600 hover:text-indigo-700",
-                data: { turbo_frame: "conversation_list" } %>
+                data: { turbo_stream: true } %>
         </div>
       <% end %>
     <% else %>
