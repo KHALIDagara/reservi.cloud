@@ -15,7 +15,15 @@
       </div>
       <div class="px-4 py-3">
         <dt class="text-xs font-bold uppercase tracking-wide text-slate-400">Webhook URL</dt>
-        <dd class="mt-1 break-all font-mono text-xs text-slate-600"><%= @channel.provider_type == "whatsapp" ? meta_whatsapp_webhook_events_url : meta_instagram_webhook_events_url %></dd>
+        <dd class="mt-1 break-all font-mono text-xs text-slate-600">
+          <% if @channel.provider_type == "whatsapp" %>
+            <%= whatsapp_webhook_events_url(phone_number: @channel.provider_config["display_phone_number"]) %>
+          <% elsif @channel.provider_type == "instagram" %>
+            <%= instagram_webhook_events_url(token: @channel.inbound_token) %>
+          <% else %>
+            <%= dev_webhook_inbound_url(token: @channel.inbound_token) %>
+          <% end %>
+        </dd>
       </div>
     </dl>
     <div class="mt-6 flex gap-3">
