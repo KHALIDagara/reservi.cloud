@@ -100,6 +100,11 @@ module Reservi
         raise ProviderError, "Instagram did not return the credentials required to connect this inbox."
       end
 
+      # Phase 1: Authenticate with Meta, validate the phone number, and
+      # return a connection hash WITHOUT registering the webhook yet.
+      # The channel must be persisted before webhook registration so that
+      # Meta's immediate verification callback can find the channel by its
+      # phone number and verify token.
       def connect_whatsapp(code:, business_id:, waba_id:, phone_number_id:)
         token_response = request_json(
           :get,
@@ -116,31 +121,6 @@ module Reservi
         raise ProviderError, "The selected WhatsApp number could not be verified." unless phone
 
         verify_token = SecureRandom.urlsafe_base64(32)
-
-        # Step 1: Subscribe the app to the WABA
-        request_json(
-          :post,
-          "#{GRAPH_BASE}/#{escape_path(waba_id)}/subscribed_apps",
-          form: { access_token: }
-        )
-
-        # Step 2: Override callback URL with our verify token so Meta can
-        # validate the webhook immediately — no manual console setup needed.
-        callback_url = "#{webhook_base_url}/webhooks/meta/whatsapp"
-        begin
-          request_json(
-            :post,
-            "#{GRAPH_BASE}/#{escape_path(waba_id)}/subscribed_apps",
-            form: {
-              override_callback_uri: callback_url,
-              verify_token: verify_token,
-              subscribed_fields: "messages",
-              access_token: access_token
-            }
-          )
-        rescue ProviderError => e
-          Rails.logger.warn("[WHATSAPP] Webhook callback override non-fatal: #{e.message}")
-        end
 
         {
           provider: "whatsapp",
@@ -160,6 +140,40 @@ module Reservi
         }
       rescue KeyError
         raise ProviderError, "WhatsApp did not return the credentials required to connect this inbox."
+      end
+
+      # Phase 2: After the channel is persisted, register the webhook with Meta.
+      # The channel must already exist in the database so that Meta's verification
+      # callback (which fires immediately) can resolve the channel by phone number.
+      def subscribe_whatsapp_webhook(channel)
+        waba_id    = channel.provider_config["waba_id"]
+        access_token = channel.credentials["access_token"]
+        verify_token = channel.provider_config["webhook_verify_token"]
+        display_phone = channel.provider_config["display_phone_number"]
+
+        raise ProviderError, "Missing WABA credentials for webhook subscription." unless waba_id && access_token
+
+        # Subscribe the app to the WABA
+        request_json(
+          :post,
+          "#{GRAPH_BASE}/#{escape_path(waba_id)}/subscribed_apps",
+          form: { access_token: access_token }
+        )
+
+        # Override callback URL with per-phone-number URL (Chatwoot pattern)
+        callback_url = "#{webhook_base_url}/webhooks/whatsapp/+#{display_phone}"
+        request_json(
+          :post,
+          "#{GRAPH_BASE}/#{escape_path(waba_id)}/subscribed_apps",
+          form: {
+            override_callback_uri: callback_url,
+            verify_token: verify_token,
+            subscribed_fields: "messages",
+            access_token: access_token
+          }
+        )
+      rescue KeyError
+        raise ProviderError, "WhatsApp webhook subscription failed — missing configuration."
       end
 
       private

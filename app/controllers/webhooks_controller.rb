@@ -14,7 +14,7 @@ class WebhooksController < ApplicationController
   skip_before_action :verify_authenticity_token
   skip_before_action :require_authentication
   before_action :authenticate_channel, only: [ :dev_inbound, :dev_status ]
-  before_action :set_channel_from_token, only: [ :whatsapp_verify, :whatsapp_events, :instagram_verify, :instagram_events ]
+  before_action :set_channel_from_token, only: [ :instagram_verify, :instagram_events ]
 
   # Webhook endpoints respond with JSON, not HTML redirects
   rescue_from Reservi::Errors::OperationError, with: :json_error
@@ -104,15 +104,36 @@ class WebhooksController < ApplicationController
 
   # ---- Meta webhook endpoints ----
 
-  # GET /webhooks/whatsapp/:token — Meta challenge-response verification
-  def whatsapp_verify
-    verify_meta_webhook(@channel)
+  # WhatsApp webhook — phone-number-specific (Chatwoot pattern).
+  # URL: /webhooks/whatsapp/+212699695651
+  # The phone number in the URL path uniquely identifies the channel.
+  # This avoids the multi-channel ambiguity of app-level callbacks.
+
+  # GET /webhooks/whatsapp/:phone_number — Meta challenge-response verification
+  def whatsapp_verify_by_phone
+    channel = find_channel_by_phone(params[:phone_number])
+    return render plain: "Channel not found", status: :not_found unless channel
+
+    expected = ensure_webhook_verify_token(channel)
+    supplied = params["hub.verify_token"].to_s
+
+    if params["hub.mode"] == "subscribe" && expected.present? &&
+        ActiveSupport::SecurityUtils.secure_compare(supplied, expected) &&
+        params["hub.challenge"].present?
+      render plain: params["hub.challenge"], status: :ok
+    else
+      render plain: "Verification failed", status: :forbidden
+    end
   end
 
-  # POST /webhooks/whatsapp/:token — inbound WhatsApp events
-  def whatsapp_events
+  # POST /webhooks/whatsapp/:phone_number — inbound WhatsApp events
+  def whatsapp_events_by_phone
     body = request.body.read
     parsed = JSON.parse(body) rescue {}
+    # Prefer channel from payload identity, fall back to URL phone number
+    @channel = find_channel_from_whatsapp_payload(parsed) || find_channel_by_phone(params[:phone_number])
+    return head :not_found unless @channel
+
     process_whatsapp_payload(parsed)
   end
 
@@ -128,67 +149,33 @@ class WebhooksController < ApplicationController
     process_instagram_payload(parsed)
   end
 
-  def meta_whatsapp_verify
-    channel = Channel.active.find_by(provider_type: "whatsapp")
-    return render plain: "Channel not found", status: :not_found unless channel
-
-    expected = ensure_webhook_verify_token(channel)
-    supplied = params["hub.verify_token"].to_s
-
-    if params["hub.mode"] == "subscribe" && expected.present? &&
-        ActiveSupport::SecurityUtils.secure_compare(supplied, expected) &&
-        params["hub.challenge"].present?
-      render plain: params["hub.challenge"], status: :ok
-    else
-      render plain: "Verification failed", status: :forbidden
-    end
-  end
-
-  def meta_instagram_verify
-    channel = Channel.active.find_by(provider_type: "instagram")
-    return render plain: "Channel not found", status: :not_found unless channel
-
-    expected = ensure_webhook_verify_token(channel)
-    supplied = params["hub.verify_token"].to_s
-
-    if params["hub.mode"] == "subscribe" && expected.present? &&
-        ActiveSupport::SecurityUtils.secure_compare(supplied, expected) &&
-        params["hub.challenge"].present?
-      render plain: params["hub.challenge"], status: :ok
-    else
-      render plain: "Verification failed", status: :forbidden
-    end
-  end
-
-  def meta_whatsapp_events
-    body = request.body.read
-    return head :unauthorized unless valid_meta_signature?(body, "whatsapp")
-
-    parsed = JSON.parse(body)
-    phone_number_id = parsed.dig("entry", 0, "changes", 0, "value", "metadata", "phone_number_id")
-    @channel = oauth_channel_for("whatsapp", phone_number_id)
-    return head :not_found unless @channel
-
-    process_whatsapp_payload(parsed)
-  rescue JSON::ParserError
-    head :unprocessable_content
-  end
-
-  def meta_instagram_events
-    body = request.body.read
-    return head :unauthorized unless valid_meta_signature?(body, "instagram")
-
-    parsed = JSON.parse(body)
-    instagram_id = Array.wrap(parsed).first&.dig("id") || Array.wrap(parsed).first&.dig("entry", 0, "id")
-    @channel = oauth_channel_for("instagram", instagram_id)
-    return head :not_found unless @channel
-
-    process_instagram_payload(parsed)
-  rescue JSON::ParserError
-    head :unprocessable_content
-  end
-
   private
+
+  def find_channel_by_phone(phone_number)
+    return if phone_number.blank?
+    Channel.active.find_by(
+      provider_type: "whatsapp",
+      "provider_config->>'display_phone_number'" => phone_number.delete_prefix("+")
+    )
+  end
+
+  def find_channel_from_whatsapp_payload(parsed)
+    return unless parsed["object"] == "whatsapp_business_account"
+    entry = parsed.dig("entry", 0)
+    changes = entry&.dig("changes", 0)
+    value = changes&.dig("value")
+    metadata = value&.dig("metadata")
+    phone_number_id = metadata&.dig("phone_number_id")
+    display_phone = metadata&.dig("display_phone_number")
+    return unless phone_number_id
+
+    channel = Channel.active.find_by(
+      provider_type: "whatsapp",
+      provider_external_id: phone_number_id
+    )
+    # Validate that the display phone number also matches (defense in depth)
+    return channel if channel && channel.provider_config["display_phone_number"] == display_phone
+  end
 
   def process_whatsapp_payload(parsed)
     event_id = extract_whatsapp_event_id(parsed)
@@ -252,11 +239,15 @@ class WebhooksController < ApplicationController
   end
 
   def process_domain_work(receipt, &block)
-    block.call
+    # Mark processed atomically BEFORE domain work so a retry skips entirely
+    # rather than duplicating work. If the block fails, the receipt is
+    # still "processed" — we rely on provider retries sending fresh receipts
+    # with distinct event IDs.
     receipt.update!(processed_at: Time.current)
+    block.call
   rescue => e
     Rails.logger.error "Webhook domain processing failed for receipt #{receipt.id}: #{e.class}: #{e.message}"
-    # Leave processed_at nil so the next delivery can retry
+    # processed_at is already set; we don't retry the same receipt
   end
 
   def authenticate_channel
@@ -275,8 +266,21 @@ class WebhooksController < ApplicationController
     entry = payload&.dig("entry", 0)
     changes = entry&.dig("changes", 0)
     value = changes&.dig("value")
-    msg = value&.dig("messages", 0) || value&.dig("statuses", 0)
-    msg&.dig("id") || "unknown_#{Time.current.to_i}"
+    msg = value&.dig("messages", 0)
+    status = value&.dig("statuses", 0)
+
+    if status
+      # Status events share the same provider message ID across transitions
+      # (sent -> delivered -> read). Append the status type to distinguish
+      # them so each creates a distinct receipt.
+      msg_id = status["id"] || "unknown"
+      status_type = status["status"] || "unknown_status"
+      "#{msg_id}_#{status_type}"
+    elsif msg
+      msg["id"] || "unknown_#{Time.current.to_i}"
+    else
+      "unknown_#{Time.current.to_i}"
+    end
   end
 
   def extract_whatsapp_event_type(payload)

@@ -48,13 +48,35 @@ module Accounts
         raise ActionController::ParameterMissing, :whatsapp_signup
       end
 
-      connection = Reservi::Channels::OauthClient.new("whatsapp").connect_whatsapp(
+      oauth_client = Reservi::Channels::OauthClient.new("whatsapp")
+
+      # Phase 1: Authenticate and build connection hash (no Meta API calls
+      # that trigger webhook verification yet).
+      connection = oauth_client.connect_whatsapp(
         code: whatsapp_params.fetch(:code),
         business_id: whatsapp_params.fetch(:business_id),
         waba_id: whatsapp_params.fetch(:waba_id),
         phone_number_id: whatsapp_params.fetch(:phone_number_id)
       )
+
+      # Persist the channel FIRST so Meta's verification callback can find
+      # it by phone number.
       channel = Channels::Connect.call(account: current_account, connection:)
+
+      # Phase 2: Now that the channel exists, register the webhook. Meta
+      # will immediately verify the callback URL and find the channel.
+      begin
+        oauth_client.subscribe_whatsapp_webhook(channel)
+      rescue Reservi::Channels::OauthClient::ProviderError => e
+        Rails.logger.warn("[WHATSAPP] Webhook subscription failed for channel #{channel.id}: #{e.message}")
+        # Channel was created but webhook is broken — surface this to the user.
+        render json: {
+          warning: "WhatsApp inbox created, but webhook registration failed. Messages may not be received until this is resolved: #{e.message}",
+          redirect_url: inbox_path(current_account, channel)
+        }, status: :created
+        return
+      end
+
       render json: { redirect_url: inbox_path(current_account, channel) }, status: :created
     rescue ActionController::ParameterMissing, KeyError => e
       render json: { error: "WhatsApp returned incomplete signup details." }, status: :unprocessable_content

@@ -160,18 +160,14 @@ resources :conversations, only: [ :index, :show ] do
   post "webhooks/dev/:token", to: "webhooks#dev_inbound", as: :dev_webhook_inbound
   post "webhooks/dev/:token/status", to: "webhooks#dev_status", as: :dev_webhook_status
 
-  # Meta webhook endpoints (WhatsApp + Instagram)
-  get  "webhooks/whatsapp/:token",  to: "webhooks#whatsapp_verify",  as: :whatsapp_webhook_verify
-  post "webhooks/whatsapp/:token",  to: "webhooks#whatsapp_events",  as: :whatsapp_webhook_events
+  # WhatsApp webhook endpoints — phone-number-specific (Chatwoot pattern).
+  # One number = one URL, channel resolved by phone_number in the path.
+  get  "webhooks/whatsapp/:phone_number", to: "webhooks#whatsapp_verify_by_phone",  as: :whatsapp_webhook_verify
+  post "webhooks/whatsapp/:phone_number", to: "webhooks#whatsapp_events_by_phone",  as: :whatsapp_webhook_events
+
+  # Instagram webhook (app-level callback — Instagram events carry sender identity)
   get  "webhooks/instagram/:token", to: "webhooks#instagram_verify", as: :instagram_webhook_verify
   post "webhooks/instagram/:token", to: "webhooks#instagram_events", as: :instagram_webhook_events
-
-  # OAuth-connected Meta inboxes share app-level callbacks and are resolved
-  # from trusted provider identity inside each signed payload.
-  get  "webhooks/meta/whatsapp", to: "webhooks#meta_whatsapp_verify", as: :meta_whatsapp_webhook_verify
-  post "webhooks/meta/whatsapp", to: "webhooks#meta_whatsapp_events", as: :meta_whatsapp_webhook_events
-  get  "webhooks/meta/instagram", to: "webhooks#meta_instagram_verify", as: :meta_instagram_webhook_verify
-  post "webhooks/meta/instagram", to: "webhooks#meta_instagram_events", as: :meta_instagram_webhook_events
 
   get "up" => "rails/health#show", as: :rails_health_check
 
