@@ -6,25 +6,30 @@ class WebhooksControllerMetaTest < ActionDispatch::IntegrationTest
     @flow = flows(:alpha_default)
     @flow.update!(current_version: flow_versions(:alpha_v1))
 
-    @token = SecureRandom.hex(16)
+    @display_phone = "5511999999999"
+    @verify_token  = "my_verify_123"
+    @phone_number_id = "123456789"
+
     @channel = @account.channels.create!(
       name: "WhatsApp Chan",
       provider_type: "whatsapp",
-      inbound_token: @token,
+      provider_external_id: @phone_number_id,
+      inbound_token: SecureRandom.hex(16),
       provider_config: {
-        "phone_number_id" => "123456789",
+        "phone_number_id" => @phone_number_id,
+        "display_phone_number" => @display_phone,
         "access_token" => "test_token",
-        "webhook_verify_token" => "my_verify_123"
+        "webhook_verify_token" => @verify_token
       }
     )
   end
 
-  # ---- WhatsApp verification ----
+  # ---- WhatsApp verification (phone-number-based) ----
 
   test "whatsapp verify with correct token returns challenge" do
-    get whatsapp_webhook_verify_url(token: @token), params: {
+    get whatsapp_webhook_verify_url(phone_number: "+#{@display_phone}"), params: {
       "hub.mode" => "subscribe",
-      "hub.verify_token" => "my_verify_123",
+      "hub.verify_token" => @verify_token,
       "hub.challenge" => "challenge_abc"
     }
 
@@ -33,7 +38,7 @@ class WebhooksControllerMetaTest < ActionDispatch::IntegrationTest
   end
 
   test "whatsapp verify with wrong verify_token returns forbidden" do
-    get whatsapp_webhook_verify_url(token: @token), params: {
+    get whatsapp_webhook_verify_url(phone_number: "+#{@display_phone}"), params: {
       "hub.mode" => "subscribe",
       "hub.verify_token" => "wrong_token",
       "hub.challenge" => "challenge_abc"
@@ -43,18 +48,18 @@ class WebhooksControllerMetaTest < ActionDispatch::IntegrationTest
   end
 
   test "whatsapp verify with missing challenge returns forbidden" do
-    get whatsapp_webhook_verify_url(token: @token), params: {
+    get whatsapp_webhook_verify_url(phone_number: "+#{@display_phone}"), params: {
       "hub.mode" => "subscribe",
-      "hub.verify_token" => "my_verify_123"
+      "hub.verify_token" => @verify_token
     }
 
     assert_response :forbidden
   end
 
-  test "whatsapp verify with bad token returns not_found" do
-    get whatsapp_webhook_verify_url(token: "bad_token"), params: {
+  test "whatsapp verify with unknown phone number returns not_found" do
+    get whatsapp_webhook_verify_url(phone_number: "+99999999999"), params: {
       "hub.mode" => "subscribe",
-      "hub.verify_token" => "my_verify_123",
+      "hub.verify_token" => @verify_token,
       "hub.challenge" => "test"
     }
 
@@ -65,7 +70,6 @@ class WebhooksControllerMetaTest < ActionDispatch::IntegrationTest
 
   test "whatsapp event creates conversation and message" do
     initial_conv_count = @account.conversations.count
-    initial_msg_count = @account.conversations.sum { |c| c.messages.count }
 
     wa_payload = {
       "entry" => [ {
@@ -74,8 +78,8 @@ class WebhooksControllerMetaTest < ActionDispatch::IntegrationTest
           "value" => {
             "messaging_product" => "whatsapp",
             "metadata" => {
-              "display_phone_number" => "5511999999999",
-              "phone_number_id" => "123456789"
+              "display_phone_number" => @display_phone,
+              "phone_number_id" => @phone_number_id
             },
             "contacts" => [ {
               "profile" => { "name" => "Ahmed Salem" },
@@ -93,7 +97,7 @@ class WebhooksControllerMetaTest < ActionDispatch::IntegrationTest
       } ]
     }
 
-    post whatsapp_webhook_events_url(token: @token),
+    post whatsapp_webhook_events_url(phone_number: "+#{@display_phone}"),
       params: wa_payload.to_json,
       headers: { "Content-Type" => "application/json" }
 
@@ -124,8 +128,8 @@ class WebhooksControllerMetaTest < ActionDispatch::IntegrationTest
           "value" => {
             "messaging_product" => "whatsapp",
             "metadata" => {
-              "display_phone_number" => "5511999999999",
-              "phone_number_id" => "123456789"
+              "display_phone_number" => @display_phone,
+              "phone_number_id" => @phone_number_id
             },
             "contacts" => [ {
               "profile" => { "name" => "Ahmed Salem" },
@@ -145,7 +149,7 @@ class WebhooksControllerMetaTest < ActionDispatch::IntegrationTest
 
     # First request
     initial_conv_count = @account.conversations.count
-    post whatsapp_webhook_events_url(token: @token),
+    post whatsapp_webhook_events_url(phone_number: "+#{@display_phone}"),
       params: wa_payload.to_json,
       headers: { "Content-Type" => "application/json" }
 
@@ -156,7 +160,7 @@ class WebhooksControllerMetaTest < ActionDispatch::IntegrationTest
     msg_count = thread.conversation.messages.count
 
     # Second request with same event ID
-    post whatsapp_webhook_events_url(token: @token),
+    post whatsapp_webhook_events_url(phone_number: "+#{@display_phone}"),
       params: wa_payload.to_json,
       headers: { "Content-Type" => "application/json" }
 
@@ -191,8 +195,8 @@ class WebhooksControllerMetaTest < ActionDispatch::IntegrationTest
           "value" => {
             "messaging_product" => "whatsapp",
             "metadata" => {
-              "display_phone_number" => "5511999999999",
-              "phone_number_id" => "123456789"
+              "display_phone_number" => @display_phone,
+              "phone_number_id" => @phone_number_id
             },
             "statuses" => [ {
               "id" => "wamid.StatusTarget",
@@ -205,7 +209,7 @@ class WebhooksControllerMetaTest < ActionDispatch::IntegrationTest
       } ]
     }
 
-    post whatsapp_webhook_events_url(token: @token),
+    post whatsapp_webhook_events_url(phone_number: "+#{@display_phone}"),
       params: status_payload.to_json,
       headers: { "Content-Type" => "application/json" }
 
@@ -216,12 +220,10 @@ class WebhooksControllerMetaTest < ActionDispatch::IntegrationTest
     assert_equal "delivered", msg.reload.delivery_status
   end
 
-  # ---- Instagram verification ----
+  # ---- Instagram verification (unchanged — still token-based) ----
 
   test "instagram verify returns OK" do
-    # Instagram verification does not use the subscribe/verify token protocol
-    # but should still respond
-    get instagram_webhook_verify_url(token: @token)
+    get instagram_webhook_verify_url(token: @channel.inbound_token)
 
     assert_response :ok
   end
@@ -245,5 +247,88 @@ class WebhooksControllerMetaTest < ActionDispatch::IntegrationTest
     )
     assert receipt2.persisted?
     assert_not receipt2.previously_new_record?
+  end
+
+  # ---- Status receipt identity (R22) ----
+
+  test "whatsapp status events create distinct receipts per transition" do
+    customer = @account.customers.first
+    conv = @account.conversations.first
+    msg = conv.messages.create!(
+      author_name: "Agent",
+      content: "Hello",
+      direction: "outbound",
+      delivery_status: "sent"
+    )
+    @account.message_deliveries.create!(
+      channel: @channel,
+      message: msg,
+      status: "sent",
+      operation_key: "wa_status_transition_test",
+      provider_message_id: "wamid.StatusTransitions"
+    )
+
+    # sent callback
+    sent_payload = {
+      "entry" => [ {
+        "id" => "WABA_ID",
+        "changes" => [ {
+          "value" => {
+            "messaging_product" => "whatsapp",
+            "metadata" => {
+              "display_phone_number" => @display_phone,
+              "phone_number_id" => @phone_number_id
+            },
+            "statuses" => [ {
+              "id" => "wamid.StatusTransitions",
+              "status" => "sent",
+              "timestamp" => "1700000100",
+              "recipient_id" => "5511988888888"
+            } ]
+          }
+        } ]
+      } ]
+    }
+
+    # delivered callback — same message ID, different status
+    delivered_payload = {
+      "entry" => [ {
+        "id" => "WABA_ID",
+        "changes" => [ {
+          "value" => {
+            "messaging_product" => "whatsapp",
+            "metadata" => {
+              "display_phone_number" => @display_phone,
+              "phone_number_id" => @phone_number_id
+            },
+            "statuses" => [ {
+              "id" => "wamid.StatusTransitions",
+              "status" => "delivered",
+              "timestamp" => "1700000200",
+              "recipient_id" => "5511988888888"
+            } ]
+          }
+        } ]
+      } ]
+    }
+
+    post whatsapp_webhook_events_url(phone_number: "+#{@display_phone}"),
+      params: sent_payload.to_json,
+      headers: { "Content-Type" => "application/json" }
+    assert_response :ok
+
+    post whatsapp_webhook_events_url(phone_number: "+#{@display_phone}"),
+      params: delivered_payload.to_json,
+      headers: { "Content-Type" => "application/json" }
+    assert_response :ok
+
+    # Both receipts should exist with distinct provider_event_ids
+    sent_receipt = WebhookReceipt.find_by(provider_event_id: "wamid.StatusTransitions_sent")
+    delivered_receipt = WebhookReceipt.find_by(provider_event_id: "wamid.StatusTransitions_delivered")
+
+    assert sent_receipt.present?, "sent receipt should exist"
+    assert delivered_receipt.present?, "delivered receipt should exist"
+    assert_equal "message_status", sent_receipt.event_type
+    assert_equal "message_status", delivered_receipt.event_type
   end
 end

@@ -29,7 +29,7 @@ class Reservi::Channels::OauthClientTest < ActiveSupport::TestCase
     end
   end
 
-  test "WhatsApp connection verifies the selected number and subscribes the app" do
+  test "WhatsApp connection authenticates, validates phone, and returns connection hash" do
     with_env(
       "WHATSAPP_APP_ID" => "app-id",
       "WHATSAPP_APP_SECRET" => "app-secret",
@@ -39,8 +39,7 @@ class Reservi::Channels::OauthClientTest < ActiveSupport::TestCase
       calls = []
       responses = [
         { "access_token" => "access-token" },
-        { "data" => [ { "id" => "phone-id", "display_phone_number" => "+212600000000", "verified_name" => "Reservi" } ] },
-        { "success" => true }
+        { "data" => [ { "id" => "phone-id", "display_phone_number" => "+212600000000", "verified_name" => "Reservi" } ] }
       ]
       requester = lambda do |method, url, **options|
         calls << [ method, url, options ]
@@ -53,8 +52,15 @@ class Reservi::Channels::OauthClientTest < ActiveSupport::TestCase
 
       assert_equal "phone-id", connection[:external_id]
       assert_equal "access-token", connection.dig(:credentials, "access_token")
-      assert_includes calls.last.second, "/waba-id/subscribed_apps"
-      assert_equal :post, calls.last.first
+      assert_equal "Reservi", connection.dig(:provider_config, "verified_name")
+      assert connection.dig(:provider_config, "webhook_verify_token").present?, "must have verify token"
+      assert connection.dig(:provider_config, "display_phone_number").present?, "must have display phone"
+
+      # connect_whatsapp only authenticates and returns a hash — no Meta API calls.
+      # Phase 1 (auth): access token exchange + phone lookup (2 calls)
+      assert_equal 2, calls.size
+      assert_includes calls[0].second, "/oauth/access_token"
+      assert_includes calls[1].second, "/waba-id/phone_numbers"
     end
   end
 

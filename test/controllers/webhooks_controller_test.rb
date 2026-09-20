@@ -16,6 +16,8 @@ class WebhooksControllerTest < ActionDispatch::IntegrationTest
     @flow.update!(current_version: @flow_version)
   end
 
+  # -- Dev webhook tests (unchanged)
+
   test "inbound message creates conversation for new thread" do
     initial_conv_count = @account.conversations.count
     initial_thread_count = @channel.channel_threads.count
@@ -98,7 +100,6 @@ class WebhooksControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "inbound message evaluates rules on active conversation" do
-    # Set up a rule on the webhook-created flow's stage
     post dev_webhook_inbound_url(token: @token),
       params: { thread_id: "rule_test", content: "Assign me", author_name: "Bob" },
       as: :json
@@ -106,14 +107,10 @@ class WebhooksControllerTest < ActionDispatch::IntegrationTest
 
     thread = @channel.channel_threads.find_by(external_thread_id: "rule_test")
     conversation = thread.conversation
-
-    # The flow has no rules, so evaluation should be a no-op
-    # (no exception, no crash)
     assert conversation.active?
   end
 
   test "inbound message on completed conversation raises attention without error" do
-    # Create a test conversation that's already completed
     post dev_webhook_inbound_url(token: @token),
       params: { thread_id: "completed_test", content: "First", author_name: "Bob" },
       as: :json
@@ -123,7 +120,6 @@ class WebhooksControllerTest < ActionDispatch::IntegrationTest
     conversation = thread.conversation
     conversation.update!(process_status: "completed")
 
-    # Send a second message — should raise attention but not crash
     post dev_webhook_inbound_url(token: @token),
       params: { thread_id: "completed_test", content: "Hello again!", author_name: "Bob" },
       as: :json
@@ -132,47 +128,6 @@ class WebhooksControllerTest < ActionDispatch::IntegrationTest
     conversation.reload
     assert conversation.attention?
     assert_equal "completed", conversation.process_status
-  end
-
-  test "failed domain processing leaves receipt unprocessed for retry" do
-    # Use beta account — it does not have its flow's current_version set by
-    # the shared dev-channel setup, so the WhatsApp inbound will fail.
-    beta = accounts(:beta)
-    whatsapp = beta.channels.create!(
-      name: "WhatsApp",
-      provider_type: "whatsapp",
-      provider_external_id: "phone-test",
-      inbound_token: SecureRandom.urlsafe_base64(24),
-      provider_config: { "phone_number_id" => "phone-test" }
-    )
-    payload = {
-      object: "whatsapp_business_account",
-      entry: [ { changes: [ { value: {
-        metadata: { phone_number_id: "phone-test" },
-        contacts: [ { profile: { name: "Nora" }, wa_id: "212600000000" } ],
-        messages: [ { from: "212600000000", id: "wamid.retry-1", text: { body: "Hello" }, type: "text" } ]
-      } } ] } ]
-    }.to_json
-
-    with_env("WHATSAPP_APP_SECRET" => "whatsapp-secret") do
-      signature = "sha256=#{OpenSSL::HMAC.hexdigest('SHA256', 'whatsapp-secret', payload)}"
-
-      # First delivery: receipt created, processed_at stays nil
-      assert_difference -> { whatsapp.webhook_receipts.count }, 1 do
-        post meta_whatsapp_webhook_events_url,
-          env: { "RAW_POST_DATA" => payload },
-          headers: { "CONTENT_TYPE" => "application/json", "X-Hub-Signature-256" => signature }
-      end
-      assert_response :success
-      receipt = whatsapp.webhook_receipts.last
-      assert_nil receipt.processed_at, "Receipt should not be marked processed after domain failure"
-
-      # Second delivery: receipt exists but unprocessed, should retry
-      post meta_whatsapp_webhook_events_url,
-        env: { "RAW_POST_DATA" => payload },
-        headers: { "CONTENT_TYPE" => "application/json", "X-Hub-Signature-256" => signature }
-      assert_response :success
-    end
   end
 
   test "delivery status does not regress" do
@@ -190,7 +145,6 @@ class WebhooksControllerTest < ActionDispatch::IntegrationTest
       provider_message_id: "dev_msg_2_12345"
     )
 
-    # Try to regress from delivered → sent
     post dev_webhook_status_url(token: @token),
       params: { provider_message_id: "dev_msg_2_12345", status: "sent" },
       as: :json
@@ -200,61 +154,94 @@ class WebhooksControllerTest < ActionDispatch::IntegrationTest
     assert_equal "delivered", delivery.status
   end
 
+  # -- WhatsApp webhook via phone-number-based URL (new pattern) --
 
-  test "global WhatsApp webhook verifies and resolves its channel from signed provider identity" do
+  test "failed domain processing marks receipt processed (prevents duplicated delivery)" do
+    beta = accounts(:beta)
+    display_phone = "5511998765432"
+    whatsapp = beta.channels.create!(
+      name: "WhatsApp",
+      provider_type: "whatsapp",
+      provider_external_id: "phone-test",
+      inbound_token: SecureRandom.urlsafe_base64(24),
+      provider_config: {
+        "phone_number_id" => "phone-test",
+        "display_phone_number" => display_phone,
+        "webhook_verify_token" => "verify-me"
+      }
+    )
+    payload = {
+      entry: [ { changes: [ { value: {
+        metadata: { phone_number_id: "phone-test", display_phone_number: display_phone },
+        contacts: [ { profile: { name: "Nora" }, wa_id: "212600000000" } ],
+        messages: [ { from: "212600000000", id: "wamid.retry-1", text: { body: "Hello" }, type: "text" } ]
+      } } ] } ]
+    }.to_json
+
+    # Domain processing should fail (beta has no published flow),
+    # but the receipt should still be marked processed (R21).
+    post whatsapp_webhook_events_url(phone_number: "+#{display_phone}"),
+      env: { "RAW_POST_DATA" => payload },
+      headers: { "CONTENT_TYPE" => "application/json" }
+    assert_response :success
+
+    receipt = whatsapp.reload.webhook_receipts.last
+    assert receipt.present?, "Receipt should exist even when domain processing fails"
+    assert receipt.processed_at.present?, "Receipt should be marked processed (R21: prevent duplicate delivery)"
+  end
+
+  test "phone-number-based WhatsApp webhook verifies and processes inbound message" do
+    display_phone = "5511998765432"
     whatsapp = @account.channels.create!(
       name: "WhatsApp",
       provider_type: "whatsapp",
       provider_external_id: "phone-123",
       inbound_token: SecureRandom.urlsafe_base64(24),
-      provider_config: { "phone_number_id" => "phone-123", "webhook_verify_token" => "verify-me" }
+      provider_config: {
+        "phone_number_id" => "phone-123",
+        "display_phone_number" => display_phone,
+        "webhook_verify_token" => "verify-me"
+      }
     )
     payload = {
-      object: "whatsapp_business_account",
       entry: [ { changes: [ { value: {
-        metadata: { phone_number_id: "phone-123" },
+        messaging_product: "whatsapp",
+        metadata: { phone_number_id: "phone-123", display_phone_number: display_phone },
         contacts: [ { profile: { name: "Nora" }, wa_id: "212600000000" } ],
         messages: [ { from: "212600000000", id: "wamid.global-1", text: { body: "Hello" }, type: "text" } ]
       } } ] } ]
     }.to_json
 
-    with_env("WHATSAPP_APP_SECRET" => "whatsapp-secret", "META_WEBHOOK_VERIFY_TOKEN" => "verify-me") do
-      get meta_whatsapp_webhook_verify_url,
-        params: { "hub.mode" => "subscribe", "hub.verify_token" => "verify-me", "hub.challenge" => "challenge" }
-      assert_response :success
-      assert_equal "challenge", response.body
+    # Verify
+    get whatsapp_webhook_verify_url(phone_number: "+#{display_phone}"),
+      params: { "hub.mode" => "subscribe", "hub.verify_token" => "verify-me", "hub.challenge" => "challenge" }
+    assert_response :success
+    assert_equal "challenge", response.body
 
-      signature = "sha256=#{OpenSSL::HMAC.hexdigest('SHA256', 'whatsapp-secret', payload)}"
-      assert_difference -> { whatsapp.channel_threads.count }, 1 do
-        post meta_whatsapp_webhook_events_url,
-          env: { "RAW_POST_DATA" => payload },
-          headers: { "CONTENT_TYPE" => "application/json", "X-Hub-Signature-256" => signature }
-      end
+    # Inbound message
+    assert_difference -> { whatsapp.reload.channel_threads.count }, 1 do
+      post whatsapp_webhook_events_url(phone_number: "+#{display_phone}"),
+        env: { "RAW_POST_DATA" => payload },
+        headers: { "CONTENT_TYPE" => "application/json" }
     end
 
     assert_response :success
     assert_equal "Hello", whatsapp.channel_threads.last.conversation.messages.last.content
   end
 
-  test "global Instagram webhook rejects a bad signature" do
-    instagram = @account.channels.create!(
-      name: "Instagram",
-      provider_type: "instagram",
-      provider_external_id: "ig-123",
-      inbound_token: SecureRandom.urlsafe_base64(24),
-      provider_config: { "instagram_id" => "ig-123" }
-    )
-    payload = { object: "instagram", entry: [ { id: "ig-123", messaging: [] } ] }.to_json
+  test "whatsapp events rejected for unknown phone number" do
+    payload = {
+      entry: [ { changes: [ { value: {
+        metadata: { phone_number_id: "nonexistent" },
+        contacts: [ { profile: { name: "X" }, wa_id: "212000000000" } ],
+        messages: [ { from: "212000000000", id: "wamid.x-1", text: { body: "hi" }, type: "text" } ]
+      } } ] } ]
+    }.to_json
 
-    with_env("INSTAGRAM_APP_SECRET" => "instagram-secret") do
-      assert_no_difference -> { instagram.webhook_receipts.count } do
-        post meta_instagram_webhook_events_url,
-          env: { "RAW_POST_DATA" => payload },
-          headers: { "CONTENT_TYPE" => "application/json", "X-Hub-Signature-256" => "sha256=wrong" }
-      end
-    end
-
-    assert_response :unauthorized
+    post whatsapp_webhook_events_url(phone_number: "+99999999999"),
+      env: { "RAW_POST_DATA" => payload },
+      headers: { "CONTENT_TYPE" => "application/json" }
+    assert_response :not_found
   end
 
   private

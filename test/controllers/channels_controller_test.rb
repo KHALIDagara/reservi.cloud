@@ -46,6 +46,7 @@ test "operator can see inboxes but cannot manage them" do
       credentials: { "access_token" => "secret-token", "webhook_verify_token" => "verify-token" }
     }
     fake_client.define_singleton_method(:connect_whatsapp) { |**| connection }
+    fake_client.define_singleton_method(:subscribe_whatsapp_webhook) { |channel| true }
 
     assert_difference -> { @account.channels.count } => 1 do
       Reservi::Channels::OauthClient.stub(:new, fake_client) do
